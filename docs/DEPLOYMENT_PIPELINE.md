@@ -43,7 +43,7 @@ az vm run-command invoke \
   --resource-group hforge-rg \
   --name hforge-vm \
   --command-id RunShellScript \
-  --scripts @{<temporary-script-file>} \
+  --scripts "<temporary-script-content>" \
   --parameters \
     ghcr_username=<GHCR_USERNAME> \
     ghcr_token=<GHCR_READ_TOKEN> \

@@ -190,11 +190,12 @@ jobs:
           VM_SCRIPT
 
           compose_b64="$(base64 < docker-compose.prod.yml | tr -d '\n=')"
+          script_content="$(cat "$script_file")"
           run_output="$(az vm run-command invoke \
             --resource-group hforge-rg \
             --name hforge-vm \
             --command-id RunShellScript \
-            --scripts "@{${script_file}}" \
+            --scripts "$script_content" \
             --parameters "ghcr_username=$GHCR_USERNAME" "ghcr_token=$GHCR_READ_TOKEN" "image_tag=$IMAGE_TAG" "compose_b64=$compose_b64" \
             --output json)"
           if ! printf '%s' "$run_output" | grep -q 'Local health check passed.'; then
