@@ -99,9 +99,12 @@ jobs:
           script_file="$(mktemp)"
           trap 'rm -f "$script_file"' EXIT
           cat > "$script_file" <<'VM_SCRIPT'
-          set -euo pipefail
+          # Azure RunShellScript invokes Linux scripts with /bin/sh, not Bash.
+          # Keep this payload POSIX-compatible so failures cannot be swallowed by
+          # the VM agent's generic provisioning status.
+          set -eu
 
-          if [[ "$#" -ne 4 ]]; then
+          if [ "$#" -ne 4 ]; then
             echo 'ERROR: Expected GHCR username, GHCR token, image SHA, and Compose payload.' >&2
             exit 1
           fi
@@ -112,10 +115,16 @@ jobs:
           COMPOSE_B64="$4"
           export IMAGE_TAG
 
-          if [[ ! "$IMAGE_TAG" =~ ^[0-9a-fA-F]{40}$ ]]; then
+          if [ "${#IMAGE_TAG}" -ne 40 ]; then
             echo 'ERROR: The image tag must be a full commit SHA.' >&2
             exit 1
           fi
+          case "$IMAGE_TAG" in
+            *[!0-9a-fA-F]*)
+              echo 'ERROR: The image tag must be a full hexadecimal commit SHA.' >&2
+              exit 1
+              ;;
+          esac
 
           cd /opt/hforge
           test -f .env || { echo 'ERROR: /opt/hforge/.env is missing; refusing deployment.' >&2; exit 1; }
@@ -140,7 +149,7 @@ jobs:
           # The VM may still have the pre-OIDC OpenGym Compose project running on
           # the published web port. Stop that project without removing volumes so
           # the Hforge project can take ownership of the port.
-          if [[ -f docker-compose.yml ]]; then
+          if [ -f docker-compose.yml ]; then
             docker compose --env-file .env -f docker-compose.yml down --remove-orphans
           fi
           docker compose --env-file .env -f docker-compose.prod.yml up -d --no-build api web
@@ -162,7 +171,7 @@ jobs:
             fi
             sleep 5
           done
-          if [[ "$health_ok" != true ]]; then
+          if [ "$health_ok" != true ]; then
             echo "ERROR: Local health check failed: $health_url" >&2
             exit 1
           fi
