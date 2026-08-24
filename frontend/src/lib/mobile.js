@@ -13,6 +13,7 @@ import { t } from './i18n.js'
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
 
+// Legacy compatibility identifier: existing mobile installs depend on this state filename.
 const FILE = 'opengym-state.json'
 
 export async function nativeLoad() {
