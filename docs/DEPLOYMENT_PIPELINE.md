@@ -1,6 +1,6 @@
 # hforge CI/CD pipeline
 
-The repository uses pull-request and `main` CI plus a deliberately manual production deployment. The manual CD workflow publishes immutable images, authenticates to Azure with OIDC, and deploys through Azure VM Run Command. GitHub-hosted runners never open an SSH connection to the VM, so the VM NSG can keep SSH restricted to the fixed administrator IP.
+The repository runs validation CI automatically for pull requests and pushes to `main`, but those events do not deploy anything. GitHub Actions production CD is deliberately manual: it publishes immutable images, authenticates to Azure with OIDC, and deploys through Azure VM Run Command. Render Git auto-deploy is disabled as well, so any Render deployment must be started manually through the platform procedure selected for the service. GitHub-hosted runners never open an SSH connection to the VM, so the VM NSG can keep SSH restricted to the fixed administrator IP.
 
 ## Quick path
 
@@ -22,11 +22,11 @@ https://hforge.westeurope.cloudapp.azure.com/api/health
 - API: Node.js 22, `npm ci`, and `node --check server.js`.
 - Compose: validates the local Compose file with a temporary CI-only `.env`, then builds the local `api` and `web` services.
 
-The temporary `.env` exists only during the CI job and is never committed.
+The temporary `.env` includes the safe, non-secret `EXERCISE_MEDIA_SOURCE=/tmp/exercise-media` path only to allow Compose interpolation. CI does not start the `media` service and does not require exercise data from the repository. The temporary `.env` exists only during the CI job and is never committed.
 
 ## Manual CD behavior
 
-`.github/workflows/deploy.yml` is triggered only by `workflow_dispatch`, and deployments are restricted to `main` to match the Azure federated credential. For the selected commit it:
+`.github/workflows/deploy.yml` is triggered only by `workflow_dispatch`, and deployments are restricted to `main` to match the Azure federated credential. A push to `main` does not invoke this workflow and does not deploy through GitHub Actions. For the selected commit it:
 
 1. Builds `api` and `web` Docker images.
 2. Pushes them to GHCR as `ghcr.io/h5uarez/hforge-api:<commit-sha>` and `ghcr.io/h5uarez/hforge-web:<commit-sha>`.
@@ -35,6 +35,10 @@ The temporary `.env` exists only during the CI job and is never committed.
 5. Calls Azure VM Run Command with the script and four named parameters: the GHCR username, GHCR read token, commit SHA, and an unpadded base64-encoded `docker-compose.prod.yml` payload.
 6. The VM validates its production paths, writes only `docker-compose.prod.yml`, logs in to GHCR with `--password-stdin`, stops the legacy OpenGym Compose project without removing volumes, pulls and starts the API and web services at the immutable SHA, derives the published web port, and retries the local health check.
 7. After Run Command succeeds, the runner checks the public HTTPS health endpoint.
+
+## Render behavior
+
+The `hforge` service in `render.yaml` sets `autoDeployTrigger: off`. Pushes to `main` therefore do not trigger a Render deployment automatically. Any Render deployment must be initiated manually according to the Render procedure selected for the service.
 
 The deployment call is equivalent to:
 

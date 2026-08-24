@@ -2,5 +2,6 @@ services:
   - type: web
     name: hforge
     env: docker
+    autoDeployTrigger: 'off'
     dockerfilePath: ./Dockerfile
     dockerContext: .
