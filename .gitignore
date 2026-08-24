@@ -1,0 +1,11 @@
+# SDD artifacts (auto-generated)
+.atl/
+
+# Local dependencies
+node_modules/
+
+# Local configuration and runtime data
+.env
+data/
+data-local/
+media/
