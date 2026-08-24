@@ -135,6 +135,18 @@ jobs:
             }
           done
 
+          # Azure CLI parses parameters as [name=]value. The Compose payload is
+          # sent without base64 padding so its trailing '=' cannot be mistaken
+          # for the parameter separator.
+          case $((${#COMPOSE_B64} % 4)) in
+            0) ;;
+            2) COMPOSE_B64="${COMPOSE_B64}==" ;;
+            3) COMPOSE_B64="${COMPOSE_B64}=" ;;
+            *)
+              echo 'ERROR: Invalid unpadded Compose base64 length.' >&2
+              exit 1
+              ;;
+          esac
           printf '%s' "$COMPOSE_B64" | base64 --decode > docker-compose.prod.yml
           unset COMPOSE_B64
 
@@ -177,15 +189,16 @@ jobs:
           fi
           VM_SCRIPT
 
-          compose_b64="$(base64 < docker-compose.prod.yml | tr -d '\n')"
+          compose_b64="$(base64 < docker-compose.prod.yml | tr -d '\n=')"
           run_output="$(az vm run-command invoke \
             --resource-group hforge-rg \
             --name hforge-vm \
             --command-id RunShellScript \
             --scripts "@{${script_file}}" \
-            --parameters "$GHCR_USERNAME" "$GHCR_READ_TOKEN" "$IMAGE_TAG" "$compose_b64" \
+            --parameters "ghcr_username=$GHCR_USERNAME" "ghcr_token=$GHCR_READ_TOKEN" "image_tag=$IMAGE_TAG" "compose_b64=$compose_b64" \
             --output json)"
           if ! printf '%s' "$run_output" | grep -q 'Local health check passed.'; then
+            printf '%s\n' "$run_output"
             echo '::error::Azure VM Run Command did not report a successful local health check.'
             exit 1
           fi

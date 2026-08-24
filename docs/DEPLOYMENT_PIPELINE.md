@@ -32,7 +32,7 @@ The temporary `.env` exists only during the CI job and is never committed.
 2. Pushes them to GHCR as `ghcr.io/h5uarez/hforge-api:<commit-sha>` and `ghcr.io/h5uarez/hforge-web:<commit-sha>`.
 3. Logs in to Azure with `azure/login@v2` using GitHub OIDC.
 4. Creates a temporary, secret-free shell script in the GitHub runner workspace.
-5. Calls Azure VM Run Command with the script and four positional parameters: the GHCR username, GHCR read token, commit SHA, and a base64-encoded `docker-compose.prod.yml`.
+5. Calls Azure VM Run Command with the script and four named parameters: the GHCR username, GHCR read token, commit SHA, and an unpadded base64-encoded `docker-compose.prod.yml` payload.
 6. The VM validates its production paths, writes only `docker-compose.prod.yml`, logs in to GHCR with `--password-stdin`, stops the legacy OpenGym Compose project without removing volumes, pulls and starts the API and web services at the immutable SHA, derives the published web port, and retries the local health check.
 7. After Run Command succeeds, the runner checks the public HTTPS health endpoint.
 
@@ -44,7 +44,11 @@ az vm run-command invoke \
   --name hforge-vm \
   --command-id RunShellScript \
   --scripts @{<temporary-script-file>} \
-  --parameters <GHCR_USERNAME> <GHCR_READ_TOKEN> <COMMIT_SHA> <BASE64_COMPOSE>
+  --parameters \
+    ghcr_username=<GHCR_USERNAME> \
+    ghcr_token=<GHCR_READ_TOKEN> \
+    image_tag=<COMMIT_SHA> \
+    compose_b64=<BASE64_COMPOSE_WITHOUT_PADDING>
 ```
 
 The workflow does not print the parameter values. The VM script does not echo them, supplies the GHCR token through `docker login --password-stdin`, and logs out of GHCR when it exits. The temporary script is removed by the runner after the command returns. No GitHub Actions step uses `ssh`, `scp`, an SSH agent, or an SSH secret.
