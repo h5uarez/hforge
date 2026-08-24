@@ -9,8 +9,8 @@ permissions:
 
 env:
   IMAGE_TAG: ${{ github.sha }}
-  API_IMAGE: ghcr.io/${{ github.repository_owner }}/hforge-api
-  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/hforge-web
+  API_IMAGE: ghcr.io/h5uarez/hforge-api
+  WEB_IMAGE: ghcr.io/h5uarez/hforge-web
   HEALTH_URL: https://hforge.westeurope.cloudapp.azure.com/api/health
 
 jobs:
