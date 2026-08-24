@@ -60,13 +60,13 @@ ssh-keygen -lf azure-known-hosts
 
 ## GHCR setup
 
-The first successful deployment creates the two GHCR packages under the repository owner. Confirm their visibility and access before deploying:
+The deployment uses the fixed `h5uarez` GHCR namespace for this repository. Confirm the two packages' visibility and access before deploying:
 
 - Public packages can be pulled without a VM token, although the workflow still supports authenticated pulls.
 - Private packages require `GHCR_USERNAME` and a `GHCR_READ_TOKEN` with `read:packages` access to the package owner. A classic GitHub personal access token is the compatible choice for this VM pull path.
 - Grant the token only the package-read permission needed by the VM, and store it only as the repository secret. Do not add it to `.env`, Compose files, or shell commands.
 
-The production Compose file defaults to the hforge namespace `h5uarez` and to `IMAGE_TAG=latest` when run without an override. The deployment workflow always overrides `IMAGE_TAG` with the selected commit SHA. A different owner or namespace can be supplied through `GHCR_NAMESPACE` in the existing remote `.env`; the workflow's published namespace must match it.
+The production Compose file and deployment workflow both use the fixed `h5uarez` namespace. `GHCR_NAMESPACE` is not a supported remote `.env` override. The Compose file defaults to `IMAGE_TAG=latest` when run without an override, while the deployment workflow always uses the selected commit SHA.
 
 ## Data and secret preservation invariant
 
@@ -98,12 +98,32 @@ Only roll back to a SHA whose two GHCR images still exist. From a trusted machin
 ```bash
 ssh <user>@hforge.westeurope.cloudapp.azure.com
 cd /opt/hforge
-IMAGE_TAG=<known-good-commit-sha> docker compose --env-file .env -f docker-compose.prod.yml pull api web
-IMAGE_TAG=<known-good-commit-sha> docker compose --env-file .env -f docker-compose.prod.yml up -d --no-build api web
-curl --fail --show-error http://127.0.0.1:8080/api/health
+set -euo pipefail
+
+read -r -p 'GHCR username: ' GHCR_USERNAME
+printf '\n'
+read -r -s -p 'GHCR read token: ' GHCR_READ_TOKEN
+printf '\n'
+read -r -p 'Known-good commit SHA: ' IMAGE_TAG
+test -n "$IMAGE_TAG"
+
+printf '%s\n' "$GHCR_READ_TOKEN" | sudo docker login ghcr.io \
+  --username "$GHCR_USERNAME" \
+  --password-stdin >/dev/null
+unset GHCR_READ_TOKEN GHCR_USERNAME
+trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+
+sudo env IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml pull api web
+sudo env IMAGE_TAG="$IMAGE_TAG" docker compose --env-file .env -f docker-compose.prod.yml up -d --no-build api web
+web_port="$(sudo docker compose --env-file .env -f docker-compose.prod.yml port web 80 \
+  | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p')"
+test -n "$web_port"
+curl --fail --show-error "http://127.0.0.1:${web_port}/api/health"
+sudo docker logout ghcr.io
+trap - EXIT
 ```
 
-Use the same strict `known_hosts` options as the workflow for administrative SSH. The rollback changes only the image tag; it does not restore or migrate data.
+The login reads the token silently and never prints or hardcodes it. The logout runs explicitly after the health check and automatically if a rollback command fails. Use the same strict `known_hosts` options as the workflow for administrative SSH. The rollback changes only the image tag; it does not restore or migrate data.
 
 ## Changing to automatic `main` deployment later
 

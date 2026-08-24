@@ -21,7 +21,7 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/${GHCR_NAMESPACE:-h5uarez}/hforge-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/h5uarez/hforge-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env
@@ -32,7 +32,7 @@ services:
       - ./data:/data
 
   web:
-    image: ghcr.io/${GHCR_NAMESPACE:-h5uarez}/hforge-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/h5uarez/hforge-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       media:
