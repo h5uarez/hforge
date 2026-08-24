@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
   packages: write
 
@@ -21,20 +22,18 @@ jobs:
       - name: Validate deployment secrets
         shell: bash
         env:
-          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
-          AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
-          AZURE_SSH_PRIVATE_KEY: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
-          AZURE_VM_KNOWN_HOSTS: ${{ secrets.AZURE_VM_KNOWN_HOSTS }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
           missing=()
           for name in \
-            AZURE_VM_HOST \
-            AZURE_VM_USER \
-            AZURE_SSH_PRIVATE_KEY \
-            AZURE_VM_KNOWN_HOSTS \
+            AZURE_CLIENT_ID \
+            AZURE_TENANT_ID \
+            AZURE_SUBSCRIPTION_ID \
             GHCR_USERNAME \
             GHCR_READ_TOKEN; do
             if [[ -z "${!name:-}" ]]; then
@@ -45,6 +44,13 @@ jobs:
             echo "::error::Missing required deployment secret(s): ${missing[*]}"
             exit 1
           fi
+
+      - name: Require deployment from main
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo '::error::The Azure federated credential is restricted to refs/heads/main.'
+          exit 1
 
       - name: Check out source
         uses: actions/checkout@v4
@@ -75,73 +81,41 @@ jobs:
           push: true
           tags: ${{ env.WEB_IMAGE }}:${{ env.IMAGE_TAG }}
 
-      - name: Configure strict SSH host verification
-        shell: bash
-        env:
-          AZURE_VM_KNOWN_HOSTS: ${{ secrets.AZURE_VM_KNOWN_HOSTS }}
-        run: |
-          set -euo pipefail
-          install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$AZURE_VM_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-      - name: Load deployment SSH key
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Log in to Azure with OIDC
+        uses: azure/login@v2
         with:
-          ssh-private-key: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Upload production Compose file
+      - name: Deploy through Azure VM Run Command
         shell: bash
         env:
-          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
-          AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
-        run: |
-          set -euo pipefail
-          SSH_OPTIONS=(
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o ServerAliveInterval=30
-            -o ServerAliveCountMax=3
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
-            -o PasswordAuthentication=no
-            -o KbdInteractiveAuthentication=no
-            -o PreferredAuthentications=publickey
-          )
-          scp "${SSH_OPTIONS[@]}" \
-            docker-compose.prod.yml \
-            "${AZURE_VM_USER}@${AZURE_VM_HOST}:/opt/hforge/docker-compose.prod.yml"
-
-      - name: Pull immutable images and restart the VM
-        shell: bash
-        env:
-          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
-          AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           set -euo pipefail
-          SSH_OPTIONS=(
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o ServerAliveInterval=30
-            -o ServerAliveCountMax=3
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
-            -o PasswordAuthentication=no
-            -o KbdInteractiveAuthentication=no
-            -o PreferredAuthentications=publickey
-          )
-          {
-            printf '%s\n' "$GHCR_USERNAME"
-            printf '%s\n' "$GHCR_READ_TOKEN"
-            printf '%s\n' "$IMAGE_TAG"
-            cat <<'REMOTE_SCRIPT'
+          script_file="$(mktemp)"
+          trap 'rm -f "$script_file"' EXIT
+          cat > "$script_file" <<'VM_SCRIPT'
           set -euo pipefail
-          IFS= read -r GHCR_USERNAME
-          IFS= read -r GHCR_READ_TOKEN
-          IFS= read -r IMAGE_TAG
+
+          if [[ "$#" -ne 4 ]]; then
+            echo 'ERROR: Expected GHCR username, GHCR token, image SHA, and Compose payload.' >&2
+            exit 1
+          fi
+
+          GHCR_USERNAME="$1"
+          GHCR_READ_TOKEN="$2"
+          IMAGE_TAG="$3"
+          COMPOSE_B64="$4"
           export IMAGE_TAG
+
+          if [[ ! "$IMAGE_TAG" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'ERROR: The image tag must be a full commit SHA.' >&2
+            exit 1
+          fi
 
           cd /opt/hforge
           test -f .env || { echo 'ERROR: /opt/hforge/.env is missing; refusing deployment.' >&2; exit 1; }
@@ -151,16 +125,16 @@ jobs:
               exit 1
             }
           done
-          test -f docker-compose.prod.yml || {
-            echo 'ERROR: docker-compose.prod.yml was not uploaded.' >&2
-            exit 1
-          }
+
+          printf '%s' "$COMPOSE_B64" | base64 --decode > docker-compose.prod.yml
+          unset COMPOSE_B64
 
           docker compose --env-file .env -f docker-compose.prod.yml config --quiet
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           printf '%s\n' "$GHCR_READ_TOKEN" | docker login ghcr.io \
             --username "$GHCR_USERNAME" \
             --password-stdin >/dev/null
+          unset GHCR_READ_TOKEN GHCR_USERNAME
           docker compose --env-file .env -f docker-compose.prod.yml pull api web
           docker compose --env-file .env -f docker-compose.prod.yml up -d --no-build api web
 
@@ -185,9 +159,16 @@ jobs:
             echo "ERROR: Local health check failed: $health_url" >&2
             exit 1
           fi
-          REMOTE_SCRIPT
-          } | ssh "${SSH_OPTIONS[@]}" \
-            "${AZURE_VM_USER}@${AZURE_VM_HOST}" 'bash -s'
+          VM_SCRIPT
+
+          compose_b64="$(base64 < docker-compose.prod.yml | tr -d '\n')"
+          az vm run-command invoke \
+            --resource-group hforge-rg \
+            --name hforge-vm \
+            --command-id RunShellScript \
+            --scripts "@${script_file}" \
+            --parameters "$GHCR_USERNAME" "$GHCR_READ_TOKEN" "$IMAGE_TAG" "$compose_b64" \
+            --output none
 
       - name: Verify public HTTPS health endpoint
         shell: bash
