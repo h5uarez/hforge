@@ -275,7 +275,6 @@ export default {
   'to install Hforge as a full-screen app.': '即可将 Hforge 安装为全屏应用。',
   'Your data syncs with your profile — sign in anywhere to see it.': '数据与档案同步——在任何地方登录都能看到。',
   'Guest data stays on this device — export a backup now and then!': '访客数据仅保存在本设备——记得时常导出备份！',
-  'free & open source (AGPL v3)': '免费且开源（AGPL v3）',
   'Notifications': '通知',
   'Not supported in this browser.': '此浏览器不支持。',
   'Push notifications': '推送通知',

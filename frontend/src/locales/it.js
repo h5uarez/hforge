@@ -275,7 +275,6 @@ export default {
   'to install Hforge as a full-screen app.': 'per installare Hforge come app a schermo intero.',
   'Your data syncs with your profile — sign in anywhere to see it.': 'I tuoi dati si sincronizzano col profilo — accedi ovunque per vederli.',
   'Guest data stays on this device — export a backup now and then!': 'I dati ospite restano su questo dispositivo — esporta un backup ogni tanto!',
-  'free & open source (AGPL v3)': 'gratuito e open source (AGPL v3)',
   'Notifications': 'Notifiche',
   'Not supported in this browser.': 'Non supportato in questo browser.',
   'Push notifications': 'Notifiche push',

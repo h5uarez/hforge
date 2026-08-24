@@ -2,10 +2,10 @@
 // src/locales/ map them to translations and are lazy-loaded (Vite code-splits each
 // import.meta.glob entry), so the initial bundle stays English-only.
 // Exercise instructions come from separately generated packs in src/instr/ (one per
-// language, from the upstream dataset) — also lazy-loaded on language switch.
+// language, from source exercise data) — also lazy-loaded on language switch.
 import { useSyncExternalStore } from 'react'
 
-// UI languages. de/pt have no instruction pack upstream — instructions fall back to English.
+// UI languages. de/pt have no instruction pack — instructions fall back to English.
 export const LANGS = {
   en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
   pt: 'Português', pl: 'Polski', tr: 'Türkçe', ru: 'Русский', zh: '中文',

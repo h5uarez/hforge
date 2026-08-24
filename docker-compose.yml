@@ -1,20 +1,24 @@
 name: hforge
 
 services:
-  # One-time: download the exercise images + GIFs into ./media (skipped if already there).
-  # ~140 MB, from github.com/hasaneyldrm/exercises-dataset (CC).
+  # One-time: copy exercise images + GIFs from the operator-supplied local source into ./media
+  # (skipped if already there). Set EXERCISE_MEDIA_SOURCE to that source directory.
   media:
-    image: alpine/git
+    image: alpine:3.20
     volumes:
+      - ${EXERCISE_MEDIA_SOURCE:?Set EXERCISE_MEDIA_SOURCE to the local exercise source directory}:/source:ro
       - ./media/img:/out/img
       - ./media/gif:/out/gif
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         if [ -z "$$(ls -A /out/img 2>/dev/null)" ]; then
-          echo "↓ Downloading exercise media (~140 MB, one time)…"
-          git clone --depth 1 https://github.com/hasaneyldrm/exercises-dataset /tmp/ds
-          cp /tmp/ds/images/*.jpg /out/img/ && cp /tmp/ds/videos/*.gif /out/gif/
+          if [ ! -d /source/images ] || [ ! -d /source/videos ]; then
+            echo "EXERCISE_MEDIA_SOURCE must contain images/ and videos/" >&2
+            exit 1
+          fi
+          echo "↓ Copying exercise media from the supplied local source…"
+          cp /source/images/*.jpg /out/img/ && cp /source/videos/*.gif /out/gif/
           echo "✓ Exercise media ready ($$(ls /out/img | wc -l) images)."
         else
           echo "✓ Exercise media already present — skipping download."

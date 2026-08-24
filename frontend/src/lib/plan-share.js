@@ -68,7 +68,7 @@ export function buildPlanBundle(S, name) {
  *
  * Every exercise id has to resolve — either to the built-in library or to a custom
  * exercise carried in the same file. An id that resolves to neither (a hand-edited file,
- * an export from a build with a different exercise dataset) is dropped here: kept, it
+ * an export from a build with a different exercise catalog) is dropped here: kept, it
  * would sit invisibly in the routine and only surface as a blank screen when the routine
  * is trained.
  */

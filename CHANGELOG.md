@@ -247,7 +247,7 @@ through app stores.
   - Backups go out through the OS **share sheet** (Files, AirDrop, mail…).
   - Exercise images/animations load from the same CDN as the live demo.
   - `npm run build:mobile`, then open `android/` in Android Studio or `ios/` in Xcode —
-    see **docs/MOBILE.md**. `NOTICE.md` now carries an AGPL §7 app-store exception.
+    see **docs/MOBILE.md**.
 - 🤖 **Android APK, no Play Store.** The official build is a signed, sideloadable APK
   (~4.5 MB) from [opengym.duarte-santos.ch](https://opengym.duarte-santos.ch) — deliberately
   store-free. docs/MOBILE.md covers building and signing your own.
@@ -409,15 +409,15 @@ Custom exercises, full localization, and input fixes.
   Türkçe, Русский, 中文, 한국어, हिन्दी. Pick yours under Settings → Appearance → Language;
   the choice syncs with your profile like the theme does.
 - 📖 **Localized exercise instructions** for 10 of those languages (all except German and
-  Portuguese, which the upstream dataset doesn't cover yet — those fall back to English),
+  Portuguese, which aren't available yet — those fall back to English),
   covering all 1,324 exercises. Body-part filters, equipment and muscle tags are translated
   too; exercise *names* stay English (upstream limitation). Custom exercises are translated too.
 - 📅 Dates, weekday and month labels follow the selected language.
 - ⚡ Zero cost when unused: the app still ships English-only by default. Each UI language is a
   ~7 kB chunk and each instruction pack ~80–120 kB (gzipped), downloaded only when you switch —
   the initial bundle size is unchanged.
-- 🛠️ New `scripts/build-instructions.mjs` regenerates the instruction packs from the upstream
-  dataset; translations live in `frontend/src/locales/` (PRs welcome — it's one flat
+- 🛠️ New `scripts/build-instructions.mjs` regenerates the instruction packs from source
+  exercise data; translations live in `frontend/src/locales/` (PRs welcome — it's one flat
   English-string → translation map per language).
 - Known gaps: push notification texts (sent by the server) and plural forms in some languages
   are approximated; happy to take corrections from native speakers.
@@ -478,7 +478,3 @@ First public release. A complete, self-hostable gym & body-weight tracker.
 - React 19 + Vite (React Router, Zustand)
 - Node backend, no framework, single dependency (`@simplewebauthn/server`), JSON-file storage
 - nginx + multi-stage Docker so `docker compose up` builds and serves everything
-
-**Notes**
-- Exercise media (~140 MB) is fetched from [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset) on first run.
-- Licensed under GNU AGPL v3.0.

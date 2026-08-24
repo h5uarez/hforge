@@ -275,7 +275,6 @@ export default {
   'to install Hforge as a full-screen app.': 'ile Hforge’i tam ekran uygulama olarak kurabilirsin.',
   'Your data syncs with your profile — sign in anywhere to see it.': 'Verilerin profilinle eşitlenir — görmek için herhangi bir yerden giriş yap.',
   'Guest data stays on this device — export a backup now and then!': 'Misafir verileri bu cihazda kalır — arada bir yedek al!',
-  'free & open source (AGPL v3)': 'ücretsiz ve açık kaynak (AGPL v3)',
   'Notifications': 'Bildirimler',
   'Not supported in this browser.': 'Bu tarayıcıda desteklenmiyor.',
   'Push notifications': 'Anlık bildirimler',

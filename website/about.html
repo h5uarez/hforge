@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>About — Hforge</title>
-<meta name="description" content="The story behind Hforge: a gym tracker that started as a tiny personal app on a homelab server and grew into an open-source project.">
+<meta name="description" content="The story behind Hforge: a gym tracker that started as a tiny personal app on a homelab server and grew into a project shared with more people.">
 <meta name="theme-color" content="#0c0e12">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
@@ -51,10 +51,9 @@
      12 languages, grew a muscle map, importers for FitNotes, Strong, Hevy and Apple Health,
      and finally became a native Android app you can install from this site.</p>
 
-  <p>In July 2026 I open-sourced the whole thing under the <b>AGPL</b>. The license is the
-     point, not a footnote: your training data should be yours, the software that holds it
-     should be inspectable, and nobody — including me — should be able to take a closed,
-     paid version of it away from the community.</p>
+  <p>By July 2026 the project had grown beyond that first server while keeping the same focus:
+     your training data should be yours, easy to back up, and usable wherever you choose to run
+     Hforge.</p>
 
   <p>Hforge still runs on the same homelab server it started on, and I still log every
      session with it. That's the quality bar: I'm the first user of every release.</p>
@@ -68,9 +67,9 @@
   <ul class="tl" id="milestones">
     <li><b>The personal app</b><span class="when">early summer 2026</span>
       <p>A hand-written vanilla-JS page on my own server. One user, zero ambitions.</p></li>
-    <li data-fallback><b>v1.0.0 — open-sourced</b><span class="when">July 20, 2026</span>
+    <li data-fallback><b>v1.0.0 — first public release</b><span class="when">July 20, 2026</span>
       <p>Docker-Compose self-hosting, passkey profiles, guided workouts, 1,324-exercise
-         library. AGPL from day one.</p></li>
+         library.</p></li>
     <li data-fallback><b>Every release since</b><span class="when">ongoing</span>
       <p>See the full list on <a href="https://github.com/h5uarez/hforge/releases" rel="noopener">GitHub → Releases</a>.</p></li>
   </ul>
@@ -83,8 +82,8 @@
         doesn't ship.</li>
     <li><b>Dependency-light.</b> The backend is one Node file with a single dependency;
         the frontend is React, a router and a store. Small enough to actually audit.</li>
-    <li><b>Open source that stays open.</b> AGPL-3.0, so every fork and every hosted
-        version owes its code back to everyone.</li>
+    <li><b>Inspectable by design.</b> The code stays small enough to read and audit, and the
+        data format is straightforward to back up.</li>
   </ul>
 
   <div class="hero-btns" style="justify-content:flex-start;margin:30px 0 10px">
@@ -94,7 +93,7 @@
 </main>
 
 <footer><div class="wrap foot">
-  <span>Hforge · AGPL-3.0 · © 2026 <a href="https://duarte-santos.ch" rel="noopener">Duarte Santos</a></span>
+  <span>Hforge · © 2026 <a href="https://duarte-santos.ch" rel="noopener">Duarte Santos</a></span>
   <div class="links">
     <a href="docs.html">Docs</a>
     <a href="about.html" class="hide-s">About</a>

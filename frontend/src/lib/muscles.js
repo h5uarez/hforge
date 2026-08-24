@@ -1,6 +1,6 @@
 // Which muscles an exercise trains, and how hard — the data behind every muscle map.
 //
-// The exercise dataset names muscles in free text and is not consistent about it:
+// The exercise catalog names muscles in free text and is not consistent about it:
 // "shoulders", "deltoids" and "delts" are the same thing, so are "quads" and
 // "quadriceps", "lats" and "latissimus dorsi", "core" and "abdominals". Nineteen
 // primary and forty secondary spellings collapse onto the eighteen muscles the body
@@ -31,7 +31,7 @@ export const MUSCLE_NAME = {
   'hip-flexors': 'Hip flexors', calves: 'Calves', tibialis: 'Shins',
 }
 
-// Every spelling that occurs in the dataset's `tg` and `sm` fields. null = not drawable.
+// Every spelling that occurs in the catalog's `tg` and `sm` fields. null = not drawable.
 const ALIAS = {
   // primaries
   abs: 'abs', pectorals: 'chest', biceps: 'biceps', glutes: 'gluteal', delts: 'deltoids',

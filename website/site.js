@@ -1,4 +1,4 @@
-// Live GitHub numbers in the nav + open-source strip. Fails silently — the site
+// Live GitHub numbers in the nav + community strip. Fails silently — the site
 // works fine without them (unauthenticated API: 60 req/h per IP, cached below).
 (async () => {
   const set = (id, v) => document.querySelectorAll('[data-gh="' + id + '"]').forEach(el => { el.textContent = v })

@@ -104,7 +104,7 @@ export function detectSource(header) {
 /* ------------------------------------------------------ exercise matching -- */
 
 // Other apps bolt qualifiers onto names — Hevy writes "Leg Press (Machine)", Strong
-// "Snatch (Barbell)", FitNotes "Lat Pulldown (Pulley)" — while the dataset writes
+// "Snatch (Barbell)", FitNotes "Lat Pulldown (Pulley)" — while the exercise catalog writes
 // "barbell snatch". Strip the parentheses, expand the shorthand, then compare as a
 // sorted bag of words so word order stops mattering.
 const SYN = [
@@ -121,7 +121,7 @@ const FILLER = new Set(['the', 'a', 'with', 'and', 'v', 'variation', 'version', 
 
 function wordsOf(name) {
   // Parentheses are unwrapped rather than dropped: "Bench Press (Barbell)" carries its
-  // equipment in there, and the dataset writes that as "barbell bench press".
+  // equipment in there, and the exercise catalog writes that as "barbell bench press".
   let k = String(name || '').toLowerCase()
     .replace(/[()[\]]/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
@@ -144,9 +144,9 @@ function buildIndex() {
   return INDEX
 }
 
-// Curated: the names people actually log, mapped by hand to the dataset id they mean.
+// Curated: the names people actually log, mapped by hand to the exercise catalog id they mean.
 //
-// Other apps let you name a lift "Bench Press"; the dataset only has qualified names
+// Other apps let you name a lift "Bench Press"; the exercise catalog only has qualified names
 // like "barbell bench press". Word-overlap alone can't resolve that — "bench press" sits
 // inside thirty-three entries — and where it *is* unique it tends to be wrong, happily
 // resolving "Squat" to "weighted squat" and "Leg Press" to "smith leg press". So the
@@ -185,7 +185,7 @@ const aliasIndex = () => {
 }
 
 /**
- * Find the dataset exercise a foreign name refers to, or null.
+ * Find the exercise catalog entry a foreign name refers to, or null.
  *
  * Curated alias first, then an exact word-bag match, then entries that contain every
  * word of the query — but only when exactly one candidate is that close. Guessing
@@ -218,7 +218,7 @@ export function matchExercise(name) {
   return ties === 1 ? best : null
 }
 
-// Categories the exporters use -> the dataset's body parts, for exercises we invent.
+// Categories the exporters use -> the exercise catalog's body parts, for exercises we invent.
 const CATEGORY_BP = {
   chest: 'chest', back: 'back', lats: 'back', shoulders: 'shoulders', delts: 'shoulders',
   legs: 'upper legs', quads: 'upper legs', hamstrings: 'upper legs', glutes: 'upper legs',
@@ -300,7 +300,7 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
   const dateCol = map.date !== undefined ? 'date' : map.startTime !== undefined ? 'startTime' : null
   if (!dateCol || map.exercise === undefined) return { error: 'unrecognised' }
 
-  const resolved = new Map()          // exercise name -> dataset id | null, resolved once
+  const resolved = new Map()          // exercise name -> catalog id | null, resolved once
   const byDate = new Map()
   const created = new Map()
   const unmatched = new Set()

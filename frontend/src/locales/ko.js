@@ -275,7 +275,6 @@ export default {
   'to install Hforge as a full-screen app.': '하면 Hforge를 전체 화면 앱으로 설치할 수 있어요.',
   'Your data syncs with your profile — sign in anywhere to see it.': '데이터가 프로필과 동기화됩니다 — 어디서든 로그인해 확인하세요.',
   'Guest data stays on this device — export a backup now and then!': '게스트 데이터는 이 기기에만 있어요 — 가끔 백업을 내보내세요!',
-  'free & open source (AGPL v3)': '무료 오픈소스 (AGPL v3)',
   'Notifications': '알림',
   'Not supported in this browser.': '이 브라우저에서는 지원되지 않아요.',
   'Push notifications': '푸시 알림',

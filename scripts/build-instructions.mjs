@@ -1,31 +1,27 @@
 #!/usr/bin/env node
 // Regenerates the per-language exercise instruction packs in frontend/src/instr/
-// from the upstream dataset (hasaneyldrm/exercises-dataset). English stays inline
+// from source exercise data. English stays inline
 // in exercises-data.js; every other language ships as its own lazy-loaded pack.
 //
-//   node scripts/build-instructions.mjs [path-to-exercises.json]
+//   node scripts/build-instructions.mjs path-to-exercises.json
 //
-// Without an argument the dataset is downloaded from the upstream repo.
+// A local JSON input path is required.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const UPSTREAM = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/data/exercises.json'
 const LANGS = ['es', 'fr', 'it', 'tr', 'ru', 'zh', 'hi', 'pl', 'ko']
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = join(root, 'frontend', 'src', 'instr')
 
-let raw
-if (process.argv[2]) {
-  raw = readFileSync(process.argv[2], 'utf8')
-} else {
-  console.log('Downloading upstream dataset…')
-  const res = await fetch(UPSTREAM)
-  if (!res.ok) throw new Error('Download failed: HTTP ' + res.status)
-  raw = await res.text()
+const input = process.argv[2]
+if (!input) {
+  console.error('Usage: node scripts/build-instructions.mjs <path-to-exercises.json>')
+  process.exit(1)
 }
+const raw = readFileSync(input, 'utf8')
 const data = JSON.parse(raw)
 
 mkdirSync(outDir, { recursive: true })

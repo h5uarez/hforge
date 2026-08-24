@@ -114,7 +114,7 @@ h2 { font-size: clamp(26px, 4.5vw, 34px); letter-spacing: -.02em; margin: 6px 0 
 .story blockquote strong { color: var(--acc); font-weight: 600; }
 .story .who { color: var(--faint); margin-top: 16px; font-size: 14.5px; }
 
-/* ---------- open source strip ---------- */
+/* ---------- community strip ---------- */
 .os { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
 .stat { background: var(--card); border-radius: 14px; padding: 16px 22px; min-width: 130px; }
 .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
