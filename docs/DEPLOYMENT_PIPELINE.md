@@ -58,9 +58,11 @@ OIDC gives the workflow a short-lived Azure token through GitHub's identity prov
 | User-assigned managed identity | `hforge-github-deploy` |
 | Role | `Virtual Machine Contributor` on resource group `hforge-rg` |
 | VM | `hforge-vm` in `westeurope` |
-| Federated credential subject | `repo:h5uarez/hforge:ref:refs/heads/main` |
+| Federated credential subject | `repo:h5uarez@73789768/hforge@1344218374:ref:refs/heads/main` |
 
 The workflow requires the following GitHub Actions secrets. Enter the exact IDs from the Azure subscription; never enter the managed identity name where an ID is required.
+
+This repository uses GitHub's immutable OIDC subject format, which includes the owner ID (`73789768`) and repository ID (`1344218374`). If the repository is transferred or recreated, update the Azure federated credential from the new GitHub token subject rather than guessing the value.
 
 | Secret | Required value |
 | --- | --- |
