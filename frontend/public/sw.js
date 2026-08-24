@@ -40,7 +40,12 @@ self.addEventListener('fetch', e => {
     )))
   } else {
     e.respondWith(fetch(e.request).then(res => {
-      if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()))
+      // Clone before returning the response: the page may consume its body immediately.
+      // Cache failures are best-effort and must not become unhandled service-worker errors.
+      if (res.ok) {
+        const copy = res.clone()
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {})
+      }
       return res
     }).catch(() => caches.match(e.request).then(hit => hit || caches.match('index.html'))))
   }
