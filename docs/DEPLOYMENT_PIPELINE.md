@@ -110,11 +110,11 @@ The production Compose file keeps these bind mounts:
 - `./data:/data` for API data.
 - `./media/img` and `./media/gif` for persistent exercise media.
 
-The media one-shot service may populate missing media files on first startup, but it does not replace existing files. Keep independent backups of `/opt/hforge/data` and `/opt/hforge/media`. This pipeline performs no local data migration and never copies local passkeys or runtime data to Azure.
+Production media must already be prepared on the VM before deployment. The production Compose file has no media population service: the deploy only mounts `/opt/hforge/media/img` and `/opt/hforge/media/gif` into the web container. It does not upload or copy exercise media or any other local runtime data to Azure. Keep independent backups of `/opt/hforge/data` and `/opt/hforge/media`.
 
 ## Manual deployment and smoke test
 
-Before the first run, confirm that `/opt/hforge` already contains the production `.env`, `data`, `media/img`, and `media/gif` paths. Then run the workflow manually from `main` and the intended commit.
+Before the first run, prepare and confirm that `/opt/hforge` already contains the production `.env`, `data`, `media/img`, and `media/gif` paths and the required exercise media. Then run the workflow manually from `main` and the intended commit. The deployment only mounts those persistent media directories; it does not upload or copy them.
 
 Run Command must complete before the external check starts. After the workflow succeeds, verify the public endpoint from a trusted client:
 

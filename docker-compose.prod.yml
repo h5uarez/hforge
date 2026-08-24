@@ -1,30 +1,6 @@
 name: hforge
 
 services:
-  # One-time: copy exercise images and GIFs from the operator-supplied local source
-  # into the persistent media mounts. Set EXERCISE_MEDIA_SOURCE to that source directory.
-  media:
-    image: alpine:3.20
-    volumes:
-      - ${EXERCISE_MEDIA_SOURCE:?Set EXERCISE_MEDIA_SOURCE to the local exercise source directory}:/source:ro
-      - ./media/img:/out/img
-      - ./media/gif:/out/gif
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        if [ -z "$$(ls -A /out/img 2>/dev/null)" ]; then
-          if [ ! -d /source/images ] || [ ! -d /source/videos ]; then
-            echo "EXERCISE_MEDIA_SOURCE must contain images/ and videos/" >&2
-            exit 1
-          fi
-          echo "Copying exercise media from the supplied local source..."
-          cp /source/images/*.jpg /out/img/ && cp /source/videos/*.gif /out/gif/
-          echo "Exercise media ready ($$(ls /out/img | wc -l) images)."
-        else
-          echo "Exercise media already present; skipping download."
-        fi
-    restart: "no"
-
   api:
     image: ghcr.io/h5uarez/hforge-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
@@ -40,8 +16,6 @@ services:
     image: ghcr.io/h5uarez/hforge-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
-      media:
-        condition: service_completed_successfully
       api:
         condition: service_started
     ports:
