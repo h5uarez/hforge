@@ -7,7 +7,7 @@
 // silhouette and never take a heat colour; see INERT in lib/muscles.js.
 //
 // MuscleMap's sub-groups (upper-abs, lower-chest, outer-quad, front-deltoid …)
-// are dropped: the exercise dataset resolves to whole muscles, so shading a
+// are dropped: the exercise catalog resolves to whole muscles, so shading a
 // sub-region would imply a precision the data does not have.
 //
 // ~90 KB, so this module is imported dynamically and only lands in the bundle

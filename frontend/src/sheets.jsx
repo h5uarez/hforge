@@ -489,7 +489,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   // Cardio keeps its own duration+speed form; the reps/time choice (issue #16) is offered for
   // everything else, which is where the gap was — planks, hangs, wall sits, loaded carries.
   const mode = cardio ? 'cardio' : modeOf({ ...c, id: ex.id })
-  // Both default from the dataset and are then whatever the config says — see isBw.
+  // Both default from the exercise catalog and are then whatever the config says — see isBw.
   const bw = !cardio && isBw({ ...c, id: ex.id })
   const perSide = isPerSide(c)
   // Keep whatever the other mode already had (sets, weight) and fill only what is missing.
@@ -502,7 +502,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
     const prog = {}
     if (c.prog) prog.prog = c.prog
     if (c.inc > 0) prog.inc = c.inc
-    // Written only when it differs from what the dataset already says, so a barbell config
+    // Written only when it differs from what the exercise catalog already says, so a barbell config
     // stays exactly the shape it was before these flags existed.
     // `bodyweight` is true of a hold as much as of a set of reps; `side` is not — it counts
     // reps, and a timed hold has none. Switching an exercise to Time therefore drops it

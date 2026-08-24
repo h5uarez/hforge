@@ -60,7 +60,7 @@ npx @capacitor/assets generate --iconBackgroundColor '#0c0e12' --splashBackgroun
 ## Distribution — deliberately no app stores
 
 Hforge's mobile app is not on the Play Store or App Store, and that's a choice: no store
-accounts, no store rules, no yearly fees between you and an open-source app.
+accounts, no store rules, no yearly fees between you and the app.
 
 ### Android — sideload the APK
 
@@ -100,9 +100,6 @@ that would simply install. Your free options:
 - Bump `versionName`/`versionCode` in `android/app/build.gradle` per release; keep them in
   step with `frontend/package.json`. `versionCode` must strictly increase or updates won't
   install over an existing APK.
-- **License:** Hforge is AGPL-3.0, which by itself sits badly with app-store terms of
-  service. `NOTICE.md` carries an app-store exception (an additional permission under
-  AGPL §7) granted by the copyright holder — relevant only if store distribution ever happens.
 - The app requests notification permission only when the workout-day reminder is switched
   on, and (on Android) declares `SCHEDULE_EXACT_ALARM` so the reminder fires to the minute
   where the user allows it.

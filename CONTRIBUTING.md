@@ -65,5 +65,3 @@ next person searching "passkey login fails behind my reverse proxy" actually fin
 Open an issue with: what you did, what you expected, what happened, and your browser/OS. If it's
 about login/passkeys, include your `RP_ID`/`ORIGIN` (not the `data/` contents) — most login
 issues are an origin mismatch.
-
-By contributing you agree your work is licensed under the project's [GNU AGPL v3.0](LICENSE).
