@@ -9,7 +9,8 @@
     "build:mobile": "VITE_MOBILE=1 vite build && cap sync",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:playwright:smoke": "node scripts/playwright-smoke.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.6.8",
@@ -26,6 +27,7 @@
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.6.8",
     "@capacitor/ios": "^7.6.8",
+    "@playwright/cli": "0.1.18",
     "@vitejs/plugin-react": "^6.0.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"

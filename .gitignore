@@ -7,6 +7,17 @@ node_modules/
 # Generated frontend build output
 frontend/dist/
 
+# Generated Playwright output
+frontend/.playwright-cli/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
+# Project-local Gentle AI skills
+!.agents/skills/
+!.agents/skills/playwright-cli/
+!.agents/skills/playwright-cli/**
+
 # Local configuration and runtime data
 .env
 data/
