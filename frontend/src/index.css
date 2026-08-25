@@ -390,6 +390,19 @@ h4.sec{
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);
 }
 
+/* --- login language control --- */
+.login-lang{
+  align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:9px;
+  margin-bottom:clamp(18px,5vh,32px);text-align:left;
+}
+.login-lang label{font-size:13px;color:var(--label-2)}
+.login-lang select{
+  min-height:44px;max-width:calc(100vw - 112px);padding:8px 32px 8px 12px;
+  border:1px solid var(--sep);border-radius:var(--r);background:var(--surface);
+  color:var(--label);font-size:15px;line-height:1.2;
+}
+.login-lang select:active{background:var(--surface-2)}
+
 /* --- search field --- */
 .searchf{position:relative;display:flex;align-items:center}
 .searchf .lead{

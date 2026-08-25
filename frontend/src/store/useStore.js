@@ -4,6 +4,7 @@ import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
+import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/i18n.js'
 
 const KEY = 'gym_state_v1'
 export const DEF = {
@@ -22,9 +23,13 @@ const clone = o => JSON.parse(JSON.stringify(o))
 function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return Object.assign(clone(DEF), JSON.parse(raw))
+    if (raw) {
+      const state = Object.assign(clone(DEF), JSON.parse(raw))
+      state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
+      return state
+    }
   } catch (e) { /* ignore */ }
-  return clone(DEF)
+  return Object.assign(clone(DEF), { lang: getInitialLang() })
 }
 
 const hasData = st => !!((st.workouts || []).length || (st.routines || []).length || (st.bodyweight || []).length)
@@ -72,11 +77,12 @@ export const useStore = create((set, get) => {
 
   // Everything a sign-out leaves behind on this device, whichever way it was triggered.
   const clearLocalSession = () => {
+    const language = getExplicitLang() || normalizeLang(getLang()) || getInitialLang()
     get().setUser(null)
     localStorage.removeItem('gym_guest')
     localStorage.removeItem('gym_dirty')
     localStorage.removeItem(KEY)
-    persist(clone(DEF), false)
+    persist(Object.assign(clone(DEF), { lang: language }), false)
   }
 
   return {
@@ -90,7 +96,11 @@ export const useStore = create((set, get) => {
       mut(S)
       persist(S, push)
     },
-    replaceState(S, push = false) { persist(clone(S), push) },
+    replaceState(S, push = false) {
+      const next = clone(S)
+      next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
+      persist(next, push)
+    },
 
     isGuest: () => localStorage.getItem('gym_guest') === '1',
     setGuest(v) { if (v) localStorage.setItem('gym_guest', '1'); else localStorage.removeItem('gym_guest'); set({}) },
@@ -115,6 +125,8 @@ export const useStore = create((set, get) => {
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const active = S.active
           const next = Object.assign(clone(DEF), state)
+          const explicitLang = getExplicitLang()
+          next.lang = explicitLang || normalizeLang(next.lang) || getInitialLang()
           if (active) next.active = active
           persist(next, false)
         } else if (hasData(S)) { await get().pushState() }
@@ -141,8 +153,9 @@ export const useStore = create((set, get) => {
     // Dynamic import so the generator never ships in a self-hosted bundle.
     async resetDemo() {
       const { buildDemoState } = await import('../lib/demoSeed.js')
+      const language = getExplicitLang() || normalizeLang(getLang()) || getInitialLang()
       localStorage.removeItem('gym_dirty')
-      persist(Object.assign(clone(DEF), buildDemoState()), false)
+      persist(Object.assign(clone(DEF), buildDemoState(), { lang: language }), false)
     },
 
     // Boot: ask the server who we are, then pull.
@@ -153,7 +166,9 @@ export const useStore = create((set, get) => {
         const saved = await nativeLoad()
         const S = get().S
         if (saved && (!hasData(S) || (saved._ts || 0) >= (S._ts || 0))) {
-          persist(Object.assign(clone(DEF), saved), false)
+          const next = Object.assign(clone(DEF), saved)
+          next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
+          persist(next, false)
         } else if (hasData(S)) {
           nativeSave(S)   // first run after an update from a file-less version: seed the mirror
         }

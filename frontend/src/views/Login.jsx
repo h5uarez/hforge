@@ -2,7 +2,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, api, BIO } from '../lib/api.js'
 import { hasData } from '../store/useStore.js'
-import { t } from '../lib/i18n.js'
+import { getLang, LANGS, setLangPreference, t } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { useState, useRef, useEffect } from 'react'
 import Icon from '../components/Icon.jsx'
@@ -43,7 +43,19 @@ function RegisterSheet({ close }) {
 }
 
 export default function Login() {
-  const { setUser, pullState, setGuest } = useStore()
+  const { setUser, pullState, setGuest, update } = useStore()
+  const changeLanguage = ev => {
+    const next = ev.target.value
+    // Change i18n first so the controlled native select reflects the choice while the pack loads.
+    void setLangPreference(next)
+    update(s => { s.lang = next }, false)
+  }
+  const languageControl = <div className="login-lang">
+    <label htmlFor="login-language">{t('Language')}</label>
+    <select id="login-language" value={getLang()} onChange={changeLanguage} aria-label={t('Language')}>
+      {Object.entries(LANGS).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+    </select>
+  </div>
   const signIn = async () => {
     try { const u = await passkeyLogin(); setUser(u); await pullState(); useUI.getState().toast(t('Welcome back, {0}', u.name)) }
     catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(e.message || t('Sign-in failed')) }
@@ -57,6 +69,7 @@ export default function Login() {
   // Demo build: no backend to sign in against — the only way in is the local guest profile.
   if (DEMO) return (
     <div className="narrow" style={wrap}>
+      {languageControl}
       {head}
       <div className="muted" style={{ marginBottom: 30 }}>{t('Live demo — everything stays in this browser.')}</div>
       <Button variant="primary" icon="sparkles" onClick={() => setGuest(true)}>{t('Start the demo')}</Button>
@@ -71,6 +84,7 @@ export default function Login() {
 
   return (
     <div className="narrow" style={wrap}>
+      {languageControl}
       {head}
       <div className="muted" style={{ marginBottom: 34 }}>{t('Your workouts. Your weights. Your profile.')}</div>
       {webauthnOK() ? <>
