@@ -7,7 +7,7 @@ import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
-import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
+import { getLang, setLangPreference, t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
@@ -102,7 +102,7 @@ export default function Settings() {
     <Section title={t('General')} footer={t('Note: switching units only changes the label — logged numbers are not converted.')}>
       <SelectRow
         icon="globe" iconTint="var(--blue)" title={t('Language')}
-        value={S.lang || 'en'} onChange={v => update(s => { s.lang = v })}
+        value={S.lang || getLang()} onChange={v => { void setLangPreference(v); update(s => { s.lang = v }) }}
         options={Object.entries(LANGS).map(([k, name]) => ({
           value: k, label: name,
           subtitle: INSTR_LANGS.includes(k) ? null : t("Exercise instructions aren't available in this language yet — they stay in English."),
@@ -180,7 +180,7 @@ export default function Settings() {
         accessory="chevron" onClick={() => importRef.current.click()} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
       <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
-      <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { replaceState(JSON.parse(JSON.stringify(DEF)), true); nav('/home'); toast(t('All data reset')) } })} />
+      <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { replaceState(Object.assign(JSON.parse(JSON.stringify(DEF)), { lang: getLang() }), true); nav('/home'); toast(t('All data reset')) } })} />
     </Section>
     <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={doImport} />
     {/* Reset after reading so picking the same file twice still fires onChange. */}
