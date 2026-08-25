@@ -102,6 +102,18 @@ a build step locally either way.
 > Want it reachable from your phone over the internet with passkeys? You'll need an HTTPS
 > domain — a two-line change in `.env`. See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
 
+## Local development on Windows
+
+Run `start-local.bat` from the repository root, or double-click it, to start the frontend, API, and
+local media server in separate windows. The frontend is available at **http://localhost:8080** and
+the API at **http://localhost:3000**. The media server serves `media/img` and `media/gif` on
+**127.0.0.1:8888** for Vite's internal `/img` and `/gif` proxy; you do not need to open that port
+manually. On the first run, the script installs dependencies in `frontend/` and `api/` when their
+`node_modules/` directories are missing, creates `data-local/`, and stores local API data there.
+Close all three service windows to stop the local processes.
+
+This does not change the CI, Docker, or self-hosting quick-start paths above.
+
 ## Mobile app (no server at all)
 
 The same codebase also builds a **standalone mobile app** (Capacitor): no account, no sync,
