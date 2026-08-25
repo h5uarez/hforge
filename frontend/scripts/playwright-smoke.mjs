@@ -9,7 +9,6 @@ const frontendDir = dirname(scriptDir)
 const cliPath = join(frontendDir, 'node_modules', '@playwright', 'cli', 'playwright-cli.js')
 const sessionArgs = ['-s=hforge-playwright-smoke']
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080'
-const visiblePauseMs = 3000
 
 function runCli(args) {
   return new Promise((resolve, reject) => {
@@ -56,7 +55,7 @@ async function runStep(stage, args) {
 let failed = false
 
 try {
-  await runStep('open hforge', ['open', baseUrl, '--headed'])
+  await runStep('open hforge', ['open', baseUrl])
   await runStep('guest entry', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"])
   await runStep('load starter plan', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"])
   await runStep('open workout chooser', ['goto', `${baseUrl}/#/workout`])
@@ -79,7 +78,6 @@ try {
   if (!state.text.includes('Push Day')) throw new Error('active workout does not expose Push Day')
 
   console.log('Playwright smoke passed: guest reached the Push Day workout.')
-  await new Promise(resolve => setTimeout(resolve, visiblePauseMs))
 } catch (error) {
   failed = true
   console.error(`Playwright smoke failed: ${error.message}`)
