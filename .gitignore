@@ -4,6 +4,9 @@
 # Local dependencies
 node_modules/
 
+# Generated frontend build output
+frontend/dist/
+
 # Local configuration and runtime data
 .env
 data/
