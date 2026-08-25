@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -11,7 +11,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
@@ -819,6 +819,280 @@ export function WorkoutRow({ w, onClick }) {
   </div>
 }
 
+/* ============================ block management ============================ */
+// Optional owned schedules layered on top of the legacy dayPlan/week resolution. Every helper
+// here is a thin React wrapper around the pure functions in lib/history.js — validation runs
+// before any persistence so a partial schedule never lands on `S`. Activation, pause, resume,
+// and end are explicit only (spec #907 / design #908); no automatic activation or ending.
+
+const restDay = () => ({ 0: 'rest', 1: 'rest', 2: 'rest', 3: 'rest', 4: 'rest', 5: 'rest', 6: 'rest' })
+
+const blockErrorText = error => {
+  let match = /^week (\d+) has no day map$/.exec(error)
+  if (match) return t('week {0} has no day map', match[1])
+  match = /^week (\d+) day (\d+) is empty$/.exec(error)
+  if (match) return t('week {0} day {1} is empty', match[1], match[2])
+  match = /^week (\d+) day (\d+) references an unknown routine$/.exec(error)
+  if (match) return t('week {0} day {1} references an unknown routine', match[1], match[2])
+  return t(error)
+}
+
+// Day picker used inside the block editor — single weekday, pick a routine or rest. Pattern
+// matches DayAssign / DayOverride so the editor stays inside one sheet.
+function BlockDayAssign({ weekIdx, day, value, routines, onPick, close }) {
+  return <>
+    <h3>{t(DAYN[day])} · {t('Week {0}', weekIdx + 1)}</h3>
+    <div className="list">
+      <div className="item" onClick={() => { onPick('rest'); close() }}>
+        <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span>
+        <div className="grow"><div className="tt">{t('Rest')}</div></div>
+        {value === 'rest' && <Icon name="check" className="accent" />}
+      </div>
+      {routines.map(r => <div key={r.id} className="item" onClick={() => { onPick(r.id); close() }}>
+        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+        <div className="grow"><div className="tt">{r.name}</div></div>
+        {value === r.id && <Icon name="check" className="accent" />}
+      </div>)}
+    </div>
+  </>
+}
+
+// Editor for a single block (create or edit). Holds the draft locally; validates with
+// validateBlock before any persistence. Save buttons stay disabled until the draft is valid.
+function BlockEditor({ block, close }) {
+  const st = useStore(s => s.S)
+  const routines = st.routines || []
+  const ab = st.activeBlock
+  const isNew = !block
+  const [name, setName] = useState(block ? block.name : '')
+  // Clone each week so the editor's setDay doesn't mutate the draft through a shared reference.
+  const [weeks, setWeeks] = useState(block
+    ? block.weeks.map(w => ({ days: { ...w.days } }))
+    : [restDay()])
+  const [weekIdx, setWeekIdx] = useState(0)
+  const [showErrors, setShowErrors] = useState(false)
+
+  const draftId = block ? block.id : uid()
+  const draft = { id: draftId, name: name.trim(), weeks }
+  const v = validateBlock(draft, routines)
+  const isActive = !!(ab && ab.blockId === draftId)
+  // Errors stay hidden until the user taps Save once — never block the UI before they've tried.
+  const errors = showErrors ? v.errors : []
+
+  const addWeek = () => {
+    setWeeks(w => [...w, restDay()])
+    setWeekIdx(weeks.length)
+  }
+  const removeWeek = i => {
+    setWeeks(w => w.length > 1 ? w.filter((_, k) => k !== i) : w)
+    setWeekIdx(Math.max(0, Math.min(weekIdx, weeks.length - 2)))
+  }
+  const setDay = (wi, d, val) => {
+    setWeeks(w => w.map((wk, k) => k === wi ? { ...wk, days: { ...wk.days, [d]: val } } : wk))
+  }
+
+  const persist = () => {
+    // Write to S.blocks by id (creates or updates). Validation already passed — no partial.
+    update(s => {
+      const i = s.blocks.findIndex(b => b.id === draftId)
+      const rec = { id: draftId, name: draft.name, weeks }
+      if (i >= 0) s.blocks[i] = rec
+      else s.blocks.push(rec)
+    })
+  }
+
+  const save = () => {
+    if (!v.valid) { setShowErrors(true); return }
+    persist()
+    close()
+    toast(isNew ? t('Block saved') : t('Block updated'))
+  }
+
+  const saveAndActivate = () => {
+    if (!v.valid) { setShowErrors(true); return }
+    if (ab) { toast(t('End the active block first')); return }
+    confirmSheet({
+      title: t('Activate block?'),
+      message: t('{0} becomes your schedule from today. You can pause or end it later.', draft.name),
+      confirmText: t('Activate'),
+      onConfirm: () => {
+        try {
+          persist()
+          update(s => activateBlock(s, draftId, todayISO()))
+          close()
+          toast(t('Block activated'))
+        } catch (e) { toast(e.message) }
+      }
+    })
+  }
+
+  const remove = () => {
+    if (isActive) { toast(t('End the block before deleting')); return }
+    confirmSheet({
+      title: t('Delete block?'),
+      message: t('Removes the block definition. Workouts you already started keep their snapshot.'),
+      confirmText: t('Delete'),
+      danger: true,
+      onConfirm: () => {
+        update(s => { s.blocks = (s.blocks || []).filter(b => b.id !== draftId) })
+        close()
+        toast(t('Block deleted'))
+      }
+    })
+  }
+
+  return <>
+    <h3>{isNew ? t('New block') : t('Edit block')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>
+      {t('Name your block and pick a routine or rest for every weekday of every week.')}
+    </div>
+    <TextField placeholder={t('Block name')} value={name} onChange={e => setName(e.target.value)} autoFocus />
+
+    <div style={{ height: 16 }} />
+    <div className="row between" style={{ marginBottom: 8 }}>
+      <h4 className="sec" style={{ margin: 0 }}>{t('Week {0} of {1}', weekIdx + 1, weeks.length)}</h4>
+      <div className="row" style={{ gap: 6 }}>
+        <button className="iconbtn" disabled={weekIdx === 0} onClick={() => setWeekIdx(i => Math.max(0, i - 1))} aria-label={t('Previous week')}><Icon name="chevronLeft" /></button>
+        <button className="iconbtn" disabled={weekIdx >= weeks.length - 1} onClick={() => setWeekIdx(i => Math.min(weeks.length - 1, i + 1))} aria-label={t('Next week')}><Icon name="chevronRight" /></button>
+      </div>
+    </div>
+
+    <div className="list">
+      {[1, 2, 3, 4, 5, 6, 0].map(d => {
+        const val = weeks[weekIdx] && weeks[weekIdx].days ? weeks[weekIdx].days[d] : undefined
+        const r = routines.find(x => x.id === val)
+        return <div key={d} className="item" onClick={() => {
+          ui().openSheet(c2 => <BlockDayAssign weekIdx={weekIdx} day={d} value={val} routines={routines} onPick={v => setDay(weekIdx, d, v)} close={c2} />)
+        }}>
+          <div className="grow"><div className="tt">{t(DAYN[d])}</div></div>
+          {val === 'rest' ? <span className="tag">{t('Rest')}</span>
+            : r ? <span className="tag acc"><Icon name={glyphOf(r.emoji)} />{r.name}</span>
+            : <span className="tag" style={{ color: 'var(--red)' }}>{t('Missing')}</span>}
+          <Icon name="chevronRight" className="chev" />
+        </div>
+      })}
+    </div>
+
+    <div style={{ height: 12 }} />
+    <div className="row" style={{ gap: 6 }}>
+      <Button size="sm" icon="plus" onClick={addWeek}>{t('Add week')}</Button>
+      {weeks.length > 1 && <Button size="sm" icon="minus" onClick={() => removeWeek(weekIdx)}>{t('Remove week')}</Button>}
+    </div>
+
+    {errors.length > 0 && <div className="card" style={{ marginTop: 14, borderColor: 'var(--red)' }}>
+      <div className="small" style={{ color: 'var(--red)', fontWeight: 500 }}>{t('Fix these to save')}:</div>
+      <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+        {errors.map((e, i) => <li key={i} className="small">{blockErrorText(e)}</li>)}
+      </ul>
+    </div>}
+
+    <div style={{ height: 14 }} />
+    {!isActive && !ab && v.valid && (
+      <>
+        <Button variant="primary" onClick={saveAndActivate}>{t('Save & activate')}</Button>
+        <div style={{ height: 6 }} />
+      </>
+    )}
+    <Button variant={v.valid ? 'primary' : 'plain'} onClick={save}>{isNew ? t('Save') : t('Update')}</Button>
+    {!isNew && <><div style={{ height: 6 }} /><Button variant="danger" onClick={remove}>{t('Delete')}</Button></>}
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </>
+}
+export const blockEditorSheet = block => ui().openSheet(close => <BlockEditor block={block} close={close} />)
+
+// Manager: list of blocks, the active block context with explicit Pause/Resume/End controls,
+// and an Add entry point. All lifecycle actions go through confirmation so they remain
+// explicit (spec #907: no automatic activation or ending).
+function BlockList({ close }) {
+  const st = useStore(s => s.S)
+  const ab = st.activeBlock
+  const blocks = st.blocks || []
+  const today = todayISO()
+  const currentWeek = blockStatus(st, today)
+  const activeBlockDef = ab ? blocks.find(b => b.id === ab.blockId) : null
+
+  // Wrap each lifecycle helper in try/catch so the duplicate-action throws become user-facing
+  // toasts instead of red screens. The pure helpers still enforce the single-active invariant.
+  const runLifecycle = (label, fn, after) => {
+    try { fn(); if (after) after() } catch (e) { toast(t(label + ': {0}', e.message)) }
+  }
+
+  return <>
+    <h3>{t('Training blocks')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>
+      {t('A block is an ordered sequence of weeks, each with a routine or rest for every weekday. Activate one to make it your schedule.')}
+    </div>
+
+    {ab && (
+      <div className="card" style={{ borderColor: 'var(--acc)', marginBottom: 14 }}>
+        <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 10 }}>
+          <span className="lrow-i"><Icon name={ab.status === 'paused' ? 'pauseCircle' : 'playCircle'} /></span>
+          <div className="grow">
+            <div className="tt">{activeBlockDef ? activeBlockDef.name : t('(deleted block)')}</div>
+            <div className="ss dim small">
+              {ab.status === 'paused' ? t('Paused') : t('Active')}
+              {currentWeek ? ' · ' + t('Week {0}', currentWeek) : ''}
+            </div>
+          </div>
+        </div>
+        {ab.status === 'active' && (
+          <Button onClick={() => confirmSheet({
+            title: t('Pause block?'),
+            message: t('Paused days do not advance the block position. You can resume later.'),
+            confirmText: t('Pause'),
+            onConfirm: () => runLifecycle('Pause failed', () => update(s => pauseBlock(s, today)), () => toast(t('Block paused')))
+          })}>{t('Pause')}</Button>
+        )}
+        {ab.status === 'paused' && (
+          <Button onClick={() => confirmSheet({
+            title: t('Resume block?'),
+            message: t('Resumes the block from its current position.'),
+            confirmText: t('Resume'),
+            onConfirm: () => runLifecycle('Resume failed', () => update(s => resumeBlock(s, today)), () => toast(t('Block resumed')))
+          })}>{t('Resume')}</Button>
+        )}
+        <div style={{ height: 6 }} />
+        <Button variant="danger" onClick={() => confirmSheet({
+          title: t('End block?'),
+          message: t('Ends the active block and keeps all started workouts. The definition is preserved.'),
+          confirmText: t('End block'),
+          danger: true,
+          onConfirm: () => runLifecycle('End failed', () => update(s => endBlock(s)), () => toast(t('Block ended')))
+        })}>{t('End block')}</Button>
+      </div>
+    )}
+
+    {blocks.length > 0 ? (
+      <div className="list" style={{ marginBottom: 14 }}>
+        {blocks.map(b => {
+          const isActive = ab && ab.blockId === b.id
+          return <div key={b.id} className="item" onClick={() => { close(); blockEditorSheet(b) }}>
+            <span className="lrow-i"><Icon name="clipboard" /></span>
+            <div className="grow">
+              <div className="tt">{b.name}</div>
+              <div className="ss dim small">{t(b.weeks.length === 1 ? '{0} week' : '{0} weeks', b.weeks.length)}</div>
+            </div>
+            {isActive && <span className="tag acc">{ab.status === 'paused' ? t('Paused') : t('Active')}</span>}
+            <Icon name="chevronRight" className="chev" />
+          </div>
+        })}
+      </div>
+    ) : (
+      <div className="empty">
+        <div className="ico"><Icon name="clipboard" /></div>
+        {t('No blocks yet.')}
+        <br />{t('Build one to schedule multiple weeks of training at once.')}
+      </div>
+    )}
+
+    <Button variant="primary" icon="plus" onClick={() => { close(); blockEditorSheet(null) }}>{t('Add block')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Done')}</Button>
+  </>
+}
+export const blockManagerSheet = () => ui().openSheet(close => <BlockList close={close} />)
+
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
   bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
@@ -833,8 +1107,13 @@ export function beginWorkout(routineId, bw) {
     const plan = nextPrescription(st, cfg, r)
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
+  // Block context snapshot (issue: block-management, spec #907 / design #908). When a workout
+  // starts while a block is active, freeze { id, name, week } onto the workout so later block
+  // edits (rename, week re-mapping, pause/resume/end) cannot rewrite history. Null when no
+  // block is active — legacy workouts and no-block users stay unchanged.
+  const block = buildWorkoutBlockSnapshot(st, todayISO())
   update(s => {
-    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
+    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries, block }
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -952,6 +1231,10 @@ function doFinishWorkout() {
     // finished workout cannot say whether it hit its reps, and a timed session reads back
     // as "0 reps". It is what the progression engine works from.
     entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(s => s.done)),
+    // Block context snapshot, frozen at workout start (issue: block-management). Copied by
+    // value so the finished record does not share a reference with `active.block`; later block
+    // edits / lifecycle changes cannot rewrite history.
+    block: A.block || null,
     prs
   }
   w.vol = workoutVolume(w)

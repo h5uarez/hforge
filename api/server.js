@@ -99,14 +99,97 @@ function cancelRestTimer(userId) {
 }
 
 // "Workout planned today" reminder — one per user per day, at their chosen time.
-// Duplicated (not imported) from frontend/src/lib/history.js effectiveRoutineId — tiny pure helper, not worth sharing across the two runtimes.
+// Duplicated (not imported) from frontend/src/lib/history.js effectiveRoutineId — tiny pure
+// helper, not worth sharing across the two runtimes. The two implementations MUST stay in
+// lockstep so the client and the reminder never disagree about what today is.
+//
+// Precedence (spec #907 / design #908):
+//   1. Explicit `dayPlan[iso]` (a routine id or 'rest') always wins.
+//   2. With an active block, the current block week / weekday mapping is used. A missing,
+//      empty, or invalid block-day value resolves to `rest` — it MUST NOT fall through
+//      to legacy `week`.
+//   3. Without an active block, legacy `dayPlan` then `week` behavior is preserved.
 function effectiveRoutineId(S, iso) {
+  if (!S) return null;
   const ov = S.dayPlan?.[iso];
   if (ov === 'rest') return null;
   if (ov && S.routines?.some(r => r.id === ov)) return ov;
+
   const wd = new Date(iso + 'T12:00:00').getDay();
+
+  const week = blockWeek(S, iso);
+  if (week != null) {
+    const ab = S.activeBlock;
+    const block = (S.blocks || []).find(b => b.id === ab.blockId);
+    const w = block && block.weeks ? block.weeks[week - 1] : null;
+    if (w) {
+      const v = w.days ? w.days[wd] : undefined;
+      if (v === 'rest') return null;
+      if (v && S.routines?.some(r => r.id === v)) return v;
+      // missing / empty / unknown → rest, never legacy
+      return null;
+    }
+    // blockWeek returned a week but the underlying block has no usable week data
+    return null;
+  }
+
+  // No active block (or stale active pointer whose block has been deleted): legacy.
   return S.week?.[wd] || null;
 }
+// Local-noon date math, duplicated from frontend/src/lib/history.js so the server's
+// block clock never drifts across a DST boundary the way a midnight-based walk would.
+function localNoon(iso) { return new Date(iso + 'T12:00:00'); }
+function isoOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+// Current local-calendar week of the active block, or null when no block is active or
+// the block has been deleted out from under the pointer. Mirrors blockStatus() in
+// frontend/src/lib/history.js — the two implementations MUST stay in lockstep.
+function blockWeek(S, iso) {
+  const ab = S && S.activeBlock;
+  if (!ab || !iso) return null;
+  const block = (S.blocks || []).find(b => b.id === ab.blockId);
+  if (!block || !Array.isArray(block.weeks) || block.weeks.length === 0) return null;
+  const start = ab.startedOn;
+  if (!start || iso < start) return null;
+
+  // Build the set of paused local-calendar dates; the start day is excluded so a
+  // same-day pause still credits the activation day.
+  const paused = new Set();
+  const collect = (from, through) => {
+    if (!from) return;
+    const stop = through || iso;
+    let cur = localNoon(from);
+    const end = localNoon(stop);
+    while (cur <= end) {
+      const curIso = isoOf(cur);
+      if (curIso !== start) paused.add(curIso);
+      cur.setDate(cur.getDate() + 1);
+    }
+  };
+  (ab.pausedRanges || []).forEach(r => collect(r.from, r.through));
+  if (ab.status === 'paused' && ab.pausedOn) collect(ab.pausedOn, iso);
+
+  let credited = 0;
+  let cur = localNoon(start);
+  const target = localNoon(iso);
+  while (cur <= target) {
+    if (!paused.has(isoOf(cur))) credited++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (credited <= 0) return null;
+  const week = 1 + Math.floor((credited - 1) / 7);
+  return Math.min(block.weeks.length, week);
+}
+
+// Parity reference: the canonical resolver and its blockStatus helper live in
+// frontend/src/lib/history.js. Every change to either side here MUST be mirrored
+// there (and vice versa) so the client and the reminder never disagree about
+// what today is. The history.test.js suite covers the client side; the server
+// has no test harness — review by diff.
 // Computes "now" in an arbitrary IANA zone (e.g. "Europe/Lisbon") instead of the server's own —
 // each user's reminder fires by their own clock, wherever they and their phone actually are.
 function userNow(tz) {

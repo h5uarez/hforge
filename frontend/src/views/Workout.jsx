@@ -259,6 +259,18 @@ function ActiveWorkout() {
     </div>
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
 
+    {/* Optional block context (issue: block-management). The snapshot was frozen at workout
+        start (see beginWorkout in sheets.jsx), so the name/week displayed here reflect the
+        block as it was when the workout began, even if the block is later renamed, paused,
+        resumed or ended. Absent on legacy / no-block workouts — the screen is unchanged. */}
+    {A.block && (
+      <div className="small row" style={{ gap: 6, color: 'var(--acc)', marginTop: 10, marginBottom: 2, alignItems: 'baseline' }}>
+        <Icon name="clipboard" style={{ fontSize: 13 }} />
+        <span style={{ fontWeight: 500 }}>{A.block.name}</span>
+        <span className="dim" style={{ fontWeight: 400 }}>· {t('Week {0}', A.block.week)}</span>
+      </div>
+    )}
+
     {A.entries.length ? <>
       <div className="muted small" style={{ marginBottom: 6 }}>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</div>
       {isSuperset ? (

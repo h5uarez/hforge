@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -394,5 +394,393 @@ describe('workoutVolume', () => {
   it('leaves an unloaded bodyweight set at zero volume rather than inventing a number', () => {
     const w = { entries: [{ id: BW, target: { bodyweight: true }, sets: [{ w: 0, r: 20, done: true }] }] }
     expect(workoutVolume(w)).toBe(0)
+  })
+})
+
+/* ---------- block management (Phase 1 foundation, issue: block-management) ---------- */
+
+// Shared routines for the block tests. Stable ids so a week can map weekdays to real routines
+// or to the explicit 'rest' marker that means "this day is a rest day by design".
+const BLOCK_ROUTINES = [
+  { id: 'r-push', name: 'Push' },
+  { id: 'r-pull', name: 'Pull' },
+  { id: 'r-legs', name: 'Legs' },
+]
+const FULL_WEEK = { days: { 0: 'r-push', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
+const GOOD_BLOCK = { id: 'b1', name: 'Hypertrophy Block', weeks: [FULL_WEEK, FULL_WEEK, FULL_WEEK] }
+
+describe('validateBlock', () => {
+  it('accepts a complete block whose day map only references real routines or rest', () => {
+    const r = validateBlock(GOOD_BLOCK, BLOCK_ROUTINES)
+    expect(r.valid).toBe(true)
+    expect(r.errors).toEqual([])
+  })
+
+  it('rejects a blank or whitespace-only name', () => {
+    expect(validateBlock({ ...GOOD_BLOCK, name: '' }, BLOCK_ROUTINES).valid).toBe(false)
+    expect(validateBlock({ ...GOOD_BLOCK, name: '   ' }, BLOCK_ROUTINES).valid).toBe(false)
+  })
+
+  it('rejects an empty or missing weeks list', () => {
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: [] }, BLOCK_ROUTINES).valid).toBe(false)
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: undefined }, BLOCK_ROUTINES).valid).toBe(false)
+  })
+
+  it('rejects a week that is missing one or more of the seven weekdays', () => {
+    const incomplete = { days: { 0: 'r-push', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest' } }   // day 6 missing
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: [incomplete] }, BLOCK_ROUTINES).valid).toBe(false)
+    // day 0 missing instead
+    const headless = { days: { 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: [headless] }, BLOCK_ROUTINES).valid).toBe(false)
+  })
+
+  it('rejects a day that references an unknown routine id', () => {
+    const wrong = { days: { 0: 'r-unknown', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
+    const r = validateBlock({ ...GOOD_BLOCK, weeks: [wrong] }, BLOCK_ROUTINES)
+    expect(r.valid).toBe(false)
+    expect(r.errors.join(' ')).toMatch(/r-unknown|unknown|invalid|reference/i)
+  })
+
+  it('rejects a blank/empty day value, because an empty day is not the same as rest', () => {
+    const blankDay = { days: { 0: '', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
+    const nullDay = { days: { 0: null, 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: [blankDay] }, BLOCK_ROUTINES).valid).toBe(false)
+    expect(validateBlock({ ...GOOD_BLOCK, weeks: [nullDay] }, BLOCK_ROUTINES).valid).toBe(false)
+  })
+
+  it('returns a list of errors (not a single one) so the UI can show them all at once', () => {
+    const r = validateBlock({ ...GOOD_BLOCK, name: '', weeks: [] }, BLOCK_ROUTINES)
+    expect(r.valid).toBe(false)
+    expect(Array.isArray(r.errors)).toBe(true)
+    expect(r.errors.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// Lifecycle state shape: every lifecycle helper takes the full S and today as a string so the
+// functions stay pure and testable. They throw on duplicate / invalid actions (single-active
+// invariant) so callers can wrap them in error toasts without partial persistence.
+describe('activateBlock', () => {
+  const emptyS = { blocks: [GOOD_BLOCK], activeBlock: null, routines: BLOCK_ROUTINES }
+
+  it('returns S with activeBlock set to week 1, status active, startedOn = today', () => {
+    const next = activateBlock(emptyS, 'b1', '2026-08-24')
+    expect(next.activeBlock).toEqual({
+      blockId: 'b1',
+      startedOn: '2026-08-24',
+      status: 'active',
+      pausedRanges: [],
+    })
+  })
+
+  it('does not mutate the input S (pure helper)', () => {
+    const before = JSON.stringify(emptyS)
+    activateBlock(emptyS, 'b1', '2026-08-24')
+    expect(JSON.stringify(emptyS)).toBe(before)
+  })
+
+  it('throws when a block is already active (single-active invariant)', () => {
+    const S = { ...emptyS, activeBlock: { blockId: 'b1', startedOn: '2026-08-20', status: 'active', pausedRanges: [] } }
+    expect(() => activateBlock(S, 'b1', '2026-08-24')).toThrow()
+  })
+
+  it('throws when the blockId does not match any defined block', () => {
+    expect(() => activateBlock(emptyS, 'no-such', '2026-08-24')).toThrow()
+  })
+})
+
+describe('pauseBlock', () => {
+  const activeS = { blocks: [GOOD_BLOCK], activeBlock: { blockId: 'b1', startedOn: '2026-08-20', status: 'active', pausedRanges: [] } }
+
+  it('moves status to paused and stamps pausedOn with today', () => {
+    const next = pauseBlock(activeS, '2026-08-24')
+    expect(next.activeBlock.status).toBe('paused')
+    expect(next.activeBlock.pausedOn).toBe('2026-08-24')
+  })
+
+  it('throws when there is no active block', () => {
+    expect(() => pauseBlock({ blocks: [GOOD_BLOCK], activeBlock: null }, '2026-08-24')).toThrow()
+  })
+
+  it('throws when the block is already paused (duplicate action)', () => {
+    const S = { ...activeS, activeBlock: { ...activeS.activeBlock, status: 'paused', pausedOn: '2026-08-23' } }
+    expect(() => pauseBlock(S, '2026-08-24')).toThrow()
+  })
+})
+
+describe('resumeBlock', () => {
+  const pausedS = { blocks: [GOOD_BLOCK], activeBlock: { blockId: 'b1', startedOn: '2026-08-20', status: 'paused', pausedOn: '2026-08-23', pausedRanges: [] } }
+
+  it('sets status back to active and appends a closed pause range (pausedOn through yesterday)', () => {
+    const next = resumeBlock(pausedS, '2026-08-25')
+    expect(next.activeBlock.status).toBe('active')
+    expect(next.activeBlock.pausedRanges).toEqual([{ from: '2026-08-23', through: '2026-08-24' }])
+    expect(next.activeBlock.pausedOn).toBeUndefined()
+  })
+
+  it('appends, not replaces — multiple pause/resume cycles stack in pausedRanges', () => {
+    let S = resumeBlock(pausedS, '2026-08-25')
+    S = pauseBlock(S, '2026-08-27')
+    S = resumeBlock(S, '2026-08-30')
+    expect(S.activeBlock.pausedRanges).toEqual([
+      { from: '2026-08-23', through: '2026-08-24' },
+      { from: '2026-08-27', through: '2026-08-29' },
+    ])
+  })
+
+  it('throws when there is no active block', () => {
+    expect(() => resumeBlock({ blocks: [GOOD_BLOCK], activeBlock: null }, '2026-08-25')).toThrow()
+  })
+
+  it('throws when the block is not paused (duplicate action)', () => {
+    expect(() => resumeBlock({ ...pausedS, activeBlock: { ...pausedS.activeBlock, status: 'active' } }, '2026-08-25')).toThrow()
+  })
+})
+
+describe('endBlock', () => {
+  it('clears activeBlock back to null', () => {
+    const S = { blocks: [GOOD_BLOCK], activeBlock: { blockId: 'b1', startedOn: '2026-08-20', status: 'active', pausedRanges: [] } }
+    const next = endBlock(S)
+    expect(next.activeBlock).toBeNull()
+  })
+
+  it('throws when there is no active block (duplicate action / redundant end)', () => {
+    expect(() => endBlock({ blocks: [GOOD_BLOCK], activeBlock: null })).toThrow()
+  })
+})
+
+// blockStatus: counts credited local-noon dates from startedOn through iso, excluding the
+// dates inside any closed pause range plus the open pausedOn range if still paused. The
+// activation date counts even if pausedOn == startedOn (the user stepped on it for a reason).
+describe('blockStatus', () => {
+  // GOOD_BLOCK is a 3-week block; the name and exact week count matter only here.
+  const BLOCK_3W = GOOD_BLOCK
+
+  it('returns null when no block is active', () => {
+    expect(blockStatus({ blocks: [BLOCK_3W], activeBlock: null }, '2026-08-24')).toBeNull()
+  })
+
+  it('returns null when the active blockId no longer resolves to a defined block', () => {
+    expect(blockStatus({ blocks: [], activeBlock: { blockId: 'gone', startedOn: '2026-08-20', status: 'active', pausedRanges: [] } }, '2026-08-24')).toBeNull()
+  })
+
+  it('returns week 1 on the activation day', () => {
+    const S = { blocks: [BLOCK_3W], activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] } }
+    expect(blockStatus(S, '2026-08-24')).toBe(1)
+  })
+
+  it('rolls over to week 2 on day 8 of credited activity', () => {
+    const S = { blocks: [BLOCK_3W], activeBlock: { blockId: 'b1', startedOn: '2026-08-17', status: 'active', pausedRanges: [] } }
+    // day 1 = 17, day 8 = 24 → week 2
+    expect(blockStatus(S, '2026-08-24')).toBe(2)
+  })
+
+  it('counts the activation date as week 1 even when it is also the pausedOn day', () => {
+    const S = { blocks: [BLOCK_3W], activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'paused', pausedOn: '2026-08-24', pausedRanges: [] } }
+    expect(blockStatus(S, '2026-08-24')).toBe(1)
+  })
+
+  it('excludes paused dates and resumes counting from the adjusted position', () => {
+    // activated 2026-08-17, paused 2026-08-20 (through 22), resumed 2026-08-23
+    // credited days: 17, 18, 19, 23, 24 → day 5 → week 1
+    const S = { blocks: [BLOCK_3W], activeBlock: {
+      blockId: 'b1', startedOn: '2026-08-17', status: 'active',
+      pausedRanges: [{ from: '2026-08-20', through: '2026-08-22' }],
+    } }
+    expect(blockStatus(S, '2026-08-24')).toBe(1)
+  })
+
+  it('clamps to the final block week once the credited days exceed the block length', () => {
+    // 3-week block, way past week 3 → must stay at 3 until explicit End (the design
+    // forbids auto-ending at the boundary)
+    const S = { blocks: [BLOCK_3W], activeBlock: { blockId: 'b1', startedOn: '2026-01-01', status: 'active', pausedRanges: [] } }
+    expect(blockStatus(S, '2027-01-01')).toBe(3)
+  })
+
+  it('uses local-noon dates so a DST spring-forward day still resolves to the right weekday', () => {
+    // spring forward in EU timezones falls on the last Sunday of March; the local noon of
+    // 2026-03-29 is unambiguous regardless of the system's TZ because the helper constructs
+    // dates at noon, far from the 02:00 transition
+    const S = { blocks: [BLOCK_3W], activeBlock: { blockId: 'b1', startedOn: '2026-03-22', status: 'active', pausedRanges: [] } }
+    // 2026-03-22 is day 1, 2026-03-29 is day 8 → week 2 (and noon-based date math must not
+    // skip a day in any local timezone)
+    expect(blockStatus(S, '2026-03-29')).toBe(2)
+  })
+})
+
+/* ---------- effectiveRoutineId (canonical resolver, Phase 2) ----------
+   Precedence (per spec #907 and design #908):
+     1. Explicit `dayPlan[iso]` (a routine id or 'rest') always wins.
+     2. With an active block, the current block week / weekday mapping is used.
+        A missing, empty, or invalid block-day value resolves to `rest` —
+        it MUST NOT fall through to legacy `week`.
+     3. Without an active block, legacy `dayPlan` then `week` behavior is preserved. */
+
+describe('effectiveRoutineId (canonical resolver)', () => {
+  // Reuse the block fixtures from the foundation suite so the new resolver is
+  // tested against the same well-known shapes.
+  const ROUTINES = BLOCK_ROUTINES
+  // 2026-08-24 is a Monday (wd 1), 2026-08-25 is Tuesday (wd 2),
+  // 2026-08-23 is Sunday (wd 0). The GOOD_BLOCK day map assigns:
+  //   0→r-push, 1→r-pull, 2→rest, 3→r-legs, 4→r-push, 5→rest, 6→rest.
+  const ACTIVE_DAY1 = {
+    blocks: [GOOD_BLOCK],
+    activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+    routines: ROUTINES,
+    dayPlan: {},
+    week: { 1: 'r-legacy-fallback' }
+  }
+
+  it('lets an explicit dayPlan routine override the active block day', () => {
+    // 2026-08-24 is day 1 in the block (r-pull) but dayPlan forces r-legs for today.
+    const S = { ...ACTIVE_DAY1, dayPlan: { '2026-08-24': 'r-legs' } }
+    expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legs')
+  })
+
+  it('treats dayPlan "rest" as rest even when a block would resolve a routine', () => {
+    const S = { ...ACTIVE_DAY1, dayPlan: { '2026-08-24': 'rest' } }
+    expect(effectiveRoutineId(S, '2026-08-24')).toBeNull()
+  })
+
+  it('resolves the active block current weekday to its routine id', () => {
+    // Monday 2026-08-24, week 1, day 1 → r-pull (not the legacy r-legacy-fallback).
+    expect(effectiveRoutineId(ACTIVE_DAY1, '2026-08-24')).toBe('r-pull')
+  })
+
+  it('resolves the active block current weekday "rest" to null', () => {
+    // Tuesday 2026-08-25, week 1, day 2 → "rest" in the block, must beat the legacy week.
+    const S = { ...ACTIVE_DAY1, week: { 2: 'r-legacy-fallback' } }
+    expect(effectiveRoutineId(S, '2026-08-25')).toBeNull()
+  })
+
+  it('returns rest (never legacy) when the active block day value is missing for the current weekday', () => {
+    // day 1 (Monday) is absent from the block's day map → rest, NOT the legacy fallback.
+    const incomplete = {
+      id: 'b1', name: 'Incomplete',
+      weeks: [{ days: { 0: 'r-push', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }]
+    }
+    const S = {
+      ...ACTIVE_DAY1,
+      blocks: [incomplete],
+      week: { 1: 'r-legacy-fallback' }
+    }
+    expect(effectiveRoutineId(S, '2026-08-24')).toBeNull()
+  })
+
+  it('returns rest (never legacy) when the active block day value is an unknown / deleted routine id', () => {
+    // day 0 (Sunday) references 'r-deleted' which is not in ROUTINES.
+    // 2026-08-23 is a Sunday (wd 0); the block started 2026-08-23 → week 1.
+    const stale = {
+      id: 'b1', name: 'Stale refs',
+      weeks: [{ days: { 0: 'r-deleted', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }]
+    }
+    const S = {
+      blocks: [stale],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-23', status: 'active', pausedRanges: [] },
+      routines: ROUTINES,
+      dayPlan: {},
+      week: { 0: 'r-legacy-fallback' }
+    }
+    expect(effectiveRoutineId(S, '2026-08-23')).toBeNull()
+  })
+
+  it('preserves legacy `week` resolution when no block is active', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],   // blocks defined but not active
+      activeBlock: null,
+      routines: ROUTINES,
+      dayPlan: {},
+      week: { 1: 'r-legacy-fallback' }
+    }
+    expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legacy-fallback')
+  })
+
+  it('preserves dayPlan override over legacy week when no block is active', () => {
+    const S = {
+      blocks: [GOOD_BLOCK], activeBlock: null, routines: ROUTINES,
+      dayPlan: { '2026-08-24': 'r-legs' },
+      week: { 1: 'r-legacy-fallback' }
+    }
+    expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legs')
+  })
+})
+
+/* ---------- buildWorkoutBlockSnapshot (Phase 3 immutable workout context) ----------
+   The shape that lands on `active.block` at workout start and rides into the finished
+   workout record: { id, name, week }. Capturing at start means later block edits
+   (rename, week re-mapping, lifecycle changes) cannot rewrite the historical record.
+   Pure helper: takes S + iso and returns a fresh object, or null. */
+
+describe('buildWorkoutBlockSnapshot', () => {
+  // 2026-08-24 is Monday (wd 1), 2026-08-30 is Sunday (wd 0)
+  const ACTIVE_DAY1 = {
+    blocks: [GOOD_BLOCK],
+    activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+    routines: BLOCK_ROUTINES,
+  }
+
+  it('returns null when no block is active', () => {
+    const S = { blocks: [GOOD_BLOCK], activeBlock: null, routines: BLOCK_ROUTINES }
+    expect(buildWorkoutBlockSnapshot(S, '2026-08-24')).toBeNull()
+  })
+
+  it('returns { id, name, week: 1 } when an active block resolves a week on its activation day', () => {
+    expect(buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-24')).toEqual({
+      id: 'b1', name: 'Hypertrophy Block', week: 1,
+    })
+  })
+
+  it('returns the current local-calendar week (day 8 of credited activity → week 2)', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-17', status: 'active', pausedRanges: [] },
+      routines: BLOCK_ROUTINES,
+    }
+    expect(buildWorkoutBlockSnapshot(S, '2026-08-24').week).toBe(2)
+  })
+
+  it('returns null when the active blockId no longer resolves to a defined block', () => {
+    const S = {
+      blocks: [],
+      activeBlock: { blockId: 'gone', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+      routines: BLOCK_ROUTINES,
+    }
+    expect(buildWorkoutBlockSnapshot(S, '2026-08-24')).toBeNull()
+  })
+
+  it('returns null when iso is before the block started', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+      routines: BLOCK_ROUTINES,
+    }
+    expect(buildWorkoutBlockSnapshot(S, '2026-08-23')).toBeNull()
+  })
+
+  it('does not mutate the input S (pure helper)', () => {
+    const before = JSON.stringify(ACTIVE_DAY1)
+    buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-24')
+    expect(JSON.stringify(ACTIVE_DAY1)).toBe(before)
+  })
+
+  it('captures the block name as it exists right now — renaming the block later does not change this snapshot', () => {
+    // Take the snapshot first, then mutate the source. The snapshot must stay frozen.
+    const snap = buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-24')
+    ACTIVE_DAY1.blocks[0].name = 'Renamed Block'
+    expect(snap.name).toBe('Hypertrophy Block')
+    // A fresh call after the rename sees the new name — the helper reads current state,
+    // it is the consumer (beginWorkout) that freezes the value into the workout record.
+    expect(buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-24').name).toBe('Renamed Block')
+  })
+
+  it('captures the resolved week as of today — a pause/resume that advances position is not reflected in an older snapshot', () => {
+    // Day 1 snapshot, then a 4-day pause+resume that pushes blockStatus forward by 4 credited days.
+    const day1 = buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-24')
+    expect(day1.week).toBe(1)
+    // 4 days later (28), with no pauses → credited = 5 → still week 1 (Math: floor((5-1)/7)+1 = 1)
+    expect(buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-28').week).toBe(1)
+    // 7 days after activation, no pauses → credited = 8 → week 2
+    expect(buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-31').week).toBe(2)
+    // The day-1 snapshot stays at week 1.
+    expect(day1.week).toBe(1)
   })
 })

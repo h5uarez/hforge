@@ -16,7 +16,14 @@ export const DEF = {
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
   // keeps the column it had. See effortOf.
-  reminder: { on: false, time: '08:00', tz: null }, effort: null
+  reminder: { on: false, time: '08:00', tz: null }, effort: null,
+  // Block management (Phase 1, additive): optional training blocks layered on top of the
+  // legacy week / dayPlan resolution. `blocks` holds named definitions, each with ordered
+  // weeks of seven routine-or-rest day mappings; `activeBlock` carries the lifecycle pointer
+  // (or null when none is active). Existing load paths — local storage, server pull, full
+  // JSON backup restore, mobile file mirror, demo reset — overlay these defaults the same
+  // way every other field is overlaid, so a pre-block profile sees an inert no-op state.
+  blocks: [], activeBlock: null
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
