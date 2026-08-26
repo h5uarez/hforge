@@ -35,26 +35,26 @@ if errorlevel 1 goto :data_failure
 set "PORT=3000"
 set "RP_ID=localhost"
 set "ORIGIN=http://localhost:8080"
-start "Hforge API" /D "%API_DIR%" "%ComSpec%" /k "npm start"
+set "MUTEX_NAME=Local\Hforge.StartLocal"
+rem 75 means that another start-local launcher already owns the named mutex.
+set "MUTEX_BUSY_EXIT_CODE=75"
+set "HFORGE_START_LOCAL_SMOKE=0"
+set "SERVICE_COMMAND=$mutex = $null; $ownsMutex = $false; $services = @(); try { $createdNew = $false; $mutex = [System.Threading.Mutex]::new($false, '%MUTEX_NAME%', [ref]$createdNew); try { $ownsMutex = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }; if (-not $ownsMutex) { Write-Host 'Hforge local environment is already running; no duplicate services were started.'; if ($env:HFORGE_START_LOCAL_SMOKE -eq '1') { exit %MUTEX_BUSY_EXIT_CODE% }; return }; Write-Host 'Hforge local launcher acquired the mutex.'; $services += Start-Process -FilePath 'npm.cmd' -ArgumentList @('start') -WorkingDirectory '%API_DIR%' -NoNewWindow -PassThru; $services += Start-Process -FilePath 'npm.cmd' -ArgumentList @('run','dev','--','--host','127.0.0.1','--port','8080','--open') -WorkingDirectory '%FRONTEND_DIR%' -NoNewWindow -PassThru; $services += Start-Process -FilePath 'node.exe' -ArgumentList @('scripts\serve-media.mjs') -WorkingDirectory '%ROOT%' -NoNewWindow -PassThru; Write-Host ''; Write-Host 'Hforge local environment started.'; Write-Host 'Frontend: http://localhost:8080'; Write-Host 'API:      http://localhost:3000'; Write-Host 'Media:    internal server for /img and /gif on 127.0.0.1:8888'; Write-Host ''; Write-Host 'Close this PowerShell window or press Ctrl+C to stop all services.'; $ids = foreach ($service in $services) { $service.Id }; Wait-Process -Id $ids } finally { foreach ($service in $services) { if ($service -and -not $service.HasExited) { Stop-Process -Id $service.Id -Force -ErrorAction SilentlyContinue } }; if ($ownsMutex -and $mutex) { try { $mutex.ReleaseMutex() } catch {} }; if ($mutex) { $mutex.Dispose() } }"
+if /i "%~1"=="--smoke" goto :smoke_mode
+
+start "Hforge local" powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -Command "%SERVICE_COMMAND%"
 if errorlevel 1 goto :launch_failure
 
-start "Hforge frontend" /D "%FRONTEND_DIR%" "%ComSpec%" /k "npm run dev -- --host 127.0.0.1 --port 8080 --open"
-if errorlevel 1 goto :launch_failure
-
-start "Hforge media" /D "%ROOT%" "%ComSpec%" /k "node scripts\serve-media.mjs"
-if errorlevel 1 goto :launch_failure
-
-echo.
-echo Hforge local environment started.
-echo Frontend: http://localhost:8080
-echo API:      http://localhost:3000
-echo Media:    internal server for /img and /gif on 127.0.0.1:8888
-echo.
-echo To stop it, close the "Hforge API", "Hforge frontend", and "Hforge media" windows.
+echo Hforge local environment is running in one PowerShell window.
 echo This launcher does not stop pre-existing processes.
-echo.
-echo Press any key to close this launcher window.
-pause >nul
+endlocal
+exit /b 0
+
+:smoke_mode
+set "HFORGE_START_LOCAL_SMOKE=1"
+powershell.exe -NoLogo -ExecutionPolicy Bypass -Command "%SERVICE_COMMAND%"
+if "%ERRORLEVEL%"=="%MUTEX_BUSY_EXIT_CODE%" exit /b %MUTEX_BUSY_EXIT_CODE%
+if errorlevel 1 goto :launch_failure
 endlocal
 exit /b 0
 
@@ -121,5 +121,6 @@ exit /b 1
 
 :launch_failure
 echo ERROR: Could not open one of the Hforge service windows.
+if "%HFORGE_START_LOCAL_SMOKE%"=="1" exit /b 1
 pause
 exit /b 1
