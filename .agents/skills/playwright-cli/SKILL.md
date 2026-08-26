@@ -1,27 +1,44 @@
 ---
 name: playwright-cli
 description: Automate browser interactions, test web pages and work with Playwright tests.
-allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
+allowed-tools: Bash(node:*) Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
 ---
 
 # Browser Automation with playwright-cli
 
 ## Quick start
 
-```bash
-# open new browser
-playwright-cli open
-# navigate to a page
-playwright-cli goto https://playwright.dev
-# interact with the page using refs from the snapshot
-playwright-cli click e15
-playwright-cli type "page.click"
-playwright-cli press Enter
-# take a screenshot (rarely used, as snapshot is more common)
-playwright-cli screenshot
-# close the browser
-playwright-cli close
+```powershell
+# Run from the repository root. Every CLI action goes through the host watchdog.
+$wrapper = '.agents\skills\playwright-cli\scripts\with-timeout.mjs'
+$cli = 'frontend\node_modules\@playwright\cli\playwright-cli.js'
+$config = '.agents\skills\playwright-cli\playwright-cli.config.json'
+
+# Open with the project config, then use the same named session for each action.
+node $wrapper --session=hforge -- node $cli -s=hforge open https://playwright.dev --config=$config
+node $wrapper --session=hforge -- node $cli -s=hforge snapshot
+node $wrapper --session=hforge -- node $cli -s=hforge click e15
+node $wrapper --session=hforge -- node $cli -s=hforge screenshot
+node $wrapper --session=hforge -- node $cli -s=hforge close
 ```
+
+## Timeout and Recovery (mandatory)
+
+- Open each browser session with `playwright-cli.config.json`; it sets a 45,000 ms action timeout and deliberately sets **no navigation timeout**.
+- Run every direct Playwright CLI command through `scripts/with-timeout.mjs` using the `-- <command> [args...]` separator. The default host watchdog is 120,000 ms per CLI command; it accepts no infinite timeout and never retries.
+- The wrapper passes arguments as an array without a shell command string. In Windows/PowerShell, prefer the explicit `node $cli` form shown above; quote URLs containing `&`.
+- For a complete long Hforge smoke journey, use the existing runner's bounded 900,000 ms (15 minute) override:
+
+  ```powershell
+  $env:PLAYWRIGHT_SMOKE_TIMEOUT_MS = '900000'
+  npm --prefix frontend run test:playwright:smoke
+  Remove-Item Env:PLAYWRIGHT_SMOKE_TIMEOUT_MS
+  ```
+
+- A timeout is a failure: let the wrapper terminate the full child process tree, close only the named `--session`, and report the timeout. Do not rerun the command automatically or use `close-all`/`kill-all` for recovery.
+- Browser action/navigation settings do not replace the host process watchdog. The watchdog is what prevents an interactive CLI process from waiting indefinitely.
+
+The `playwright-cli ...` lines in the reference sections below describe action syntax only. Do not run those lines raw; prepend the wrapper invocation and pass the action after `--`.
 
 ## Commands
 
@@ -249,14 +266,10 @@ playwright-cli delete-data
 
 ## URLs with `&` on Windows
 
-On Windows, `cmd.exe` and PowerShell treat `&` as a command separator, so URLs with multiple query parameters get truncated before `playwright-cli` runs. Escape `&` with `^&` in `cmd.exe`, or use `--%` in PowerShell:
-
-```batch
-playwright-cli goto "https://example.com/?a=1^&b=2"
-```
+When using the mandatory wrapper, pass a URL containing `&` as one quoted argument. The wrapper passes it directly to Node, so do not add `^` escapes or PowerShell `--%` to the child arguments:
 
 ```powershell
-playwright-cli --% goto "https://example.com/?a=1&b=2"
+node $wrapper --session=hforge -- node $cli -s=hforge goto "https://example.com/?a=1&b=2"
 ```
 
 ## Snapshots
