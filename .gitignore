@@ -13,6 +13,7 @@ frontend/.playwright-cli/
 frontend/playwright-report/
 frontend/test-results/
 frontend/blob-report/
+frontend/[0-9][0-9]-*.png
 
 # Project-local Gentle AI skills
 !.agents/skills/
