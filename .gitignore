@@ -8,6 +8,7 @@ node_modules/
 frontend/dist/
 
 # Generated Playwright output
+.playwright-cli/
 frontend/.playwright-cli/
 frontend/playwright-report/
 frontend/test-results/
