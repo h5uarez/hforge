@@ -835,7 +835,7 @@ export function WorkoutRow({ w, onClick }) {
 // before any persistence so a partial schedule never lands on `S`. Activation, pause, resume,
 // and end are explicit only (spec #907 / design #908); no automatic activation or ending.
 
-const restDay = () => ({ 0: 'rest', 1: 'rest', 2: 'rest', 3: 'rest', 4: 'rest', 5: 'rest', 6: 'rest' })
+const restDay = () => ({ days: { 0: 'rest', 1: 'rest', 2: 'rest', 3: 'rest', 4: 'rest', 5: 'rest', 6: 'rest' } })
 
 const blockErrorText = error => {
   let match = /^week (\d+) has no day map$/.exec(error)
@@ -928,7 +928,7 @@ function BlockEditor({ block, close }) {
       onConfirm: () => {
         try {
           persist()
-          update(s => activateBlock(s, draftId, todayISO()))
+          update(s => { Object.assign(s, activateBlock(s, draftId, todayISO())) })
           close()
           toast(t('Block activated'))
         } catch (e) { toast(e.message) }
@@ -1051,7 +1051,7 @@ function BlockList({ close }) {
             title: t('Pause block?'),
             message: t('Paused days do not advance the block position. You can resume later.'),
             confirmText: t('Pause'),
-            onConfirm: () => runLifecycle('Pause failed', () => update(s => pauseBlock(s, today)), () => toast(t('Block paused')))
+            onConfirm: () => runLifecycle('Pause failed', () => update(s => { Object.assign(s, pauseBlock(s, today)) }), () => toast(t('Block paused')))
           })}>{t('Pause')}</Button>
         )}
         {ab.status === 'paused' && (
@@ -1059,7 +1059,7 @@ function BlockList({ close }) {
             title: t('Resume block?'),
             message: t('Resumes the block from its current position.'),
             confirmText: t('Resume'),
-            onConfirm: () => runLifecycle('Resume failed', () => update(s => resumeBlock(s, today)), () => toast(t('Block resumed')))
+            onConfirm: () => runLifecycle('Resume failed', () => update(s => { Object.assign(s, resumeBlock(s, today)) }), () => toast(t('Block resumed')))
           })}>{t('Resume')}</Button>
         )}
         <div style={{ height: 6 }} />
@@ -1068,7 +1068,7 @@ function BlockList({ close }) {
           message: t('Ends the active block and keeps all started workouts. The definition is preserved.'),
           confirmText: t('End block'),
           danger: true,
-          onConfirm: () => runLifecycle('End failed', () => update(s => endBlock(s)), () => toast(t('Block ended')))
+          onConfirm: () => runLifecycle('End failed', () => update(s => { Object.assign(s, endBlock(s)) }), () => toast(t('Block ended')))
         })}>{t('End block')}</Button>
       </div>
     )}
