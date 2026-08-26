@@ -518,7 +518,186 @@ async function runSmoke(signal) {
 	if (swipeState.hash !== '#/workout') throw new Error(`swipe dismissal: route changed to ${swipeState.hash}, expected #/workout`)
 	if (swipeState.hasError) throw new Error('swipe dismissal: error view is visible after CDP touch swipe')
 
-	console.log('Playwright smoke passed: picker dismissal covered for desktop routine-editor, mobile workout (375px), keyboard/focus, backdrop, and real Chromium CDP touch swipe.')
+	// =========================================================================
+	// block lifecycle smoke (issue: block-lifecycle-playwright-audit, WU2)
+	// =========================================================================
+	//
+	// Reset → re-enter guest → load starter plan → create+activate a 2-week
+	// block → reload → assert activeBlock persisted → edit + assign today's
+	// weekday to Push Day → reload → Plan/Home show block schedule → start
+	// scheduled workout and assert frozen block context → discard → pause/
+	// resume/end → invalid save and cancel preserve prior state → 375px
+	// responsive check. Every assertion reads the persisted `gym_state_v1`
+	// shape, never a toast — toasts are not proof of success (design #908).
+	const readState = async () => {
+		const out = await runStep('read gym_state_v1', ['--raw', 'eval', "JSON.parse(localStorage.getItem('gym_state_v1') || 'null')"], signal)
+		try { return JSON.parse(out.stdout.trim()) }
+		catch { throw new Error('readState: invalid JSON in gym_state_v1' + details(out)) }
+	}
+	// The Plan card title switches between "Training blocks" (no active) and the
+	// active block name (after activation). The regex covers both so the helper
+	// stays valid through every lifecycle transition.
+	const openBlockManagerFromPlan = async () => {
+		await runStep('navigate to plan', ['goto', `${baseUrl}/#/plan`], signal)
+		await runStep('open block manager card', ['click', "getByText(/^(Training blocks|Smoke W|Bloques de entrenamiento)$/)"], signal)
+	}
+
+	// ----- 3.1 reset cookies/storage and prove a clean start -----
+	await runStep('navigate to home before reset', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('clear cookies', ['cookie-clear'], signal)
+	await runStep('clear localStorage', ['localstorage-clear'], signal)
+	// Force the English locale for deterministic assertions. The block-lifecycle smoke relies on
+	// exact text matches against "Active", "Discard" (aria-label), "Save", "Update", "Pause",
+	// "Resume", "End block" and the validation card; their Spanish variants are correct in the
+	// app but switching on every test machine makes the journey brittle. The previous locale
+	// was wiped by `localstorage-clear`; the reload below reads gym_lang_v1 = 'en' and binds
+	// the i18n module to English.
+	await runStep('force English locale (deterministic i18n)', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
+	await runStep('clear sessionStorage', ['sessionstorage-clear'], signal)
+	await runStep('reload after reset', ['reload'], signal)
+	const cleanOut = await runStep('inspect gym_state_v1 after reset', ['--raw', 'eval',
+		"(() => { const raw = localStorage.getItem('gym_state_v1'); if (!raw) return { empty: true }; const s = JSON.parse(raw); return { empty: false, blocks: s.blocks, activeBlock: s.activeBlock } })()"
+	], signal)
+	const cleanParsed = JSON.parse(cleanOut.stdout.trim())
+	if (!cleanParsed.empty && (!Array.isArray(cleanParsed.blocks) || cleanParsed.blocks.length !== 0 || cleanParsed.activeBlock !== null))
+		throw new Error(`reset: gym_state_v1 should be empty or {blocks:[],activeBlock:null}; got ${JSON.stringify(cleanParsed)}`)
+	await runStep('guest entry after reset', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
+	await runStep('load starter plan after reset', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+
+	// ----- 3.2 create a 2-week block, activate, reload, assert persisted -----
+	await runStep('open plan for block create', ['goto', `${baseUrl}/#/plan`], signal)
+	await runStep('open block manager (no active yet)', ['click', "getByText(/^(Training blocks|Bloques de entrenamiento)$/)"], signal)
+	await runStep('tap Add block', ['click', "getByRole('button', { name: /Add block|Añadir bloque/ })"], signal)
+	await runStep('fill block name', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Smoke W'], signal)
+	await runStep('add a second week (multi-week)', ['click', "getByRole('button', { name: /Add week|Añadir semana/ })"], signal)
+	await runStep('Save and activate block', ['click', "getByRole('button', { name: /Save & activate|Guardar y activar/ })"], signal)
+	await runStep('confirm activate', ['click', "getByRole('button', { name: /^Activate$|^Activar$/ })"], signal)
+	await runStep('reload after activate', ['reload'], signal)
+	const afterActivate = await readState()
+	if (!afterActivate.activeBlock) throw new Error('activate: gym_state_v1.activeBlock is null after reload (lifecycle helper return-value was discarded by update)')
+	if (afterActivate.activeBlock.status !== 'active') throw new Error(`activate: status should be 'active', got '${afterActivate.activeBlock.status}'`)
+	if (afterActivate.activeBlock.blockId !== afterActivate.blocks[0].id) throw new Error(`activate: activeBlock.blockId (${afterActivate.activeBlock.blockId}) ≠ blocks[0].id (${afterActivate.blocks[0].id})`)
+
+	// ----- 3.3 edit (assign today's weekday to Push Day) + reload + Plan/Home show block -----
+	const weekdayOut = await runStep('read today weekday', ['--raw', 'eval', 'new Date().getDay()'], signal)
+	const weekday = parseInt(weekdayOut.stdout.trim())
+	const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+	await openBlockManagerFromPlan()
+	await runStep('open Smoke W for edit', ['click', ".list .item:has-text('Smoke W')"], signal)
+	await runStep(`open ${dayNamesEn[weekday]} day assign`, ['click', `#modal-root .list .item:has-text('${dayNamesEn[weekday]}')`], signal)
+	await runStep('assign Push Day to today', ['click', "#modal-root .list .item:has-text('Push Day')"], signal)
+	await runStep('Update block', ['click', "getByRole('button', { name: /^Update$|^Actualizar$/ })"], signal)
+	await runStep('reload after edit', ['reload'], signal)
+	const afterEdit = await readState()
+	const blockDays = afterEdit.blocks[0].weeks[0].days
+	if (!Object.values(blockDays).some(d => d && d !== 'rest'))
+		throw new Error(`edit: block has no routine assigned in week 1; days=${JSON.stringify(blockDays)}`)
+	const planBanner = await runStep('plan banner shows block', ['--raw', 'eval', "({ text: document.body.innerText })"], signal)
+	const planText = JSON.parse(planBanner.stdout.trim()).text
+	if (!/Smoke W/.test(planText) || !/Active/.test(planText))
+		throw new Error(`plan banner: 'Smoke W' or 'Active' missing; got "${planText.slice(0, 200)}"`)
+	await runStep('navigate to home', ['goto', `${baseUrl}/#/home`], signal)
+	const homeBanner = await runStep('home banner shows block', ['--raw', 'eval', "({ text: document.body.innerText })"], signal)
+	const homeText = JSON.parse(homeBanner.stdout.trim()).text
+	if (!/Smoke W/.test(homeText)) throw new Error(`home banner: 'Smoke W' missing; got "${homeText.slice(0, 200)}"`)
+
+	// ----- 3.4 start scheduled workout and assert frozen block context -----
+	await runStep('open workout chooser', ['goto', `${baseUrl}/#/workout`], signal)
+	await runStep('start today plan workout', ['click', "getByRole('button', { name: /^Start Push Day$|^Empezar Push Day$/ })"], signal)
+	await runStep('skip weigh-in', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
+	const afterStart = await readState()
+	if (!afterStart.active || !afterStart.active.block) throw new Error('workout: S.active.block is missing — block context was not frozen at workout start')
+	if (afterStart.active.block.name !== 'Smoke W') throw new Error(`workout: S.active.block.name should be 'Smoke W', got '${afterStart.active.block.name}'`)
+	if (afterStart.active.block.week !== 1) throw new Error(`workout: S.active.block.week should be 1, got ${afterStart.active.block.week}`)
+	// Discard the active workout so the lifecycle actions can run cleanly. Two clicks:
+	// first the X iconbtn (aria-label=Discard), then the confirm-sheet button (text=Discard).
+	await runStep('discard active workout', ['run-code', [
+		"async page => {",
+		"  await page.getByRole('button', { name: 'Discard', exact: true }).first().click();",
+		"  await page.getByRole('button', { name: 'Discard', exact: true }).last().click();",
+		"  return 'discarded';",
+		"}"
+	].join('\n')], signal)
+
+	// ----- 3.5 pause, reload, assert status === 'paused' and pausedOn set -----
+	await openBlockManagerFromPlan()
+	await runStep('tap Pause button', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ })"], signal)
+	await runStep('confirm Pause', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ }).last()"], signal)
+	await runStep('reload after pause', ['reload'], signal)
+	const afterPause = await readState()
+	if (!afterPause.activeBlock || afterPause.activeBlock.status !== 'paused') throw new Error(`pause: status should be 'paused', got '${afterPause.activeBlock && afterPause.activeBlock.status}'`)
+	if (!afterPause.activeBlock.pausedOn) throw new Error(`pause: pausedOn should be set, got '${afterPause.activeBlock.pausedOn}'`)
+
+	// ----- 3.6 resume, reload, assert status === 'active' and pausedRanges closed -----
+	await openBlockManagerFromPlan()
+	await runStep('tap Resume button', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ })"], signal)
+	await runStep('confirm Resume', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ }).last()"], signal)
+	await runStep('reload after resume', ['reload'], signal)
+	const afterResume = await readState()
+	if (!afterResume.activeBlock || afterResume.activeBlock.status !== 'active') throw new Error(`resume: status should be 'active', got '${afterResume.activeBlock && afterResume.activeBlock.status}'`)
+	if (!Array.isArray(afterResume.activeBlock.pausedRanges) || afterResume.activeBlock.pausedRanges.length !== 1) throw new Error(`resume: pausedRanges should have 1 closed entry, got ${JSON.stringify(afterResume.activeBlock.pausedRanges)}`)
+
+	// ----- 3.7 end, reload, assert activeBlock === null and legacy resolution restored -----
+	await openBlockManagerFromPlan()
+	await runStep('tap End block button', ['click', "getByRole('button', { name: /End block|Finalizar bloque/ })"], signal)
+	await runStep('confirm End block', ['click', "getByRole('button', { name: /End block|Finalizar bloque/ }).last()"], signal)
+	await runStep('reload after end', ['reload'], signal)
+	const afterEnd = await readState()
+	if (afterEnd.activeBlock !== null) throw new Error(`end: activeBlock should be null, got ${JSON.stringify(afterEnd.activeBlock)}`)
+	const legacyOut = await runStep('assert legacy resolution restored', ['--raw', 'eval',
+		"(() => { const S = JSON.parse(localStorage.getItem('gym_state_v1')||'null'); const wd = Object.keys(S.week || {}).find(d => S.week[d]); const r = wd && S.routines.find(r => r.id === S.week[wd]); return { weekday: wd ? Number(wd) : null, weekId: wd ? S.week[wd] : null, routineName: r ? r.name : null } })()"
+	], signal)
+	const legacy = JSON.parse(legacyOut.stdout.trim())
+	if (!legacy.weekId) throw new Error(`legacy resolution: a scheduled legacy weekday should resolve via S.week, got ${JSON.stringify(legacy)}`)
+
+	// ----- 3.8 invalid save preserves prior state (blank name) -----
+	const baselineBlocks = afterEnd.blocks.length
+	await openBlockManagerFromPlan()
+	await runStep('Add block for invalid save', ['click', "getByRole('button', { name: /Add block|Añadir bloque/ })"], signal)
+	// Save & activate is hidden when v.valid is false (design: error stays hidden until
+	// user taps Save once). Use Save (the always-visible button) to trigger validation.
+	await runStep('Save with blank name (invalid)', ['click', "getByRole('button', { name: /^Save$|^Guardar$/ })"], signal)
+	const invalidOut = await runStep('assert validation errors shown', ['--raw', 'eval',
+		"({ hasErrorCard: /Fix these to save|Corrige estos errores para guardar/.test(document.body.innerText), hash: location.hash })"
+	], signal)
+	const invalidState = JSON.parse(invalidOut.stdout.trim())
+	if (!invalidState.hasErrorCard) throw new Error('invalid save: validation error card did not appear; the editor accepted blank input')
+	await runStep('Cancel invalid editor', ['click', "getByRole('button', { name: /^Cancel$|^Cancelar$/ })"], signal)
+	await runStep('reload after invalid save', ['reload'], signal)
+	const afterInvalid = await readState()
+	if (afterInvalid.blocks.length !== baselineBlocks) throw new Error(`invalid save: blocks count changed from ${baselineBlocks} to ${afterInvalid.blocks.length} (partial persistence)`)
+
+	// ----- 3.9 cancel preserves prior state -----
+	await openBlockManagerFromPlan()
+	await runStep('open Smoke W for cancel test', ['click', ".list .item:has-text('Smoke W')"], signal)
+	await runStep('fill new name (will cancel)', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Modified Smoke W'], signal)
+	await runStep('cancel the edit', ['click', "getByRole('button', { name: /^Cancel$|^Cancelar$/ })"], signal)
+	await runStep('reload after cancel', ['reload'], signal)
+	const afterCancel = await readState()
+	if (afterCancel.blocks[0].name !== 'Smoke W') throw new Error(`cancel: blocks[0].name should remain 'Smoke W', got '${afterCancel.blocks[0].name}'`)
+
+	// ----- 3.10 375x812 no overflow + lifecycle controls visible -----
+	await openBlockManagerFromPlan()
+	await runStep('reopen Smoke W to re-activate', ['click', ".list .item:has-text('Smoke W')"], signal)
+	await runStep('Save and re-activate', ['click', "getByRole('button', { name: /Save & activate|Guardar y activar/ })"], signal)
+	await runStep('confirm re-activate', ['click', "getByRole('button', { name: /^Activate$|^Activar$/ })"], signal)
+	await runStep('resize to mobile 375x812', ['resize', '375', '812'], signal)
+	const dimsOut = await runStep('assert 375 viewport + no overflow', ['--raw', 'eval',
+		'({ innerWidth: window.innerWidth, innerHeight: window.innerHeight, scrollWidth: document.documentElement.scrollWidth })'
+	], signal)
+	const dims = JSON.parse(dimsOut.stdout.trim())
+	if (dims.innerWidth !== 375) throw new Error(`375: innerWidth should be 375, got ${dims.innerWidth}`)
+	if (dims.innerHeight !== 812) throw new Error(`375: innerHeight should be 812, got ${dims.innerHeight}`)
+	if (dims.scrollWidth > dims.innerWidth) throw new Error(`375: horizontal overflow: scrollWidth=${dims.scrollWidth} > innerWidth=${dims.innerWidth}`)
+	await openBlockManagerFromPlan()
+	const mobileOut = await runStep('assert lifecycle controls visible at 375', ['--raw', 'eval',
+		"({ hasPause: /Pause|Pausar/.test(document.body.innerText), hasEnd: /End block|Finalizar bloque/.test(document.body.innerText), scrollWidth: document.body.scrollWidth, innerWidth: window.innerWidth })"
+	], signal)
+	const mobile = JSON.parse(mobileOut.stdout.trim())
+	if (!mobile.hasEnd) throw new Error('375: End block control is not visible in the block manager')
+	if (mobile.scrollWidth > mobile.innerWidth) throw new Error(`375: body overflow in manager sheet: scrollWidth=${mobile.scrollWidth} > innerWidth=${mobile.innerWidth}`)
+
+	console.log('Playwright smoke passed: picker dismissal (desktop routine-editor, mobile workout 375px, keyboard/focus, backdrop, CDP touch swipe) + block lifecycle (3.1 reset, 3.2-3.7 activate/edit/pause/resume/end persisted across reload, 3.3 Plan/Home show block, 3.4 workout freezes block context, 3.8 invalid save preserves state, 3.9 cancel preserves state, 3.10 375px no overflow + lifecycle controls visible).')
 }
 
 const smokeController = new AbortController()
