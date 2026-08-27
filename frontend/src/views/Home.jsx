@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW, setsDoneActive, blockStatus } from '../lib/history.js'
+import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW, setsDoneActive, blockStatus, blockWeekTrainingDays } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.js'
 import { t, dateLocale } from '../lib/i18n.js'
 import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, loadStarterPlan, bwDeltaColor, blockManagerSheet } from '../sheets.jsx'
@@ -39,7 +39,15 @@ export default function Home() {
   const wkLabel = weekOffset === 0 ? t('This week') : `${monday.getDate()} ${monday.toLocaleDateString(dateLocale(), { month: 'short' })} – ${sunday.getDate()} ${sunday.toLocaleDateString(dateLocale(), { month: 'short' })}`
 
   const wThisWeek = S.workouts.filter(w => weekKey(w.d) === weekKey(todayISO())).length
-  const plannedPerWeek = Object.keys(S.week).filter(k => S.week[k]).length
+  // Weekly denominator: count of training days the user planned for the current local-calendar
+  // week. When a block is active, this is the count of non-rest days in the block's resolved
+  // current week (so a 4-routine block shows "X / 4"); when no block is active, fall back to
+  // the legacy `S.week` map (the number of weekdays with a routine assigned).
+  const plannedPerWeek = (() => {
+    const fromBlock = blockWeekTrainingDays(S, todayISO())
+    if (fromBlock != null) return fromBlock
+    return Object.keys(S.week).filter(k => S.week[k]).length
+  })()
   const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
 
   // today's session shown right under the week strip
