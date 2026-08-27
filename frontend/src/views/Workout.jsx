@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -14,6 +14,11 @@ import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { glyphOf } from '../lib/glyphs.js'
+
+// Long-press threshold in milliseconds. Long enough to be a deliberate gesture, short
+// enough to feel snappy. The handler is reset on any pointer move, so scrolling through
+// the row never accidentally opens a target.
+const LONG_PRESS_MS = 500
 
 /* ---------- start chooser (no active workout) ---------- */
 function StartChooser() {
@@ -91,6 +96,13 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   const kind = effortOf(S)
   const eff = EFFORT[kind]
   const col3 = mode === 'reps' && eff ? { ...eff, eff: kind, dec: true, opt: true, hd: t(eff.hd) } : null
+  // Programmed-effort targets ride alongside the actual `rir`/`rpe` stepper. They are only
+  // shown on the row when the saved metric matches the active profile — a routine planned
+  // on RIR renders no target here the moment Settings flips to RPE, with no conversion.
+  const showTargetBtn = mode === 'reps' && !!eff
+  const setTarget = s => showTargetBtn && s && s.plannedEffort && s.plannedEffort.metric === kind
+    ? s.plannedEffort
+    : null
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
@@ -108,6 +120,25 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       <button aria-label="Increase" onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   )
+  // Disclosure: which set rows have their immutable planned target revealed. A new Set on
+  // every change so React notices — disclosure is local UI state, never persisted.
+  const [disclosed, setDisclosed] = useState(() => new Set())
+  const toggleDisclosed = i => setDisclosed(s => {
+    const ns = new Set(s)
+    if (ns.has(i)) ns.delete(i); else ns.add(i)
+    return ns
+  })
+  // Long-press on the row also reveals the target (spec: "info button or long-press"). The
+  // timer is cancelled on any pointer move or release so a quick tap never opens a target,
+  // and a swipe through the row never opens one either.
+  const lpTimer = useRef(null)
+  const startLongPress = i => {
+    cancelLongPress()
+    lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
+  }
+  const cancelLongPress = () => {
+    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null }
+  }
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
     <div className="row between" style={{ marginBottom: 6 }}>
@@ -131,17 +162,47 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className={'sethead' + (col3 ? ' eff3' : '')}><span className="n-sp" /><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
-      {entry.sets.map((s, i) => <div key={i} className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}>
-        <div className="n">{i + 1}</div>
-        {cell(s, i, col1, 'w')}
-        {col2 && cell(s, i, col2, 'r')}
-        {col3 && cell(s, i, col3, 'eff')}
-        {/* A timed set is started, not typed: the timer counts the hold down and checks the
-            set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-        {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
-          onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
-        <Check checked={s.done} onChange={() => onToggle(i)} />
-      </div>)}
+      {entry.sets.map((s, i) => {
+        const target = setTarget(s)
+        const isOpen = disclosed.has(i)
+        return <Fragment key={i}>
+          <div className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}
+            onPointerDown={e => {
+              // The target info gesture is "info button OR long-press". A long-press on a
+              // stepper would fight with the stepper's own tap, so the row's long-press
+              // only fires when the touch starts on a non-interactive area.
+              if (e.target.closest('button, input')) return
+              startLongPress(i)
+            }}
+            onPointerUp={cancelLongPress}
+            onPointerCancel={cancelLongPress}
+            onPointerLeave={cancelLongPress}>
+            <div className="n">{i + 1}</div>
+            {cell(s, i, col1, 'w')}
+            {col2 && cell(s, i, col2, 'r')}
+            {col3 && cell(s, i, col3, 'eff')}
+            {/* A timed set is started, not typed: the timer counts the hold down and checks the
+                set off itself. The checkbox stays for anyone who timed it on their own watch. */}
+            {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
+              onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
+            {/* Per-set info button: only when this set actually has a compatible target.
+                The disclosure toggles on tap; on a row with no target the button is not
+                rendered at all, so the column never says "no information" for nothing. */}
+            {target && <button className={'iconbtn setinfo' + (isOpen ? ' on' : '')}
+              aria-label={isOpen ? t('Hide programmed target') : t('Show programmed target')}
+              aria-expanded={isOpen}
+              onClick={e => { e.stopPropagation(); toggleDisclosed(i) }}>
+              <Icon name={isOpen ? 'chevronUp' : 'info'} />
+            </button>}
+            <Check checked={s.done} onChange={() => onToggle(i)} />
+          </div>
+          {isOpen && target && <div className="setrow-info" role="region" aria-label={t('Programmed target')}>
+            <span className="lbl">{t('Target')}</span>
+            <span className="val">{fmtNum(target.value)} {EFFORT[target.metric].hd}</span>
+            <span className="dim small">· {t('read-only')}</span>
+          </div>}
+        </Fragment>
+      })}
       <div style={{ height: 8 }} />
       <div className="row">
         <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>{t('Remove set')}</Button>

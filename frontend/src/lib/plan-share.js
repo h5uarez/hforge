@@ -45,6 +45,16 @@ function cleanEx(e) {
   if (e.repsMin != null) o.repsMin = e.repsMin
   if (e.repsMax != null) o.repsMax = e.repsMax
   if (e.sg) o.sg = e.sg
+  // Per-set metric-tagged effort targets (issue: programmed-rpe-rir). Optional:
+  // present on routines the lifter has explicitly edited for programmed effort.
+  // One slot per set, length = cfg.sets. Carrying the array verbatim is what
+  // makes the round-trip work — `mergePlan` preserves it through its id-remap
+  // spread. Empty / missing arrays are NOT written: a routine without targets
+  // must look byte-for-byte the same on the wire as it did before this field
+  // existed, so legacy plans and imports stay valid.
+  if (Array.isArray(e.programmedEffort) && e.programmedEffort.length > 0) {
+    o.programmedEffort = e.programmedEffort
+  }
   return o
 }
 

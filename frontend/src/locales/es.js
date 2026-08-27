@@ -613,4 +613,14 @@ export default {
   'week {0} has no day map': 'La semana {0} no tiene un mapa de días',
   'week {0} day {1} is empty': 'El día {1} de la semana {0} está vacío',
   'week {0} day {1} references an unknown routine': 'El día {1} de la semana {0} hace referencia a una rutina desconocida',
+  // --- programmed effort target (per set) ---
+  'Programmed target': 'Objetivo programado',
+  'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'Opcional. El objetivo se muestra de solo lectura durante el entrenamiento; registra el esfuerzo real por separado.',
+  'Set {0}': 'Serie {0}',
+  'Show programmed target': 'Mostrar objetivo programado',
+  'Hide programmed target': 'Ocultar objetivo programado',
+  'Target': 'Objetivo',
+  'read-only': 'solo lectura',
+  'Programmed targets per set': 'Objetivos programados por serie',
+  'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'Define objetivos de RIR/RPE en cada serie de la rutina; se muestran al entrenar.',
 }
