@@ -138,6 +138,15 @@ export default function Settings() {
           options={[{ value: 'none', label: t('Off') }, { value: 'rir', label: t('RIR') }, { value: 'rpe', label: t('RPE') }]}
           value={effortOf(S)} onChange={v => update(s => { s.effort = v; delete s.showRir })} />
       </Row>
+      {/* Opt-in gate for per-set programmed targets in the routine editor. Off by default so
+          lifters who do not program effort never see the target column appear on every set.
+          The toggle is independent of the effort column — turning the column off does not
+          erase saved targets; turning it on again reveals the same field. */}
+      <Row icon="flag" iconTint="var(--teal)" title={t('Programmed targets per set')}
+        subtitle={t('Set RIR/RPE targets on each routine set; reveal them during the workout.')}>
+        <Switch checked={!!S.programmedEffort}
+          onChange={v => update(s => { s.programmedEffort = !!v })} />
+      </Row>
     </Section>
 
     {(user || MOBILE) && <NotificationsCard S={S} update={update} toast={toast} />}

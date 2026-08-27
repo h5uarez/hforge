@@ -138,6 +138,99 @@ export function cleanupSg(ex) {
   })
 }
 
+/* ============================================================
+   Programmed effort — Phase 1 foundation (issue: programmed-rpe-rir)
+   ------------------------------------------------------------
+   Optional per-set metric-tagged RIR/RPE targets live on a routine
+   entry as `programmedEffort: [{ metric, value } | null]` (one slot
+   per set, length = cfg.sets). A target is only meaningful when its
+   `metric` matches the Settings effort mode; mismatched targets are
+   hidden until the routine is explicitly re-edited, never silently
+   converted. These helpers are pure so sheets.jsx and history.jsx
+   can share the same validation, normalization, and resolution.
+   ============================================================ */
+
+// Sentinel values returned by `validateProgrammedTargets`:
+//   undefined — the routine carries no `programmedEffort` field at all
+//               (legacy routine, plan, import, or workout — keeps working).
+//   null      — the field exists but no non-null entry matches `metric`.
+//               The caller MUST hide every target and not invent one.
+//   Array     — every non-null entry matches `metric`; same reference
+//               when the input was already valid, so routine editors can
+//               keep using the array as-is.
+export function validateProgrammedTargets(targets, metric) {
+  if (targets == null) return undefined
+  if (!Array.isArray(targets)) return null
+  if (targets.length === 0) return targets
+  // EFFORT keys are 'rir' and 'rpe'. A 'none' profile never seeds a target,
+  // so any non-null entry is a mismatch by definition.
+  const validMetric = EFFORT[metric] ? metric : null
+  for (const t of targets) {
+    if (t == null) continue
+    if (!t || typeof t.metric !== 'string' || t.metric !== validMetric) return null
+  }
+  return targets
+}
+
+// Bring a saved targets array into line with the current set count.
+//   - Empty / missing input → empty array (no growth happens; absence
+//     is "no targets configured", distinct from "set count grew").
+//   - Array longer than setCount → truncate (routine shrunk).
+//   - Array shorter than setCount → extend with the last REAL (non-null)
+//     target so a routine grown past the saved slots keeps its
+//     prescription; falling back to null if there is no real target.
+//   - Always returns a fresh array so callers can mutate safely.
+export function normalizeTargets(targets, setCount) {
+  const a = Array.isArray(targets) ? targets : null
+  if (a === null || a.length === 0) return []
+  const n = setCount > 0 ? (setCount | 0) : 0
+  if (n === 0) return []
+  if (a.length === n) return a.slice()
+  if (a.length > n) return a.slice(0, n)
+  // a.length < n: extend with the last non-null target, or null.
+  let last = null
+  for (let i = a.length - 1; i >= 0; i--) {
+    if (a[i] != null) { last = a[i]; break }
+  }
+  const out = a.slice()
+  while (out.length < n) out.push(last)
+  return out
+}
+
+// Look up the latest completed set for `exId` whose workout belonged to
+// the same `blockId`. Returns the same { d, sets, target } shape as
+// `lastEntryFor` so a future call site can swap one helper for the
+// other without restructuring. Cross-block sessions are ignored — a
+// load from a different block would silently cross schedule boundaries.
+// Phase 2 will wire this into `buildSets`; Phase 1 only proves the helper.
+export function sameBlockWeight(S, exId, blockId) {
+  if (!S || !exId || !blockId) return null
+  const workouts = S.workouts || []
+  for (let i = workouts.length - 1; i >= 0; i--) {
+    const w = workouts[i]
+    if (!w || !w.block || w.block.id !== blockId) continue
+    const en = (w.entries || []).find(e => e && e.id === exId)
+    if (en && (en.sets || []).some(s => s && s.done)) {
+      return { d: w.d, sets: en.sets.filter(s => s && s.done), target: en.target || null }
+    }
+  }
+  return null
+}
+
+// Resolve the planned-effort target for the set at `idx` on `cfg`,
+// given the current Settings `metric`. Returns `{ metric, value }` or
+// `undefined`. Pure: no mutation of cfg. Extracted from `buildSets`
+// in Phase 1 task 1.9 so sheets.jsx can resolve the same target the
+// workout started with when a user adds a fresh set mid-session.
+export function resolveTarget(cfg, idx, metric) {
+  if (!cfg || !Array.isArray(cfg.programmedEffort)) return undefined
+  const validated = validateProgrammedTargets(cfg.programmedEffort, metric)
+  if (!Array.isArray(validated)) return undefined
+  const n = Math.max(1, cfg.sets || 1)
+  const norm = normalizeTargets(validated, n)
+  return norm[idx] || undefined
+}
+
 export function lastEntryFor(S, exId) {
   for (let i = S.workouts.length - 1; i >= 0; i--) {
     const en = S.workouts[i].entries.find(e => e.id === exId)
@@ -199,7 +292,15 @@ export function effectiveRoutine(S, iso) {
   return id ? S.routines.find(r => r.id === id) || null : null
 }
 export function buildSets(S, cfg) {
-  const last = lastEntryFor(S, cfg.id)
+  // Block workout: source kilograms from the previous same-block session ONLY.
+  // Other-block history is never consulted — a load from a different block
+  // would cross schedule boundaries, and the spec is explicit: same-block OR
+  // blank, never the general history. Legacy / freestyle / no-block workouts
+  // keep using `lastEntryFor` unchanged.
+  const blockId = S && S.active && S.active.block && S.active.block.id
+  const last = blockId
+    ? sameBlockWeight(S, cfg.id, blockId)
+    : lastEntryFor(S, cfg.id)
   const n = Math.max(1, cfg.sets || 1)
   const mode = modeOf(cfg)
   const sets = []
@@ -219,16 +320,35 @@ export function buildSets(S, cfg) {
       // exercise from reps to time must not seed the duration from a rep count.
       const prev = prevAt(i)
       const carried = prev && prev.sec > 0 ? prev : null
-      sets.push({ sec: carried ? carried.sec : (cfg.sec || 45), w: carried ? (carried.w || 0) : (cfg.weight || 0), done: false })
+      // Block path: kilograms come from the same-block previous timed set or stay
+      // blank (0). Legacy path: fall back to cfg.weight when no prior carry.
+      const w = blockId
+        ? (carried ? (carried.w || 0) : 0)
+        : (carried ? (carried.w || 0) : (cfg.weight || 0))
+      sets.push({ sec: carried ? carried.sec : (cfg.sec || 45), w, done: false })
     }
     return sets
   }
   const conf = S.exWeights[cfg.id]
+  const metric = effortOf(S)
   for (let i = 0; i < n; i++) {
     const prev = prevAt(i)
     const usable = prev && prev.r > 0 ? prev : null
-    const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
-    sets.push({ w, r: usable ? usable.r : cfg.reps, done: false })
+    // Block path: same-block previous set's weight, or blank (0). Never cfg.weight,
+    // never another block's history. Legacy path: prefer the confirmed exWeights
+    // working weight, then previous, then the plan's weight.
+    const w = blockId
+      ? (usable ? usable.w : 0)
+      : (conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight))
+    const set = { w, r: usable ? usable.r : cfg.reps, done: false }
+    // Snapshot the programmed target onto each set at workout start. The
+    // snapshot rides alongside actual `rir`/`rpe` and is never edited by
+    // the logger; metric mismatch yields `undefined`, which omits the key
+    // entirely (legacy routines, plans, imports, and workouts stay valid
+    // because the field is absent rather than being silently converted).
+    const target = resolveTarget(cfg, i, metric)
+    if (target) set.plannedEffort = target
+    sets.push(set)
   }
   return sets
 }

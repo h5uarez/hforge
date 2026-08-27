@@ -291,6 +291,13 @@ async function runSmoke(signal) {
 	}
 
 	await runStep('open hforge', ['open', baseUrl], signal)
+	// A named Playwright session survives a failed run, so always start this journey from the
+	// same clean guest state instead of assuming the previous session was closed on the home page.
+	await runStep('clear cookies before smoke', ['cookie-clear'], signal)
+	await runStep('clear localStorage before smoke', ['localstorage-clear'], signal)
+	await runStep('force English locale before smoke', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
+	await runStep('clear sessionStorage before smoke', ['sessionstorage-clear'], signal)
+	await runStep('reload before smoke', ['reload'], signal)
 	await runStep('guest entry', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
 	await runStep('load starter plan', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
 
@@ -534,6 +541,14 @@ async function runSmoke(signal) {
 		try { return JSON.parse(out.stdout.trim()) }
 		catch { throw new Error('readState: invalid JSON in gym_state_v1' + details(out)) }
 	}
+	const parseEvalJson = (result, label) => {
+		try {
+			const value = JSON.parse(result.stdout.trim())
+			return typeof value === 'string' ? JSON.parse(value) : value
+		} catch {
+			throw new Error(`${label}: invalid JSON${details(result)}`)
+		}
+	}
 	// The Plan card title switches between "Training blocks" (no active) and the
 	// active block name (after activation). The regex covers both so the helper
 	// stays valid through every lifecycle transition.
@@ -697,7 +712,317 @@ async function runSmoke(signal) {
 	if (!mobile.hasEnd) throw new Error('375: End block control is not visible in the block manager')
 	if (mobile.scrollWidth > mobile.innerWidth) throw new Error(`375: body overflow in manager sheet: scrollWidth=${mobile.scrollWidth} > innerWidth=${mobile.innerWidth}`)
 
-	console.log('Playwright smoke passed: picker dismissal (desktop routine-editor, mobile workout 375px, keyboard/focus, backdrop, CDP touch swipe) + block lifecycle (3.1 reset, 3.2-3.7 activate/edit/pause/resume/end persisted across reload, 3.3 Plan/Home show block, 3.4 workout freezes block context, 3.8 invalid save preserves state, 3.9 cancel preserves state, 3.10 375px no overflow + lifecycle controls visible).')
+	// =========================================================================
+	// programmed-effort journey (issue: programmed-effort-ui-coverage, WU3)
+	// =========================================================================
+	//
+	// Covers the three scenarios the verify report flagged as untested:
+	//   P1 — distinct per-set RIR targets (set via the routine editor's UI
+	//        target steppers, persisted by Save) reveal as a read-only
+	//        disclosure in the workout, and the actual-effort stepper records
+	//        a separate value that does not mutate the planned target.
+	//   P2 — changing the profile metric (RIR → RPE) through Settings hides the
+	//        existing RIR targets without conversion; explicitly editing the
+	//        routine again in the new metric persists only current-metric
+	//        values, with no RIR slot left behind.
+	//   P3 — when the active metric mismatches the saved target, the disclosure
+	//        is not rendered (no .setinfo button) and the actual-effort stepper
+	//        is still editable and persists its value.
+	// Each scenario exercises the live UI for every behaviour change; state is
+	// only read (via --raw eval or readState) to verify outcomes. No feature
+	// state is seeded into gym_state_v1 — every persistent write goes through
+	// the actual user flow.
+	// ----- P0 reset state, set English locale, reload, re-enter guest + plan -----
+	await runStep('navigate to home before programmed-effort reset', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('clear cookies (programmed effort reset)', ['cookie-clear'], signal)
+	await runStep('clear localStorage (programmed effort reset)', ['localstorage-clear'], signal)
+	await runStep('force English locale (programmed effort)', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
+	await runStep('clear sessionStorage (programmed effort)', ['sessionstorage-clear'], signal)
+	await runStep('reload after programmed-effort reset', ['reload'], signal)
+	await runStep('guest entry (programmed effort)', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
+	await runStep('load starter plan (programmed effort)', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+
+	// ----- P1 scenario: enable programmedEffort, set per-set RIR targets, start workout, reveal target, record actual -----
+	// Configure the metric and the opt-in toggle through the Settings UI. The RIR pill is a
+	// button in the "Effort per set" Segmented; the programmedEffort toggle is a Switch inside
+	// the row titled "Programmed targets per set". Both clicks must result in persisted state.
+	await runStep('open settings (programmed effort)', ['goto', `${baseUrl}/#/settings`], signal)
+	await runStep('select RIR metric', ['click', "getByRole('button', { name: 'RIR', exact: true })"], signal)
+	// Locate the Switch by scoping to the row whose title text is "Programmed targets per set";
+	// the Switch has no accessible name of its own, so role+name queries miss it.
+	await runStep('enable programmedEffort toggle', ['run-code', [
+		"async page => {",
+		"  const row = page.locator('.lrow').filter({ hasText: /Programmed targets per set|Objetivos programados por serie/ });",
+		"  const sw = row.locator('[role=\"switch\"]').first();",
+		"  await sw.click();",
+		"  return 'toggled';",
+		"}"
+	].join('\n')], signal)
+	const effort0 = await runStep('assert metric + toggle persisted', ['--raw', 'eval',
+		"JSON.stringify({ effort: (JSON.parse(localStorage.getItem('gym_state_v1') || '{}')).effort, programmedEffort: (JSON.parse(localStorage.getItem('gym_state_v1') || '{}')).programmedEffort })"
+	], signal)
+	const effort0State = parseEvalJson(effort0, 'P1 Settings state')
+	if (effort0State.effort !== 'rir') throw new Error(`P1: Settings.effort should be 'rir' after clicking RIR; got ${JSON.stringify(effort0State)}`)
+	if (effort0State.programmedEffort !== true) throw new Error(`P1: Settings.programmedEffort should be true after toggling; got ${JSON.stringify(effort0State)}`)
+
+	// Open the Push Day routine editor and tap the first exercise (bench press, catalog id
+	// 0025) to open ExConfig.
+	await runStep('navigate to plan (P1)', ['goto', `${baseUrl}/#/plan`], signal)
+	await runStep('open Push Day routine (P1)', ['click', "getByText('Push Day', { exact: true }).last()"], signal)
+	// Bench press is the first exercise in the starter Push Day; clicking the first list
+	// item in the routine editor opens its ExConfig sheet.
+	await runStep('open bench-press in ExConfig (P1)', ['run-code', [
+		"async page => {",
+		"  await page.locator('.list .item').first().click();",
+		"  return 'opened';",
+		"}"
+	].join('\n')], signal)
+	// Inside ExConfig the per-set TargetStepper row renders one .stp per set; each .stp has a
+	// Decrease button, a NumberField input with class `num`, and an Increase button. Set
+	// distinct RIR values for sets 1 and 2 via the input so the test does not depend on
+	// stepEffort's click-count behaviour. Inputs use the existing NumberField commit path,
+	// which calls capEffort(kind, v) and writes through the same onChange ExConfig uses.
+	const setBenchTargetsP1 = await runStep('set per-set RIR targets on bench (P1)', ['run-code', [
+		"async page => {",
+		"  const heading = page.getByRole('heading', { name: /Programmed target|Objetivo programado/ }).first();",
+		"  const steppers = heading.locator('xpath=following-sibling::div[2]').locator('.stp');",
+		"  const count = await steppers.count();",
+		"  if (count < 2) throw new Error('P1: expected at least 2 target steppers in ExConfig, found ' + count);",
+		"  // Set 1 → RIR 2",
+		"  const in0 = steppers.nth(0).locator('input.num');",
+		"  await in0.click();",
+		"  await in0.fill('2');",
+		"  await in0.press('Tab');",
+		"  // Set 2 → RIR 1",
+		"  const in1 = steppers.nth(1).locator('input.num');",
+		"  await in1.click();",
+		"  await in1.fill('1');",
+		"  await in1.press('Tab');",
+		"  return 'targets-set';",
+		"}"
+	].join('\n')], signal)
+	if (!/targets-set/.test(setBenchTargetsP1.stdout)) throw new Error(`P1: setting per-set RIR targets failed${details(setBenchTargetsP1)}`)
+	// Save closes the ExConfig sheet and persists the routine entry; the Save button label is
+	// translated, so the regex covers both languages.
+	await runStep('save bench-press ExConfig (P1)', ['click', "getByRole('button', { name: /^Save$|^Guardar$/ })"], signal)
+	// Read the routine to confirm the targets survived validation+normalization and landed on
+	// the routine entry as the source of truth for buildSets.
+	const routineP1 = await readState()
+	const benchP1 = routineP1.routines.find(r => r.name === 'Push Day').ex.find(e => e.id === '0025')
+	if (!Array.isArray(benchP1.programmedEffort) || benchP1.programmedEffort.length < 2)
+		throw new Error(`P1: bench.programmedEffort should be saved with distinct per-set targets; got ${JSON.stringify(benchP1.programmedEffort)}`)
+	if (benchP1.programmedEffort[0] == null || benchP1.programmedEffort[0].metric !== 'rir' || benchP1.programmedEffort[0].value !== 2)
+		throw new Error(`P1: set 1 target should be {metric:'rir',value:2}; got ${JSON.stringify(benchP1.programmedEffort[0])}`)
+	if (benchP1.programmedEffort[1] == null || benchP1.programmedEffort[1].metric !== 'rir' || benchP1.programmedEffort[1].value !== 1)
+		throw new Error(`P1: set 2 target should be {metric:'rir',value:1}; got ${JSON.stringify(benchP1.programmedEffort[1])}`)
+	// Sets 3 and 4 may stay null (no target configured) or be filled with the last real target
+	// by normalizeTargets; either way, no RIR slot may drift to the wrong metric.
+	if (benchP1.programmedEffort.some(s => s != null && s.metric !== 'rir'))
+		throw new Error(`P1: every saved target should keep metric 'rir'; got ${JSON.stringify(benchP1.programmedEffort)}`)
+
+	// Today (Thursday) is not Push Day's scheduled weekday in the starter plan, so Push Day
+	// appears under "Other routines" with a click handler that calls startFlow. Clicking the
+	// item div exercises the same chooser path the "Start Push Day" button uses on Mondays.
+	await runStep('open workout chooser (P1)', ['goto', `${baseUrl}/#/workout`], signal)
+	await runStep('start Push Day from chooser (P1)', ['click', ".list .item:has-text('Push Day')"], signal)
+	await runStep('skip weigh-in (P1)', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
+
+	// Read-only probe: confirm buildSets snapshotted the matching plannedEffort onto the
+	// active workout sets. buildSets runs at beginWorkout — the same code path the user
+	// hits — so this assertion exercises real feature behaviour, not seeded state.
+	const probeBenchInWorkout = await runStep('probe bench entry after workout start (P1)', ['--raw', 'eval',
+		"(() => { const s = JSON.parse(localStorage.getItem('gym_state_v1') || '{}'); const bench = s.active && s.active.entries && s.active.entries.find(e => e.id === '0025'); return { effort: s.effort, benchSets: bench && bench.sets && bench.sets.map(s => ({ plannedEffort: s.plannedEffort, w: s.w, r: s.r })) }; })()"
+	], signal)
+	console.log('bench entry after start P1:', probeBenchInWorkout.stdout.trim())
+	const afterStartP1 = await readState()
+	const benchEntry = afterStartP1.active && afterStartP1.active.entries.find(e => e.id === '0025')
+	if (!benchEntry || !benchEntry.sets || benchEntry.sets.length < 2) throw new Error('P1: bench-press entry not present in active workout sets')
+	if (!benchEntry.sets[0].plannedEffort || benchEntry.sets[0].plannedEffort.metric !== 'rir' || benchEntry.sets[0].plannedEffort.value !== 2)
+		throw new Error(`P1: workout set 0 should snapshot a RIR=2 plannedEffort from buildSets; got ${JSON.stringify(benchEntry.sets[0].plannedEffort)}`)
+	if (!benchEntry.sets[1].plannedEffort || benchEntry.sets[1].plannedEffort.metric !== 'rir' || benchEntry.sets[1].plannedEffort.value !== 1)
+		throw new Error(`P1: workout set 1 should snapshot a RIR=1 plannedEffort from buildSets; got ${JSON.stringify(benchEntry.sets[1].plannedEffort)}`)
+
+	// Sanity probe before clicking the info button: the .setinfo buttons must exist for sets
+	// that carry a matching plannedEffort. The probe is read-only.
+	const beforeRevealP1 = await runStep('probe workout setrows + buttons (P1)', ['--raw', 'eval',
+		"(() => { const sets = [...document.querySelectorAll('.setrow')]; const infoBtns = [...document.querySelectorAll('.setinfo')]; const incBtns = [...document.querySelectorAll('button[aria-label=\"Increase\"]')]; const firstSetText = sets[0] ? sets[0].innerText.slice(0, 200) : ''; return { setrowCount: sets.length, infoButtonCount: infoBtns.length, incButtonCount: incBtns.length, firstSetText: firstSetText, exerciseH3s: [...document.querySelectorAll('h3')].map(h => h.textContent.trim()) }; })()"
+	], signal)
+	const beforeP1 = JSON.parse(beforeRevealP1.stdout.trim())
+	if (beforeP1.infoButtonCount < 1) throw new Error(`P1: at least one .setinfo button should render before reveal; got ${beforeP1.infoButtonCount}`)
+	console.log('before reveal P1:', beforeRevealP1.stdout.trim())
+	// The .setinfo button is role=button with aria-label "Show programmed target" when closed
+	// and "Hide programmed target" when open. Clicking the first one opens the disclosure.
+	await runStep('reveal programmed target on set 1', ['click', "getByRole('button', { name: /Show programmed target|Mostrar objetivo programado/ }).first()"], signal)
+	const afterRevealP1 = await runStep('assert programmed-target disclosure is read-only', [
+		'--raw', 'eval',
+		"(() => { const reg = document.querySelector('[role=region][aria-label=\"Programmed target\"]'); const dim = reg ? reg.querySelector('.dim') : null; return { hasRegion: !!reg, hasReadOnlyHint: !!(dim && /read-only|schreibgeschützt|solo lectura|lecture seule|只读|только|tолько чтение|salt okunur|odczytu/i.test(dim.textContent)), ariaExpanded: document.querySelector('.setinfo') && document.querySelector('.setinfo').getAttribute('aria-expanded') } })()"
+	], signal)
+	const revealP1 = JSON.parse(afterRevealP1.stdout.trim())
+	if (!revealP1.hasRegion) throw new Error(`P1: no [role=region][aria-label="Programmed target"] after reveal; got ${JSON.stringify(revealP1)}`)
+	if (!revealP1.hasReadOnlyHint) throw new Error(`P1: disclosure region has no read-only hint; got ${JSON.stringify(revealP1)}`)
+	if (revealP1.ariaExpanded !== 'true') throw new Error(`P1: aria-expanded should be 'true'; got ${revealP1.ariaExpanded}`)
+
+	// Record a separate actual RIR on set 1 via the actual-effort stepper. The actual-effort
+	// stepper is the right-most `.eff-sp` column on each row; its Increase button is the last
+	// aria-label="Increase" inside the row.
+	const recordActual = await runStep('record actual RIR on set 1 (P1)', ['run-code', [
+		"async page => {",
+		"  const sets = await page.locator('.setrow').all();",
+		"  if (sets.length < 1) throw new Error('P1: no .setrow found');",
+		"  const first = sets[0];",
+		"  const inc = first.getByRole('button', { name: 'Increase' }).last();",
+		"  await inc.click();",
+		"  return 'incremented';",
+		"}"
+	].join('\n')], signal)
+	if (!/incremented/.test(recordActual.stdout)) throw new Error(`P1: actual-effort increment did not report success${details(recordActual)}`)
+
+	const afterActualP1 = await readState()
+	const set0 = afterActualP1.active.entries.find(e => e.id === '0025').sets[0]
+	if (set0.plannedEffort.value !== 2 || set0.plannedEffort.metric !== 'rir') throw new Error(`P1: plannedEffort was mutated by actual-effort entry; got ${JSON.stringify(set0.plannedEffort)}`)
+	if (typeof set0.rir !== 'number' || set0.rir < 0 || set0.rir > 10) throw new Error(`P1: actual rir should be a number in RIR range; got ${JSON.stringify(set0.rir)}`)
+
+	// Discard the active workout so P2/P3 start clean. Same two-step pattern as the block
+	// lifecycle smoke: the icon button (aria-label=Discard) and the confirm-sheet button
+	// (text=Discard).
+	await runStep('discard active workout after P1', ['run-code', [
+		"async page => {",
+		"  await page.getByRole('button', { name: 'Discard', exact: true }).first().click();",
+		"  await page.getByRole('button', { name: 'Discard', exact: true }).last().click();",
+		"  return 'discarded';",
+		"}"
+	].join('\n')], signal)
+
+	// ----- P2 scenario: change profile metric RIR → RPE through Settings; old RIR targets hidden without conversion -----
+	// Settings UI flips the metric to RPE. With the metric now RPE, the bench routine entry
+	// (which still carries RIR targets from P1) is hidden by the no-conversion rule. Reopen
+	// the routine and explicitly edit the targets in the new metric; Save writes only RPE
+	// slots and never carries the old RIR slots forward.
+	await runStep('open settings (P2)', ['goto', `${baseUrl}/#/settings`], signal)
+	await runStep('switch metric to RPE', ['click', "getByRole('button', { name: 'RPE', exact: true })"], signal)
+	const effort2 = await runStep('assert metric persisted to RPE', ['--raw', 'eval',
+		"JSON.stringify({ effort: (JSON.parse(localStorage.getItem('gym_state_v1') || '{}')).effort })"
+	], signal)
+	if (parseEvalJson(effort2, 'P2 Settings state').effort !== 'rpe') throw new Error(`P2: Settings.effort should be 'rpe' after clicking RPE; got ${effort2.stdout.trim()}`)
+
+	// Reopen the Push Day routine in the editor. After the metric flip, the bench entry
+	// still carries RIR targets, so the slot values should render as empty cells (mismatch
+	// hides the value, not converts it).
+	await runStep('navigate to plan (P2)', ['goto', `${baseUrl}/#/plan`], signal)
+	await runStep('open Push Day routine (P2)', ['click', "getByText('Push Day', { exact: true }).last()"], signal)
+	await runStep('open bench-press in ExConfig (P2)', ['run-code', [
+		"async page => {",
+		"  await page.locator('.list .item').first().click();",
+		"  return 'opened';",
+		"}"
+	].join('\n')], signal)
+	// Read-only probe: assert every slot input shows empty because the saved RIR targets
+	// no longer match the new metric. This is the "no conversion" rule made visible.
+	const preFillP2 = await runStep('probe RIR slots render empty under RPE (P2)', ['--raw', 'eval',
+		"(() => { const heading = [...document.querySelectorAll('h4.sec')].find(h => /Programmed target|Objetivo programado/i.test(h.textContent)); const row = heading && heading.nextElementSibling && heading.nextElementSibling.nextElementSibling; const inputs = row ? [...row.querySelectorAll('.stp input.num')] : []; return { stepperCount: inputs.length, inputValues: inputs.map(i => i.value) }; })()"
+	], signal)
+	const preFillP2State = parseEvalJson(preFillP2, 'P2 target inputs')
+	if (preFillP2State.stepperCount < 2) throw new Error(`P2: expected at least 2 target steppers; got ${preFillP2State.stepperCount}`)
+	if (preFillP2State.inputValues.slice(0, 2).some(v => v !== ''))
+		throw new Error(`P2: saved RIR targets should render as empty cells under RPE metric; got ${JSON.stringify(preFillP2State.inputValues)}`)
+	// Now explicitly fill RPE values into the first two slots and save. The setSlot path
+	// overwrites the underlying array, and validation on save drops any non-RPE entry, so the
+	// persisted routine carries only RPE slots — no RIR slot survives.
+	const setBenchTargetsP2 = await runStep('set per-set RPE targets on bench (P2)', ['run-code', [
+		"async page => {",
+		"  const heading = page.getByRole('heading', { name: /Programmed target|Objetivo programado/ }).first();",
+		"  const steppers = heading.locator('xpath=following-sibling::div[2]').locator('.stp');",
+		"  // Set 1 → RPE 8",
+		"  const in0 = steppers.nth(0).locator('input.num');",
+		"  await in0.click();",
+		"  await in0.fill('8');",
+		"  await in0.press('Tab');",
+		"  // Set 2 → RPE 8.5",
+		"  const in1 = steppers.nth(1).locator('input.num');",
+		"  await in1.click();",
+		"  await in1.fill('8.5');",
+		"  await in1.press('Tab');",
+		"  return 'targets-set';",
+		"}"
+	].join('\n')], signal)
+	if (!/targets-set/.test(setBenchTargetsP2.stdout)) throw new Error(`P2: setting per-set RPE targets failed${details(setBenchTargetsP2)}`)
+	await runStep('save bench-press ExConfig (P2)', ['click', "getByRole('button', { name: /^Save$|^Guardar$/ })"], signal)
+
+	// Read the routine after the explicit edit. P2 asserts:
+	//   - bench.programmedEffort is present (explicit edit wrote it)
+	//   - slot 0 carries the new RPE metric and value 8
+	//   - slot 1 carries RPE value 8.5
+	//   - NO RIR slot survives (the no-conversion guarantee)
+	const afterP2 = await readState()
+	const benchP2 = afterP2.routines.find(r => r.name === 'Push Day').ex.find(e => e.id === '0025')
+	if (!Array.isArray(benchP2.programmedEffort) || benchP2.programmedEffort.length < 2)
+		throw new Error(`P2: bench-press should carry programmedEffort after explicit edit; got ${JSON.stringify(benchP2.programmedEffort)}`)
+	if (benchP2.programmedEffort[0] == null || benchP2.programmedEffort[0].metric !== 'rpe')
+		throw new Error(`P2: saved target metric should be 'rpe'; got ${JSON.stringify(benchP2.programmedEffort[0])}`)
+	if (typeof benchP2.programmedEffort[0].value !== 'number' || benchP2.programmedEffort[0].value < 6 || benchP2.programmedEffort[0].value > 10)
+		throw new Error(`P2: saved RPE target value should be in [6..10]; got ${benchP2.programmedEffort[0].value}`)
+	if (Math.abs(benchP2.programmedEffort[0].value - 8) > 0.01)
+		throw new Error(`P2: saved slot 0 RPE value should be 8; got ${benchP2.programmedEffort[0].value}`)
+	if (benchP2.programmedEffort[1] == null || Math.abs(benchP2.programmedEffort[1].value - 8.5) > 0.01)
+		throw new Error(`P2: saved slot 1 RPE value should be 8.5; got ${JSON.stringify(benchP2.programmedEffort[1])}`)
+	if (benchP2.programmedEffort.some(s => s != null && s.metric === 'rir'))
+		throw new Error(`P2: explicit RPE edit must not leave any RIR slot behind; got ${JSON.stringify(benchP2.programmedEffort)}`)
+
+	// ----- P3 scenario: switch metric back to RIR; the workout set shows no info button, but the actual-effort stepper is still editable -----
+	// The bench.programmedEffort still carries RPE targets from P2, but the active profile
+	// metric is now RIR — the exact mismatch state the spec demands. We exercise the actual
+	// workout UI to verify the disclosure is hidden and the actual-effort stepper remains
+	// editable and persists.
+	await runStep('open settings (P3)', ['goto', `${baseUrl}/#/settings`], signal)
+	await runStep('switch metric back to RIR', ['click', "getByRole('button', { name: 'RIR', exact: true })"], signal)
+	const effort3 = await runStep('assert metric persisted to RIR (P3)', ['--raw', 'eval',
+		"JSON.stringify({ effort: (JSON.parse(localStorage.getItem('gym_state_v1') || '{}')).effort })"
+	], signal)
+	if (parseEvalJson(effort3, 'P3 Settings state').effort !== 'rir') throw new Error(`P3: Settings.effort should be 'rir' after re-clicking RIR; got ${effort3.stdout.trim()}`)
+
+	await runStep('open workout chooser (P3)', ['goto', `${baseUrl}/#/workout`], signal)
+	await runStep('start Push Day from chooser (P3)', ['click', ".list .item:has-text('Push Day')"], signal)
+	await runStep('skip weigh-in (P3)', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
+
+	const afterStartP3 = await readState()
+	const benchP3 = afterStartP3.active && afterStartP3.active.entries.find(e => e.id === '0025')
+	if (!benchP3 || !benchP3.sets || benchP3.sets.length < 2) throw new Error('P3: bench-press entry missing from active workout sets')
+	// Active sets must NOT carry a plannedEffort snapshot when the saved metric mismatches
+	// the active profile metric — that is the no-conversion rule at workout start. Every
+	// set's plannedEffort key is omitted (undefined).
+	if (benchP3.sets.some(s => s.plannedEffort))
+		throw new Error(`P3: mismatched-target workout sets should not snapshot plannedEffort; got ${JSON.stringify(benchP3.sets.map(s => s.plannedEffort))}`)
+	// Live DOM: the .setinfo button must be absent for every bench-press set row (no
+	// disclosure rendered), and the actual-effort stepper column must remain visible and
+	// editable. The orchestrator's spec for scenario 3 demands the assertion cover the
+	// exact UI state, not localStorage alone.
+	const p3Dom = await runStep('assert no info button + actual stepper editable (P3 UI)', [
+		'--raw', 'eval',
+		"(() => { const sets = [...document.querySelectorAll('.setrow')]; const infoButtons = [...document.querySelectorAll('.setinfo')]; return { totalSets: sets.length, infoButtonCount: infoButtons.length, hasActualStepperFirst: !!sets[0] && !!sets[0].querySelector('.stp.eff'), firstSetActualButtons: sets[0] ? sets[0].querySelectorAll('.stp.eff button[aria-label=\"Increase\"]').length : 0 } })()"
+	], signal)
+	const p3State = parseEvalJson(p3Dom, 'P3 workout DOM state')
+	if (p3State.infoButtonCount !== 0) throw new Error(`P3: no .setinfo buttons should render when targets mismatch; got ${p3State.infoButtonCount}`)
+	if (!p3State.hasActualStepperFirst) throw new Error('P3: actual-effort stepper column should remain visible on first set')
+	if (p3State.firstSetActualButtons < 1) throw new Error(`P3: actual-effort Increase button must be present on first set; got ${p3State.firstSetActualButtons}`)
+	// Increment the actual RIR on the first bench-press set; the change must persist.
+	await runStep('record actual RIR on P3 set 1', ['run-code', [
+		"async page => {",
+		"  const sets = await page.locator('.setrow').all();",
+		"  if (sets.length < 1) throw new Error('no .setrow found in P3');",
+		"  const first = sets[0];",
+		"  const inc = first.getByRole('button', { name: 'Increase' }).last();",
+		"  await inc.click();",
+		"  return 'incremented';",
+		"}"
+	].join('\n')], signal)
+	const afterP3Actual = await readState()
+	const benchP3b = afterP3Actual.active.entries.find(e => e.id === '0025')
+	if (typeof benchP3b.sets[0].rir !== 'number' || benchP3b.sets[0].rir < 0 || benchP3b.sets[0].rir > 10)
+		throw new Error(`P3: actual rir should still be recordable when target is mismatched; got ${JSON.stringify(benchP3b.sets[0])}`)
+	if (benchP3b.sets[0].plannedEffort !== undefined)
+		throw new Error(`P3: plannedEffort must remain absent for mismatched sets; got ${JSON.stringify(benchP3b.sets[0].plannedEffort)}`)
+
+	console.log('Playwright smoke passed: picker dismissal (desktop routine-editor, mobile workout 375px, keyboard/focus, backdrop, CDP touch swipe) + block lifecycle (3.1 reset, 3.2-3.7 activate/edit/pause/resume/end persisted across reload, 3.3 Plan/Home show block, 3.4 workout freezes block context, 3.8 invalid save preserves state, 3.9 cancel preserves state, 3.10 375px no overflow + lifecycle controls visible) + programmed-effort journey (P1 Settings UI enables metric + opt-in toggle, routine editor sets distinct per-set RIR targets via TargetSteppers, workout reveal reads as read-only region + actual effort recorded separately + plannedEffort unchanged, P2 Settings UI flips metric RIR→RPE and old RIR targets render as empty cells, routine editor saves only current-metric RPE slots with no RIR slot surviving, P3 Settings UI flips metric back to RIR, workout hides info button for mismatched targets and actual-effort stepper remains editable and persists).')
 }
 
 const smokeController = new AbortController()

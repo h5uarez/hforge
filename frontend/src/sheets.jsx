@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -11,7 +11,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
@@ -492,6 +492,65 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit }) {
   </>
 }
 
+// One per-set target stepper. Shown only for resistance exercises when the profile logs an
+// effort scale, and only when Settings has the opt-in gate on. The button semantics reuse the
+// existing `stepEffort` rules: a minus on an empty cell leaves it empty (null), plus starts at
+// the bottom of the scale and walks up; minus off the bottom clears again. `value` is the bare
+// number — the metric is owned by the row, not by the cell, so the array is the source of truth.
+function TargetStepper({ value, onChange, kind }) {
+  const bump = dir => onChange(stepEffort(kind, value ?? null, dir))
+  return <div className="stp">
+    <button aria-label="Decrease" onClick={() => bump(-1)}><Icon name="minus" /></button>
+    <span className="val"><NumberField decimal={true} nullable={true}
+      value={value ?? ''} onChange={v => onChange(capEffort(kind, v))} /></span>
+    <button aria-label="Increase" onClick={() => bump(1)}><Icon name="plus" /></button>
+  </div>
+}
+
+// The per-set target section as a whole: heading, helper copy, and a wrapping flex row of
+// `TargetStepper` cells. Lives outside `ExConfig` so the editor body stays focused on the
+// shape of a routine entry and this concern is a self-contained block — its only contract is
+// `value` (the array under edit) and `onChange` (the new array). The metric mismatch rule
+// lives here too: a slot whose stored metric does not match the active profile renders empty,
+// because we never convert.
+function ProgrammedTargetsField({ metric, setCount, value, onChange }) {
+  const eff = EFFORT[metric]
+  if (!eff) return null
+  const n = Math.max(1, setCount || 1)
+  // Mismatched slots and cleared slots render identically: an empty cell. This is the visible
+  // half of the no-conversion rule — the other half is the validation on save.
+  const slotValue = i => {
+    const a = Array.isArray(value) ? value[i] : null
+    if (!a || a.metric !== metric) return null
+    return a.value
+  }
+  // Grow with nulls as the set count rises, trim when it falls. The index is always safe to
+  // write into because the array is exactly `n` long when the editor calls this.
+  const setSlot = (i, v) => {
+    const a = Array.isArray(value) ? value.slice() : []
+    while (a.length < n) a.push(null)
+    if (a.length > n) a.length = n
+    a[i] = v == null ? null : { metric, value: v }
+    onChange(a)
+  }
+  return <>
+    <h4 className="sec">{t('Programmed target')}</h4>
+    <div className="small dim" style={{ marginTop: -4, marginBottom: 10 }}>
+      {t('Optional. The target is revealed read-only during the workout; you log actual effort separately.')}
+    </div>
+    <div className="row cfgrow" style={{ flexWrap: 'wrap', rowGap: 12, marginBottom: 18 }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{ minWidth: 96 }}>
+          <div className="small dim" style={{ textAlign: 'center', marginBottom: 4, whiteSpace: 'nowrap' }}>
+            {t('Set {0}', i + 1)} · {eff.hd}
+          </div>
+          <TargetStepper value={slotValue(i)} kind={metric} onChange={v => setSlot(i, v)} />
+        </div>
+      ))}
+    </div>
+  </>
+}
+
 function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
@@ -504,6 +563,15 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   const perSide = isPerSide(c)
   // Keep whatever the other mode already had (sets, weight) and fill only what is missing.
   const setMode = m => setC(x => ({ ...defaultConfig(ex.id, m), ...x, mode: m }))
+  // Programmed-effort target UI: only when the profile logs an effort scale AND the user opted
+  // in via Settings. Cardio and timed are out of scope by design. The metric comes from the
+  // active profile, not the routine — that's what `effortOf` is for, and that's what makes a
+  // saved RIR target hidden (and never converted) the moment Settings flips to RPE.
+  const metric = effortOf(st)
+  const showTargets = !!st.programmedEffort && !cardio && mode === 'reps' && !!EFFORT[metric]
+  // n is the live set count the UI is working against; the helper uses it to grow or trim
+  // the array in lockstep so the index the stepper is editing is always safe.
+  const n = Math.max(1, Math.round(c.sets) || 1)
   const save = () => {
     close()
     const sets = Math.max(1, Math.round(c.sets) || (cardio ? 1 : 3))
@@ -530,6 +598,18 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
       if (policyFor({ ...c, id: ex.id }, routine, 'reps') === 'double') out.repsMin = Math.min(reps, Math.max(1, Math.round(c.repsMin) || Math.max(1, reps - 2)))
       // A ceiling below the working reps would tell you to add a set on day one.
       if (bw && !(out.weight > 0) && c.repsMax > 0) out.repsMax = Math.max(reps, Math.round(c.repsMax))
+      // Programmed-effort targets ride alongside the routine. Persist only when the array has
+      // at least one current-metric slot — that keeps legacy plans byte-identical on the wire
+      // and silently drops the field when the profile is on a different metric. Validation +
+      // normalization are the same helpers buildSets consults, so the saved shape is one
+      // contract away from the workout snapshot.
+      if (showTargets && Array.isArray(c.programmedEffort) && c.programmedEffort.length) {
+        const validated = validateProgrammedTargets(c.programmedEffort, metric)
+        if (Array.isArray(validated)) {
+          const norm = normalizeTargets(validated, sets)
+          if (norm.some(s => s != null)) out.programmedEffort = norm
+        }
+      }
       onSave(out)
     }
   }
@@ -600,6 +680,12 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         ? t('Reps climb to {0}, then a set is added and the reps start over. At {1} sets it asks you to add weight instead.', c.repsMax, MAX_BW_SETS)
         : t('Reps climb by one whenever every set was clean. Set a ceiling to add sets instead of reps forever.')}
     </div>}
+    {/* ---------- programmed effort target (issue `programmed-rpe-rir`) ----------
+        A per-set target stepper for resistance exercises, only when the profile logs an
+        effort scale and the user opted in via Settings. The helper owns its own
+        mismatch-empty and array-grow logic, so this site only needs to be a single line. */}
+    {showTargets && <ProgrammedTargetsField metric={metric} setCount={n}
+      value={c.programmedEffort} onChange={arr => setC(x => ({ ...x, programmedEffort: arr }))} />}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
     {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}

@@ -73,3 +73,93 @@ describe('buildPlanBundle — plan-share guard', () => {
     expect(result.routines).toBe(2)
   })
 })
+
+/* ---------- programmed-effort round-trip (Phase 2 — issue: programmed-rpe-rir) ----------
+   A shared plan is a self-contained file a friend imports into THEIR Hforge. When the
+   share-r's routine carries per-set metric-tagged effort targets (programmedEffort), the
+   bundle must carry them so the friend's import keeps the same prescription. Legacy
+   plans (no programmedEffort field) must remain valid — neither the export nor the
+   import invents the field where it was absent. */
+describe('programmedEffort round-trip (Phase 2)', () => {
+  it('exports programmedEffort on a routine exercise when it is present in the source state', () => {
+    // The share-r's routine has a slot mix (one target, one null) so the export
+    // proves the array is carried through verbatim, null slots and all.
+    const S = {
+      routines: [{ id: 'r-push', name: 'Push', ex: [
+        { id: 'e-bench', sets: 2, reps: 8, programmedEffort: [{ metric: 'rir', value: 2 }, null] }
+      ] }],
+      customEx: [],
+      week: {},
+    }
+    const bundle = buildPlanBundle(S, 'with-targets')
+    expect(bundle.routines[0].ex[0].programmedEffort).toEqual([{ metric: 'rir', value: 2 }, null])
+  })
+
+  it('preserves programmedEffort through mergePlan so the imported routine keeps the same prescription', () => {
+    // Hand-built bundle: the field is on the ex and must survive the spread that
+    // mergePlan performs when remapping the exercise id.
+    const bundle = {
+      opengym_plan: 1,
+      name: 'with-targets',
+      customEx: [],
+      week: {},
+      routines: [{ id: 'r-push', name: 'Push', ex: [
+        { id: 'e-bench', sets: 2, reps: 8, programmedEffort: [{ metric: 'rir', value: 2 }, null] }
+      ] }],
+    }
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, bundle)
+    expect(target.routines[0].ex[0].programmedEffort).toEqual([{ metric: 'rir', value: 2 }, null])
+  })
+
+  it('round-trips a fully-valued programmedEffort (no nulls) so every set has a target', () => {
+    // Triangulation: a different shape — every slot real, different metric (RPE).
+    const S = {
+      routines: [{ id: 'r-push', name: 'Push', ex: [
+        { id: 'e-bench', sets: 3, reps: 8,
+          programmedEffort: [{ metric: 'rpe', value: 8 }, { metric: 'rpe', value: 8.5 }, { metric: 'rpe', value: 9 }] }
+      ] }],
+      customEx: [],
+      week: {},
+    }
+    const bundle = buildPlanBundle(S, 'all-targeted')
+    expect(bundle.routines[0].ex[0].programmedEffort).toEqual([
+      { metric: 'rpe', value: 8 }, { metric: 'rpe', value: 8.5 }, { metric: 'rpe', value: 9 },
+    ])
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, bundle)
+    expect(target.routines[0].ex[0].programmedEffort).toEqual([
+      { metric: 'rpe', value: 8 }, { metric: 'rpe', value: 8.5 }, { metric: 'rpe', value: 9 },
+    ])
+  })
+
+  it('does not invent a programmedEffort field on a routine exercise that lacks it — legacy plans stay valid', () => {
+    // buildPlanBundle strips nothing that wasn't there: the export omits the field
+    // entirely so legacy plans keep their byte-for-byte shape on the wire.
+    const S = {
+      routines: [{ id: 'r-pull', name: 'Pull', ex: [
+        { id: 'e-row', sets: 3, reps: 10 }
+      ] }],
+      customEx: [],
+      week: {},
+    }
+    const bundle = buildPlanBundle(S, 'legacy')
+    expect(bundle.routines[0].ex[0]).not.toHaveProperty('programmedEffort')
+
+    // A hand-built legacy bundle imports cleanly: the import side never synthesises
+    // the field, only copies what was already in the source.
+    const legacyBundle = {
+      opengym_plan: 1,
+      name: 'legacy',
+      customEx: [],
+      week: {},
+      routines: [{ id: 'r-pull', name: 'Pull', ex: [
+        { id: 'e-row', sets: 3, reps: 10 }
+      ] }],
+    }
+    const target = { routines: [], customEx: [], week: {} }
+    const result = mergePlan(target, legacyBundle)
+    expect(result.routines).toBe(1)
+    expect(target.routines[0].ex[0]).not.toHaveProperty('programmedEffort')
+  })
+})

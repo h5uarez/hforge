@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -265,6 +265,201 @@ describe('defaultConfig', () => {
   })
 })
 
+/* ---------- programmed effort (issue: programmed-rpe-rir, Phase 1 foundation) ----------
+   Per-set metric-tagged RIR/RPE targets live on the routine entry as
+   `programmedEffort: [{ metric, value } | null]`. Targets whose metric no
+   longer matches Settings are hidden, never converted. */
+
+describe('validateProgrammedTargets', () => {
+  it('returns undefined when the routine has no programmedEffort field — legacy routines stay valid', () => {
+    expect(validateProgrammedTargets(undefined, 'rir')).toBeUndefined()
+    expect(validateProgrammedTargets(null, 'rir')).toBeUndefined()
+    expect(validateProgrammedTargets(undefined, 'rpe')).toBeUndefined()
+  })
+
+  it('passes a fully-compatible array through untouched — the same object reference', () => {
+    // the routine editor re-uses the array as-is when every entry already matches
+    const arr = [{ metric: 'rir', value: 2 }, null, { metric: 'rir', value: 1 }]
+    expect(validateProgrammedTargets(arr, 'rir')).toBe(arr)
+  })
+
+  it('treats an empty array as "no targets set" — distinct from absent', () => {
+    // the sheets normalize step always produces at least cfg.sets entries, so an empty
+    // array means a routine with zero sets, not a missing field
+    const empty = []
+    expect(validateProgrammedTargets(empty, 'rir')).toBe(empty)
+  })
+
+  it('rejects the whole array when any non-null entry has a mismatched metric', () => {
+    // a metric change in Settings leaves the routine data intact; the UI hides the
+    // mismatch until the user explicitly re-edits for the new metric
+    expect(validateProgrammedTargets(
+      [{ metric: 'rpe', value: 8 }, { metric: 'rpe', value: 8.5 }], 'rir'
+    )).toBeNull()
+    expect(validateProgrammedTargets(
+      [{ metric: 'rir', value: 2 }, { metric: 'rpe', value: 8 }], 'rir'
+    )).toBeNull()
+  })
+
+  it('accepts an array whose null entries are skipped and whose real entries all match', () => {
+    // a null entry means "no target on this set" and never trips the metric gate
+    const arr = [{ metric: 'rpe', value: 7 }, null, { metric: 'rpe', value: 8 }]
+    expect(validateProgrammedTargets(arr, 'rpe')).toBe(arr)
+  })
+
+  it('returns null when metric is "none" and any entry is non-null — never seed a target on a profile with no effort column', () => {
+    expect(validateProgrammedTargets(
+      [{ metric: 'rir', value: 2 }], 'none'
+    )).toBeNull()
+  })
+
+  it('rejects an entry whose metric is missing or not a string', () => {
+    expect(validateProgrammedTargets(
+      [{ value: 2 }], 'rir'   // missing metric
+    )).toBeNull()
+    expect(validateProgrammedTargets(
+      [{ metric: 'rir', value: 2 }, null, { metric: 42 }], 'rir'  // bad metric type
+    )).toBeNull()
+  })
+})
+
+describe('normalizeTargets', () => {
+  it('returns an empty array when given nothing — the routine has no targets', () => {
+    expect(normalizeTargets(undefined, 3)).toEqual([])
+    expect(normalizeTargets(null, 3)).toEqual([])
+  })
+
+  it('returns an empty array for an empty input array, even when setCount is positive', () => {
+    // absence and "no targets configured" both read as empty: growth does not
+    // invent null targets, callers always consult validateProgrammedTargets first
+    expect(normalizeTargets([], 3)).toEqual([])
+  })
+
+  it('returns an empty array when setCount is 0 or negative — defensive against bad callers', () => {
+    expect(normalizeTargets([{ metric: 'rir', value: 2 }], 0)).toEqual([])
+    expect(normalizeTargets([{ metric: 'rir', value: 2 }], -1)).toEqual([])
+  })
+
+  it('truncates when the routine grows the array back down to setCount', () => {
+    // a routine shrunk from 4 sets to 2: drop the trailing slots
+    const arr = [{ metric: 'rir', value: 2 }, { metric: 'rir', value: 1 }, { metric: 'rir', value: 0 }, { metric: 'rir', value: 0 }]
+    expect(normalizeTargets(arr, 2)).toEqual([
+      { metric: 'rir', value: 2 }, { metric: 'rir', value: 1 },
+    ])
+  })
+
+  it('extends with the last value when the routine grows past the saved targets', () => {
+    // a routine expanded from 1 set to 3: carry the last programmed target forward
+    // so the lifter does not lose a previously saved prescription on extra sets
+    const arr = [{ metric: 'rir', value: 2 }]
+    expect(normalizeTargets(arr, 3)).toEqual([
+      { metric: 'rir', value: 2 },
+      { metric: 'rir', value: 2 },
+      { metric: 'rir', value: 2 },
+    ])
+  })
+
+  it('copies the last non-null value when extending, even if trailing entries were null', () => {
+    // null means "no target on this set" — extending must use the last REAL target,
+    // not the trailing null, or a routine grown past a null would lose the prescription
+    const arr = [{ metric: 'rir', value: 3 }, null, { metric: 'rir', value: 1 }, null]
+    const out = normalizeTargets(arr, 6)
+    expect(out).toEqual([
+      { metric: 'rir', value: 3 },
+      null,
+      { metric: 'rir', value: 1 },
+      null,
+      { metric: 'rir', value: 1 },
+      { metric: 'rir', value: 1 },
+    ])
+  })
+
+  it('returns a fresh array (not the same reference) so callers can mutate without leaking', () => {
+    const arr = [{ metric: 'rir', value: 2 }]
+    const out = normalizeTargets(arr, 2)
+    expect(out).not.toBe(arr)
+    out[0] = null
+    expect(arr[0]).toEqual({ metric: 'rir', value: 2 })   // original is intact
+  })
+})
+
+describe('sameBlockWeight', () => {
+  // Set A belongs to 'b1', set B belongs to 'b2'. The helper must answer for
+  // 'b1' using only set A's data and ignore set B entirely.
+  const setA = { d: '2026-08-20', entries: [
+    { id: LIFT, sets: [{ w: 80, r: 5, done: true }] }
+  ], block: { id: 'b1', name: 'Hypertrophy', week: 1 } }
+  const setA2 = { d: '2026-08-22', entries: [
+    { id: LIFT, sets: [{ w: 85, r: 5, done: true }] }
+  ], block: { id: 'b1', name: 'Hypertrophy', week: 1 } }
+  const setB = { d: '2026-08-21', entries: [
+    { id: LIFT, sets: [{ w: 999, r: 5, done: true }] }
+  ], block: { id: 'b2', name: 'Strength', week: 1 } }
+
+  it('returns null when no prior session exists in the same block', () => {
+    const S = { workouts: [] }
+    expect(sameBlockWeight(S, LIFT, 'b1')).toBeNull()
+  })
+
+  it('returns the latest matching same-block session — not an earlier one', () => {
+    const S = { workouts: [setA, setA2] }
+    const out = sameBlockWeight(S, LIFT, 'b1')
+    expect(out).not.toBeNull()
+    expect(out.d).toBe('2026-08-22')
+    expect(out.sets).toEqual([{ w: 85, r: 5, done: true }])
+  })
+
+  it('ignores sessions belonging to a different block', () => {
+    // the b2 entry is loaded with kg 999 — if the helper leaked across blocks,
+    // the test would read it; the answer must come from b1 only
+    const S = { workouts: [setB, setA, setA2] }
+    const out = sameBlockWeight(S, LIFT, 'b1')
+    expect(out.sets[0].w).toBe(85)
+  })
+
+  it('ignores sessions without a `block` snapshot — they pre-date the block feature', () => {
+    const legacy = { d: '2026-08-19', entries: [{ id: LIFT, sets: [{ w: 200, r: 5, done: true }] }] }
+    const S = { workouts: [legacy, setA] }
+    const out = sameBlockWeight(S, LIFT, 'b1')
+    expect(out.d).toBe('2026-08-20')   // legacy is skipped, b1 wins
+  })
+
+  it('ignores the same-block session when its entry has no done set', () => {
+    // a fresh block workout where the lifter started but did not finish a set
+    const notDone = { d: '2026-08-23', entries: [
+      { id: LIFT, sets: [{ w: 90, r: 5, done: false }] }
+    ], block: { id: 'b1', name: 'Hypertrophy', week: 1 } }
+    const S = { workouts: [notDone, setA] }
+    const out = sameBlockWeight(S, LIFT, 'b1')
+    expect(out.d).toBe('2026-08-20')   // the not-done session is skipped
+  })
+
+  it('returns the same { d, sets, target } shape as lastEntryFor for easy swap-in by buildSets', () => {
+    // Phase 2 swaps lastEntryFor for sameBlockWeight in the block path; the
+    // shape must be identical so the consumer does not need to change
+    const S = { workouts: [{ ...setA, entries: [{ id: LIFT, sets: [{ w: 80, r: 5, done: true }], target: { mode: 'reps' } }] }] }
+    const out = sameBlockWeight(S, LIFT, 'b1')
+    expect(out).toHaveProperty('d')
+    expect(out).toHaveProperty('sets')
+    expect(out).toHaveProperty('target')
+    expect(out.target).toEqual({ mode: 'reps' })
+  })
+
+  it('returns null when blockId is missing or exId is missing', () => {
+    const S = { workouts: [setA] }
+    expect(sameBlockWeight(S, LIFT, null)).toBeNull()
+    expect(sameBlockWeight(S, LIFT, undefined)).toBeNull()
+    expect(sameBlockWeight(S, '', 'b1')).toBeNull()
+    expect(sameBlockWeight(S, null, 'b1')).toBeNull()
+  })
+
+  it('returns null when S is missing or has no workouts', () => {
+    expect(sameBlockWeight(null, LIFT, 'b1')).toBeNull()
+    expect(sameBlockWeight(undefined, LIFT, 'b1')).toBeNull()
+    expect(sameBlockWeight({}, LIFT, 'b1')).toBeNull()
+  })
+})
+
 /* ---------- bodyweight and per side (issues #31/#32/#33) ---------- */
 
 describe('isBw', () => {
@@ -373,6 +568,202 @@ describe('buildSets', () => {
   it('still prefers the confirmed working weight for reps sets', () => {
     const S = { exWeights: { [LIFT]: { w: 75 } }, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }] }
     expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 75, r: 10, done: false }])
+  })
+
+  /* ---- programmed-effort seeding (issue: programmed-rpe-rir, Phase 1) ----
+     The planned effort is snapshotted onto each set at workout start; the
+     snapshot is later displayed read-only while the user logs actual
+     rir/rpe. plannedEffort is keyed off the Settings effort mode: when
+     Settings flips to a different metric the old targets are hidden, not
+     converted. */
+
+  it('seeds plannedEffort from cfg.programmedEffort when the metric matches Settings', () => {
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 3, reps: 8, weight: 50,
+      programmedEffort: [{ metric: 'rir', value: 2 }, null, { metric: 'rir', value: 1 }] }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 2 } },
+      { w: 50, r: 8, done: false },                                       // null slot → no plannedEffort
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 1 } },
+    ])
+  })
+
+  it('omits plannedEffort when Settings is on a different metric than the saved targets', () => {
+    // routine was edited while Settings was on RPE; switching Settings to RIR must
+    // not convert, must hide the target entirely
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50,
+      programmedEffort: [{ metric: 'rpe', value: 8 }, { metric: 'rpe', value: 8.5 }] }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false },
+      { w: 50, r: 8, done: false },
+    ])
+  })
+
+  it('omits plannedEffort when Settings has no effort column — a "none" profile never seeds a target', () => {
+    const S = { workouts: [], exWeights: {}, effort: 'none' }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50,
+      programmedEffort: [{ metric: 'rir', value: 2 }, { metric: 'rir', value: 1 }] }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false },
+      { w: 50, r: 8, done: false },
+    ])
+  })
+
+  it('copies the last programmed target when the set count exceeds the saved array length', () => {
+    // routine grew from 1 set to 3 after the lifter added sets; the single
+    // saved target must be carried forward to every new set
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 3, reps: 8, weight: 50,
+      programmedEffort: [{ metric: 'rir', value: 2 }] }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 2 } },
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 2 } },
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 2 } },
+    ])
+  })
+
+  it('truncates planned-effort seeding when the set count is shorter than the saved array', () => {
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50,
+      programmedEffort: [{ metric: 'rir', value: 2 }, { metric: 'rir', value: 1 }, { metric: 'rir', value: 0 }] }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 2 } },
+      { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 1 } },
+    ])
+  })
+
+  it('omits plannedEffort when cfg.programmedEffort is absent — legacy routines stay unaffected', () => {
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 3, reps: 8, weight: 50 }
+    const sets = buildSets(S, cfg)
+    expect(sets).toEqual([
+      { w: 50, r: 8, done: false },
+      { w: 50, r: 8, done: false },
+      { w: 50, r: 8, done: false },
+    ])
+  })
+
+  it('does NOT seed plannedEffort on cardio or timed sets — programming effort is reps-only', () => {
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cardio = buildSets(S, { id: CARDIO, sets: 1, min: 20, speed: 8,
+      programmedEffort: [{ metric: 'rir', value: 2 }] })
+    expect(cardio[0]).toEqual({ min: 20, speed: 8, done: false })
+    expect(cardio[0]).not.toHaveProperty('plannedEffort')
+
+    const timed = buildSets(S, { id: LIFT, mode: 'time', sets: 1, sec: 45, weight: 20,
+      programmedEffort: [{ metric: 'rir', value: 2 }] })
+    expect(timed[0]).toEqual({ sec: 45, w: 20, done: false })
+    expect(timed[0]).not.toHaveProperty('plannedEffort')
+  })
+
+  it('does not consume programmed effort when the actual rir/rpe is later recorded — planning is separate from logging', () => {
+    // the planned snapshot must remain visible alongside the actual value the
+    // lifter logs; buildSets only seeds plannedEffort, never edits it later
+    const S = { workouts: [], exWeights: {}, effort: 'rir' }
+    const cfg = { id: LIFT, sets: 1, reps: 5, weight: 80,
+      programmedEffort: [{ metric: 'rir', value: 2 }] }
+    const [set] = buildSets(S, cfg)
+    expect(set.plannedEffort).toEqual({ metric: 'rir', value: 2 })
+    // simulating the user logging actual RIR: plannedEffort survives
+    set.rir = 0
+    expect(set.plannedEffort).toEqual({ metric: 'rir', value: 2 })
+    expect(set.rir).toBe(0)
+  })
+
+  /* ---- block-workout kg initialization (Phase 2 — issue: programmed-rpe-rir) ----
+     A block workout initializes kilograms from the previous session belonging to
+     the same block ONLY. Other-block history is never consulted; if no same-block
+     session exists, kilograms stay blank (0) for manual entry. The active block
+     is the snapshot frozen on `S.active.block` by beginWorkout (sheets.jsx). */
+  it('seeds kilograms from the previous same-block session and ignores other-block history', () => {
+    // Two workouts in two different blocks; the active workout is in b1. The b2
+    // session is the LATEST in the workouts array so `lastEntryFor` (the legacy
+    // helper) would surface 200 — sameBlockWeight must return 80, or blocks
+    // would silently cross schedule boundaries.
+    const S = {
+      active: { block: { id: 'b1', name: 'Hypertrophy', week: 1 } },
+      workouts: [
+        { d: '2026-08-20', block: { id: 'b1', name: 'Hypertrophy', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 80, r: 5, done: true }] }] },
+        { d: '2026-08-22', block: { id: 'b2', name: 'Strength', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 200, r: 5, done: true }] }] },
+      ],
+      exWeights: {},
+      effort: 'rir',
+    }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50 }
+    const sets = buildSets(S, cfg)
+    expect(sets[0].w).toBe(80)
+    expect(sets[1].w).toBe(80)
+  })
+
+  it('leaves kilograms blank when no same-block previous session exists, even if another block has one', () => {
+    // First session of block b1: only b2 history is available, and using it would
+    // silently pull a load across schedule boundaries. The spec says blank; this
+    // is also a strict-greater-than-0 contract for manual entry.
+    const S = {
+      active: { block: { id: 'b1', name: 'Hypertrophy', week: 1 } },
+      workouts: [
+        { d: '2026-08-21', block: { id: 'b2', name: 'Strength', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 200, r: 5, done: true }] }] },
+      ],
+      exWeights: {},
+      effort: 'rir',
+    }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50 }
+    const sets = buildSets(S, cfg)
+    // 0, not 200 (other block) and not 50 (cfg.weight) — the spec is explicit.
+    expect(sets[0].w).toBe(0)
+    expect(sets[1].w).toBe(0)
+  })
+
+  it('uses the latest same-block session when more than one exists, even if another block was trained more recently', () => {
+    // Triangulation: same block has two entries (70 then 85); a third entry in
+    // another block (200, most recent in the array) must NOT shift the source.
+    // Both lastEntryFor and sameBlockWeight return "the latest" — but the two
+    // helpers disagree on what counts as the latest when blocks are involved.
+    const S = {
+      active: { block: { id: 'b1', name: 'Hypertrophy', week: 1 } },
+      workouts: [
+        { d: '2026-08-20', block: { id: 'b1', name: 'Hypertrophy', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 70, r: 5, done: true }] }] },
+        { d: '2026-08-22', block: { id: 'b1', name: 'Hypertrophy', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 85, r: 5, done: true }] }] },
+        // A newer b2 entry exists — the legacy lastEntryFor would pull 200 here,
+        // but the block filter must stay on 85.
+        { d: '2026-08-24', block: { id: 'b2', name: 'Strength', week: 1 },
+          entries: [{ id: LIFT, sets: [{ w: 200, r: 5, done: true }] }] },
+      ],
+      exWeights: {},
+      effort: 'rir',
+    }
+    const cfg = { id: LIFT, sets: 1, reps: 5, weight: 50 }
+    const sets = buildSets(S, cfg)
+    expect(sets[0].w).toBe(85)
+  })
+
+  it('preserves legacy lastEntryFor behavior when no block is active (no active.block snapshot)', () => {
+    // Contract: a workout without a block snapshot falls back to the existing
+    // lastEntryFor path. The block change must not regress legacy / freestyle
+    // users who never started a block.
+    const S = {
+      active: null,
+      workouts: [
+        { d: '2026-08-22', entries: [{ id: LIFT, sets: [{ w: 80, r: 5, done: true }] }] },
+      ],
+      exWeights: {},
+      effort: 'rir',
+    }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50 }
+    const sets = buildSets(S, cfg)
+    expect(sets[0].w).toBe(80)
+    expect(sets[1].w).toBe(80)
   })
 })
 

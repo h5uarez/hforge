@@ -415,6 +415,84 @@ describe('history logged before targets were recorded', () => {
   })
 })
 
+// Programmed effort targets (issue `programmed-rpe-rir`) are immutable, separate from the
+// prescription the engine writes. The engine must keep using only what it has always used:
+// reps/weight/repsMax/prog/inc on the cfg, and reps/weight/done on logged sets. Anything else
+// would mean a coach telling the lifter "go for RIR 2" actually changes what they should be
+// lifting next — which is the wrong place for that judgement. The cfg and S fields below are
+// not the function's inputs; they are the contract test's bait: if `nextPrescription` ever
+// starts reading them, this block breaks.
+describe('programmed effort targets do not affect nextPrescription', () => {
+  const cfg = { id: LIFT, sets: 3, reps: 5, weight: 60, prog: 'linear' }
+  // A linear session that should advance: 60×5,5,5 → 62.5. Same input as the linear block above.
+  const baseline = hist(LIFT, [[60, 5, 5, 5]])
+  const baselineResult = () => nextPrescription(baseline, cfg)
+
+  it('returns the same prescription when the cfg carries a plannedEffort', () => {
+    // The cfg is the routine exercise entry — exactly the level where `programmedEffort`
+    // (the routine-side field) and `plannedEffort` (the workout-side snapshot) would land
+    // if anything ever piped them through. They must not.
+    const planned = { metric: 'rir', value: 2 }
+    const baselineNoTarget = baselineResult()
+    const baselineWithTarget = nextPrescription(baseline, { ...cfg, plannedEffort: planned })
+    expect(baselineWithTarget).toEqual(baselineNoTarget)
+    // Spot-check the headline: linear progression still says +2.5 kg, RIR target invisible.
+    expect(baselineWithTarget.kind).toBe('up')
+    expect(baselineWithTarget.weight).toBe(62.5)
+  })
+
+  it('returns the same prescription when the cfg carries a programmedEffort array', () => {
+    // `programmedEffort` lives on the routine config; buildSets seeds it onto workout sets.
+    // The engine must not read either side.
+    const withArray = nextPrescription(baseline, {
+      ...cfg,
+      programmedEffort: [{ metric: 'rir', value: 2 }, { metric: 'rir', value: 1 }, { metric: 'rir', value: 0 }]
+    })
+    expect(withArray).toEqual(baselineResult())
+  })
+
+  it('returns the same prescription when every logged set carries a plannedEffort snapshot', () => {
+    // `plannedEffort` is what buildSets writes onto each set when a workout begins. It rides
+    // alongside the actual `rir`/`rpe` and is never edited by the logger — but it must also
+    // never feed back into the next prescription.
+    const decorated = {
+      ...baseline,
+      workouts: baseline.workouts.map(w => ({
+        ...w,
+        entries: w.entries.map(e => ({
+          ...e,
+          sets: e.sets.map(s => ({ ...s, plannedEffort: { metric: 'rir', value: 2 } }))
+        }))
+      }))
+    }
+    expect(nextPrescription(decorated, cfg)).toEqual(baselineResult())
+  })
+
+  it('does not change the answer when the cfg metric and the planned metric disagree', () => {
+    // Settings is on RPE, but the saved routine target is RIR. The display side hides the
+    // mismatched value (no silent conversion) — the engine side never sees it in the first
+    // place, so the prescription is the same as if no target existed at all.
+    const cfgRpe = { ...cfg, id: LIFT }
+    const S = { ...hist(LIFT, [[60, 5, 5, 5]]), effort: 'rpe' }
+    const SNoEffort = hist(LIFT, [[60, 5, 5, 5]])
+    const withMismatchedTarget = nextPrescription(S, { ...cfgRpe, programmedEffort: [{ metric: 'rir', value: 2 }] })
+    const baselineRpe = nextPrescription(SNoEffort, cfgRpe)
+    expect(withMismatchedTarget).toEqual(baselineRpe)
+    expect(withMismatchedTarget.kind).toBe('up')
+    expect(withMismatchedTarget.weight).toBe(62.5)
+  })
+
+  it('does not change the answer for a hold-or-deload session either', () => {
+    // Same contract on the down side: a deload suggestion must not be swayed by a target.
+    const stalls = hist(LIFT, [[60, 5, 5, 3], [60, 5, 4, 4], [60, 5, 5, 4]])
+    const baselineStall = nextPrescription(stalls, cfg)
+    const decoratedStall = nextPrescription(stalls, { ...cfg, programmedEffort: [{ metric: 'rpe', value: 9 }] })
+    expect(decoratedStall).toEqual(baselineStall)
+    expect(decoratedStall.kind).toBe('deload')
+    expect(decoratedStall.weight).toBe(55)
+  })
+})
+
 describe('applyPrescription', () => {
   const sets = [{ w: 60, r: 5, done: true }, { w: 60, r: 5, done: false }]
 
