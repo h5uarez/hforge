@@ -158,6 +158,32 @@ export function bestWeightFor(S, exId) {
   }))
   return best
 }
+// Monday of the local-calendar week containing `iso`, returned as an ISO date
+// (YYYY-MM-DD). Used by the block resolver to detect "this day is in the same
+// local-calendar week as the block's start" — activating a block on a Thursday
+// must show the block's day map for Mon-Sun of that week, not just Thu-Sun.
+const mondayOfISO = iso => {
+  const d = localNoon(iso)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return isoOf(d)
+}
+
+// Block week index for a day that lives in the same local-calendar week as the
+// block's start. All seven days of the start's week resolve to week 1 — days
+// before the start use the start's resolved week (1) instead of falling through
+// to legacy `S.week`. This matches user expectation: activating a block changes
+// the weekly schedule for the entire current week, not only the days from
+// activation onward. For days outside the start's week, returns the canonical
+// `blockStatus` value (credited-days math).
+const currentWeekBlockIndex = (S, iso) => {
+  const ab = S && S.activeBlock
+  if (!ab || !iso) return blockStatus(S, iso)
+  const start = ab.startedOn
+  if (!start) return blockStatus(S, iso)
+  if (iso < start && mondayOfISO(iso) === mondayOfISO(start)) return 1
+  return blockStatus(S, iso)
+}
+
 export function effectiveRoutineId(S, iso) {
   // Explicit date override always wins. A 'rest' marker is rest, even with an
   // active block: the user explicitly turned today off and the block must not
@@ -173,7 +199,7 @@ export function effectiveRoutineId(S, iso) {
   // resolves to rest — it must NEVER fall through to legacy `week`, or a
   // partial block would silently mix schedules (spec #907 / design #908).
   // Mirrored in api/server.js blockWeek + effectiveRoutineId — keep in lockstep.
-  const week = blockStatus(S, iso)
+  const week = currentWeekBlockIndex(S, iso)
   if (week != null) {
     const ab = S.activeBlock
     const block = (S.blocks || []).find(b => b.id === ab.blockId)
@@ -483,6 +509,42 @@ export function blockStatus(S, iso) {
   // day 1 → week 1; day 7 → week 1; day 8 → week 2; clamp at the final week.
   const week = 1 + Math.floor((credited - 1) / 7)
   return Math.min(block.weeks.length, week)
+}
+
+// Day map for the active block's resolved current local-calendar week, or null when
+// no block is active / the block has been deleted / the resolved week has no usable
+// day map. Used by Plan.jsx and Home.jsx to surface the block-controlled schedule
+// instead of the legacy `S.week` map. The result is a fresh reference so callers
+// can iterate / count without aliasing the persisted state. Pure: never mutates S.
+export function blockWeekDays(S, iso) {
+  const ab = S && S.activeBlock
+  if (!ab || !iso) return null
+  const block = (S.blocks || []).find(b => b.id === ab.blockId)
+  if (!block || !Array.isArray(block.weeks) || block.weeks.length === 0) return null
+  // Resolve via currentWeekBlockIndex so days in the start's calendar week that
+  // sit before the start (e.g. a Thursday activation with Monday-Wednesday of
+  // the same week) still see the block's day map instead of falling through.
+  const week = currentWeekBlockIndex(S, iso)
+  if (week == null) return null
+  const w = block.weeks[week - 1]
+  if (!w || !w.days) return null
+  return { ...w.days }
+}
+
+// Count of training (non-rest) days in the active block's resolved current week, or
+// null when no block is active. Used by Home.jsx to compute the weekly denominator
+// ("X / Y this week"). Returns null — not a zero — when no block is active so the
+// View can fall back to its legacy `Object.keys(S.week).filter(...).length` count,
+// which is what a no-block user already sees. Pure: never mutates S.
+export function blockWeekTrainingDays(S, iso) {
+  const days = blockWeekDays(S, iso)
+  if (!days) return null
+  let n = 0
+  for (let d = 0; d <= 6; d++) {
+    const v = days[d]
+    if (v && v !== 'rest') n++
+  }
+  return n
 }
 
 // Snapshot the block context for a freshly-started workout. The result is what rides

@@ -290,9 +290,37 @@ async function runSmoke(signal) {
 		startedBySmoke = await waitForServices(launcher, signal)
 	}
 
+	// ----- 3.1 reset cookies/storage and prove a clean start (moved to the start of the smoke) -----
+	// Replaces the earlier duplicate pre-reset that ran before the routine-editor and active-workout
+	// picker journeys: that block asserted "guest entry" / "load starter plan" controls that no
+	// longer exist on the Home hero, so the smoke exited 1 at the very first step. The new
+	// bootstrap opens the app exactly once, then navigates to Home, clears cookies + localStorage
+	// + sessionStorage, forces the English locale, reloads, asserts `gym_state_v1` is empty (or
+	// { blocks: [], activeBlock: null }), and only then clicks guest entry + load starter plan
+	// once. Every later journey (routine-editor, active-workout picker, persisted block edit,
+	// active Today's-plan training, block-rest, 375px lifecycle, legacy fallback) runs against
+	// this single, deterministic boot.
 	await runStep('open hforge', ['open', baseUrl], signal)
-	await runStep('guest entry', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
-	await runStep('load starter plan', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+	await runStep('navigate to home before reset', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('clear cookies', ['cookie-clear'], signal)
+	await runStep('clear localStorage', ['localstorage-clear'], signal)
+	// Force the English locale for deterministic assertions. The block-lifecycle smoke relies on
+	// exact text matches against "Active", "Discard" (aria-label), "Save", "Update", "Pause",
+	// "Resume", "End block" and the validation card; their Spanish variants are correct in the
+	// app but switching on every test machine makes the journey brittle. The previous locale
+	// was wiped by `localstorage-clear`; the reload below reads gym_lang_v1 = 'en' and binds
+	// the i18n module to English.
+	await runStep('force English locale (deterministic i18n)', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
+	await runStep('clear sessionStorage', ['sessionstorage-clear'], signal)
+	await runStep('reload after reset', ['reload'], signal)
+	const cleanOut = await runStep('inspect gym_state_v1 after reset', ['--raw', 'eval',
+		"(() => { const raw = localStorage.getItem('gym_state_v1'); if (!raw) return { empty: true }; const s = JSON.parse(raw); return { empty: false, blocks: s.blocks, activeBlock: s.activeBlock } })()"
+	], signal)
+	const cleanParsed = JSON.parse(cleanOut.stdout.trim())
+	if (!cleanParsed.empty && (!Array.isArray(cleanParsed.blocks) || cleanParsed.blocks.length !== 0 || cleanParsed.activeBlock !== null))
+		throw new Error(`reset: gym_state_v1 should be empty or {blocks:[],activeBlock:null}; got ${JSON.stringify(cleanParsed)}`)
+	await runStep('guest entry after reset', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
+	await runStep('load starter plan after reset', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
 
 	// ----- routine editor picker journey (desktop, task 4.2 / spec scenario 1) -----
 	// ui-playwright-audit: explicitly resize to the verified desktop layout before the
@@ -518,58 +546,212 @@ async function runSmoke(signal) {
 	if (swipeState.hash !== '#/workout') throw new Error(`swipe dismissal: route changed to ${swipeState.hash}, expected #/workout`)
 	if (swipeState.hasError) throw new Error('swipe dismissal: error view is visible after CDP touch swipe')
 
+	// ----- second deterministic reset (picker-cleanup) -----
+	// The earlier picker journeys (desktop routine-editor, mobile workout 375px,
+	// keyboard/focus, backdrop, CDP touch swipe) intentionally start Push Day from the
+	// workout chooser and leave it as the in-progress active workout. The single 3.1
+	// reset at the start of the smoke ran BEFORE those journeys, so it can no longer
+	// clean the temporary "Push Day - in progress" state. Re-run the deterministic boot
+	// here, immediately before the block lifecycle section, so every later lifecycle
+	// assertion (3.2a, 3.2b, 3.2c, 3.3, 3.4, 3.5, 3.5b, 3.6a, 3.6, 3.6b, 3.7, 3.8,
+	// 3.9, 3.10, 3.11) starts from the same clean boot. The browser session is already
+	// open from the start of the smoke, so a fresh `open baseUrl` is unnecessary; only
+	// the navigation, storage clears, locale force, reload, state assertion, guest
+	// entry, and starter-plan click are repeated. This reset does NOT seed blocks or
+	// routines via localStorage — it only removes the temporary picker state and
+	// reloads the starter plan through the UI, leaving every later lifecycle assertion
+	// byte-for-byte unchanged.
+	await runStep('navigate to home for second reset', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('clear cookies (second reset)', ['cookie-clear'], signal)
+	await runStep('clear localStorage (second reset)', ['localstorage-clear'], signal)
+	await runStep('force English locale (second reset)', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
+	await runStep('clear sessionStorage (second reset)', ['sessionstorage-clear'], signal)
+	await runStep('reload after second reset', ['reload'], signal)
+	const cleanOut2 = await runStep('inspect gym_state_v1 after second reset', ['--raw', 'eval',
+		"(() => { const raw = localStorage.getItem('gym_state_v1'); if (!raw) return { empty: true }; const s = JSON.parse(raw); return { empty: false, blocks: s.blocks, activeBlock: s.activeBlock } })()"
+	], signal)
+	const cleanParsed2 = JSON.parse(cleanOut2.stdout.trim())
+	if (!cleanParsed2.empty && (!Array.isArray(cleanParsed2.blocks) || cleanParsed2.blocks.length !== 0 || cleanParsed2.activeBlock !== null))
+		throw new Error(`second reset: gym_state_v1 should be empty or {blocks:[],activeBlock:null}; got ${JSON.stringify(cleanParsed2)}`)
+	await runStep('guest entry after second reset', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
+	await runStep('load starter plan after second reset', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+
 	// =========================================================================
-	// block lifecycle smoke (issue: block-lifecycle-playwright-audit, WU2)
+	// block lifecycle smoke (issue: block-lifecycle-playwright-audit, WU2 + verify-remediation + WU4 final remediation)
 	// =========================================================================
 	//
-	// Reset → re-enter guest → load starter plan → create+activate a 2-week
-	// block → reload → assert activeBlock persisted → edit + assign today's
-	// weekday to Push Day → reload → Plan/Home show block schedule → start
-	// scheduled workout and assert frozen block context → discard → pause/
-	// resume/end → invalid save and cancel preserve prior state → 375px
-	// responsive check. Every assertion reads the persisted `gym_state_v1`
-	// shape, never a toast — toasts are not proof of success (design #908).
+	// Reset → re-enter guest → add 4th routine via UI → CREATE the 4-week
+	// block fixture (4 training days + 3 explicit rest) through the BlockEditor
+	// UI (NOT localStorage injection) → activate via UI → reload → assert
+	// activeBlock persisted → Plan rows resolve to the block's routine / rest
+	// for every weekday → Home weekly denominator = 4 → EDIT the persisted
+	// block through the BlockEditor (rename + change a non-today weekday to
+	// rest), reload, and assert the edit + the block-sourced rest persisted
+	// (resolves via block schedule, not dayPlan override) → DETERMINISTIC
+	// workout chooser rest semantics (force today to rest via the day-override
+	// UI, then clear) → DETERMINISTIC 3.6 training path: mock the page clock
+	// to the current calendar week's Thursday (block-resolved Fourth Day),
+	// start the workout from "Today's plan" (NOT "Other routines"), complete
+	// it, and assert the finished record retains block attribution
+	// { id, name, week } → DETERMINISTIC 3.6b block-sourced rest: mock the
+	// page clock to Friday (block-rest day), navigate to the workout chooser,
+	// and assert rest/no-start behavior with the rest source being the BLOCK
+	// (dayPlan[Friday] undefined; block.weeks[N].days[5] === 'rest') → 375px
+	// active lifecycle controls + Pause/Resume at the verified mobile
+	// viewport → resize back to desktop → end → invalid save and cancel
+	// preserve prior state → 375px no-overflow + manager controls and Plan
+	// legacy rows after end. Every assertion reads the persisted
+	// `gym_state_v1` shape AND the rendered DOM, never a toast — toasts are
+	// not proof of success (design #908). The Plan/Home row assertions are
+	// the durable proof that the cross-view schedule effect is real, not just
+	// a banner (verify-report #1256 critical finding #2). The clock mocks in
+	// 3.6 / 3.6b are the durable proof that gaps #2 and #3 (active-block
+	// workout training + active-block rest source) are exercised on a known
+	// block-mapped training day and a known block-mapped rest day regardless
+	// of the host machine's weekday.
 	const readState = async () => {
 		const out = await runStep('read gym_state_v1', ['--raw', 'eval', "JSON.parse(localStorage.getItem('gym_state_v1') || 'null')"], signal)
 		try { return JSON.parse(out.stdout.trim()) }
 		catch { throw new Error('readState: invalid JSON in gym_state_v1' + details(out)) }
 	}
 	// The Plan card title switches between "Training blocks" (no active) and the
-	// active block name (after activation). The regex covers both so the helper
-	// stays valid through every lifecycle transition.
+	// active block name (after activation). The regex covers both the original
+	// "Smoke W" (3.2c–3.5) and the post-edit "Smoke W V2" (3.5b–3.7, before end in
+	// 3.8) so the helper stays valid through every lifecycle transition including
+	// the 3.5b rename.
 	const openBlockManagerFromPlan = async () => {
 		await runStep('navigate to plan', ['goto', `${baseUrl}/#/plan`], signal)
-		await runStep('open block manager card', ['click', "getByText(/^(Training blocks|Smoke W|Bloques de entrenamiento)$/)"], signal)
+		await runStep('open block manager card', ['click', "getByText(/^(Training blocks|Smoke W(?: V2)?|Bloques de entrenamiento)$/)"], signal)
 	}
 
-	// ----- 3.1 reset cookies/storage and prove a clean start -----
-	await runStep('navigate to home before reset', ['goto', `${baseUrl}/#/home`], signal)
-	await runStep('clear cookies', ['cookie-clear'], signal)
-	await runStep('clear localStorage', ['localstorage-clear'], signal)
-	// Force the English locale for deterministic assertions. The block-lifecycle smoke relies on
-	// exact text matches against "Active", "Discard" (aria-label), "Save", "Update", "Pause",
-	// "Resume", "End block" and the validation card; their Spanish variants are correct in the
-	// app but switching on every test machine makes the journey brittle. The previous locale
-	// was wiped by `localstorage-clear`; the reload below reads gym_lang_v1 = 'en' and binds
-	// the i18n module to English.
-	await runStep('force English locale (deterministic i18n)', ['localstorage-set', 'gym_lang_v1', 'en'], signal)
-	await runStep('clear sessionStorage', ['sessionstorage-clear'], signal)
-	await runStep('reload after reset', ['reload'], signal)
-	const cleanOut = await runStep('inspect gym_state_v1 after reset', ['--raw', 'eval',
-		"(() => { const raw = localStorage.getItem('gym_state_v1'); if (!raw) return { empty: true }; const s = JSON.parse(raw); return { empty: false, blocks: s.blocks, activeBlock: s.activeBlock } })()"
-	], signal)
-	const cleanParsed = JSON.parse(cleanOut.stdout.trim())
-	if (!cleanParsed.empty && (!Array.isArray(cleanParsed.blocks) || cleanParsed.blocks.length !== 0 || cleanParsed.activeBlock !== null))
-		throw new Error(`reset: gym_state_v1 should be empty or {blocks:[],activeBlock:null}; got ${JSON.stringify(cleanParsed)}`)
-	await runStep('guest entry after reset', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
-	await runStep('load starter plan after reset', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+	// ----- 3.2a add a 4th routine ("Fourth Day") via UI so the fixture has 4 distinct routines -----
+	// The block fixture maps Thursday → "Fourth Day" (one of four training days in week 1).
+	// The previous 3.6b path always started Push Day from "Other routines" so the test was
+	// weekday-independent; the new 3.6 path starts the active-block-selected routine from
+	// "Today's plan", which is Thursday → "Fourth Day" when the test machine's weekday is
+	// Thursday. A routine with no exercises produces an empty active-workout view (no set
+	// checkboxes), so the 3.6 finish path would fail. Add push-up to Fourth Day here so
+	// every training-day weekday has at least one exercise and the test is deterministic.
+	await runStep('navigate to plan for 4th routine', ['goto', `${baseUrl}/#/plan`], signal)
+	await runStep('click New to add 4th routine', ['click', "getByRole('button', { name: /^New$/ })"], signal)
+	await runStep('rename 4th routine to Fourth Day', ['fill', "input.input", 'Fourth Day'], signal)
+	await runStep('open exercise picker for Fourth Day', ['click', "getByRole('button', { name: /Add exercise|Añadir ejercicio/ }).last()"], signal)
+	await runStep('narrow Fourth Day picker to push-up', ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", 'push-up'], signal)
+	await runStep('pick push-up from Fourth Day picker', ['click', "getByText('push-up', { exact: true })"], signal)
+	await runStep('confirm push-up in Fourth Day ExConfig', ['click', "getByRole('button', { name: /Add to routine|Añadir a la rutina/ })"], signal)
+	await runStep('navigate back to plan after Fourth Day exercises', ['goto', `${baseUrl}/#/plan`], signal)
 
-	// ----- 3.2 create a 2-week block, activate, reload, assert persisted -----
-	await runStep('open plan for block create', ['goto', `${baseUrl}/#/plan`], signal)
+	// ----- 3.2b create the 4-week block fixture through the BlockEditor UI (4 training days + 3 explicit rest) -----
+	// Reading the routine ids verifies the UI-driven 4th routine actually landed.
+	const routineIdsOut = await runStep('read routine ids for fixture', ['--raw', 'eval',
+		"(() => { const s = JSON.parse(localStorage.getItem('gym_state_v1')||'{}'); const m = {}; (s.routines || []).forEach(r => { m[r.name] = r.id }); return m; })()"
+	], signal)
+	const routineIds = JSON.parse(routineIdsOut.stdout.trim())
+	for (const n of ['Push Day', 'Pull Day', 'Leg Day', 'Fourth Day']) {
+		if (!routineIds[n]) throw new Error(`fixture: routine '${n}' missing after starter plan + 4th routine UI path; ids=${JSON.stringify(routineIds)}`)
+	}
+	// Navigate to /plan and open the block manager (no active block yet — the card title
+	// reads "Training blocks" / "Bloques de entrenamiento").
 	await runStep('open block manager (no active yet)', ['click', "getByText(/^(Training blocks|Bloques de entrenamiento)$/)"], signal)
-	await runStep('tap Add block', ['click', "getByRole('button', { name: /Add block|Añadir bloque/ })"], signal)
-	await runStep('fill block name', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Smoke W'], signal)
-	await runStep('add a second week (multi-week)', ['click', "getByRole('button', { name: /Add week|Añadir semana/ })"], signal)
+	await runStep('Add block via UI', ['click', "getByRole('button', { name: /Add block|Añadir bloque/ })"], signal)
+	await runStep('type Smoke W as block name', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Smoke W'], signal)
+	// The BlockEditor h3 reads "New block" or "Edit block" — scope day clicks + Add week
+	// clicks to that sheet so the smoke never picks up an underlying list (Plan routines,
+	// routine-editor rows, etc.). Inside the BlockEditor, day rows have `.tt` with the
+	// day name; the BlockDayAssign sheet that opens on top has `.lrow-i` items with
+	// "Rest" / routine names. The .lrow-i marker is the unique signal that we are on
+	// the assign sheet and not the editor day rows.
+	const editorSheetSel = ".sheet:has(h3:has-text('New block'))"
+	const dayAssignSel = (pick) => pick === 'Rest'
+		? ".sheet .list .item:has(.lrow-i):has-text('Rest'):not(:has-text('Rest / skip'))"
+		: `.sheet .list .item:has(.lrow-i):has-text('${pick}')`
+	// Mon-anchored day order matching the editor's [1,2,3,4,5,6,0] map.
+	const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+	const dayAssignments = {
+		'Monday': 'Push Day',
+		'Tuesday': 'Pull Day',
+		'Wednesday': 'Leg Day',
+		'Thursday': 'Fourth Day',
+		'Friday': 'Rest',
+		'Saturday': 'Rest',
+		'Sunday': 'Rest',
+	}
+	for (let weekIdx = 0; weekIdx < 4; weekIdx++) {
+		if (weekIdx > 0) {
+			await runStep(`add week ${weekIdx + 1}`, ['click', "getByRole('button', { name: /Add week|Añadir semana/ })"], signal)
+		}
+		for (const dayName of dayOrder) {
+			const pick = dayAssignments[dayName]
+			await runStep(`open ${dayName} assign w${weekIdx + 1}`, ['click', `${editorSheetSel} .list .item:has-text('${dayName}')`], signal)
+			await runStep(`assign ${pick} to ${dayName} w${weekIdx + 1}`, ['click', dayAssignSel(pick)], signal)
+		}
+	}
+	// Save the draft through the UI (the Save button writes to gym_state_v1.blocks). The
+	// 4 weeks of cell assignments ARE the "edit" the verify report asks for — the empty
+	// draft is being edited into a complete block via the day picker.
+	await runStep('save UI-created block', ['click', "getByRole('button', { name: /^Save$|^Guardar$/ }).last()"], signal)
+	// Reload to verify the Save path actually wrote the block to gym_state_v1.
+	await runStep('reload after UI create', ['reload'], signal)
+	const afterCreate = await readState()
+	if (!Array.isArray(afterCreate.blocks) || afterCreate.blocks.length === 0) throw new Error('UI create: blocks missing after reload')
+	const created = afterCreate.blocks[afterCreate.blocks.length - 1]
+	if (created.name !== 'Smoke W') throw new Error(`UI create: blocks[${afterCreate.blocks.length - 1}].name should be 'Smoke W', got '${created.name}'`)
+	if (!Array.isArray(created.weeks) || created.weeks.length !== 4) throw new Error(`UI create: blocks[${afterCreate.blocks.length - 1}] should have 4 weeks, got ${created.weeks && created.weeks.length}`)
+	const rmap = {}
+	;(afterCreate.routines || []).forEach(r => { rmap[r.id] = r.name })
+	const expectedW1 = {
+		'Monday': 'Push Day', 'Tuesday': 'Pull Day', 'Wednesday': 'Leg Day',
+		'Thursday': 'Fourth Day', 'Friday': null, 'Saturday': null, 'Sunday': null,
+	}
+	const w1 = created.weeks[0].days
+	const dayToWd = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 0 }
+	for (const day of dayOrder) {
+		const wd = dayToWd[day]
+		const expected = expectedW1[day]
+		const actual = w1[wd]
+		const actualName = actual === 'rest' ? null : (rmap[actual] || actual)
+		if (actualName !== expected) throw new Error(`UI create: week 1 ${day} (wd ${wd}) should resolve to ${expected}, got "${actualName}"`)
+	}
+
+	// Capture today's weekday so every conditional assertion is parameterised.
+	const weekdayOut = await runStep('read today weekday', ['--raw', 'eval', 'new Date().getDay()'], signal)
+	const weekday = parseInt(weekdayOut.stdout.trim())
+	const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+	// Block week 1 day map (Mon-anchored): Mon=Push, Tue=Pull, Wed=Leg, Thu=Fourth, Fri/Sat/Sun=rest.
+	const expectedForWd = wd => {
+		const map = { 1: 'Push Day', 2: 'Pull Day', 3: 'Leg Day', 4: 'Fourth Day' }
+		return map[wd] || null
+	}
+	const todayExpectedRoutine = expectedForWd(weekday)
+	const todayIsRestDay = todayExpectedRoutine == null
+	// Deterministic 3.6 training/rest dates: pick the Thursday and Friday of the host's
+	// current local-calendar week. Both fall in the same calendar week as the host's today
+	// (whatever weekday that is), so the block resolver's `currentWeekBlockIndex` override
+	// fires and resolves them to block week 1. Thursday is always a training day in the
+	// block fixture (Mon=Push, Tue=Pull, Wed=Leg, Thu=Fourth); the 3.5b editWd is the
+	// first training weekday != host weekday, which is in [1,2] — never 4 (Thursday) —
+	// so Thursday is always Fourth Day even after the 3.5b edit. Friday (wd=5) is always
+	// a rest day in the fixture; 3.5b only ever touches [1,2], so Friday is always rest
+	// in the post-3.5b block regardless of the host weekday.
+	const hostNowForDates = new Date()
+	const hostWdForDates = hostNowForDates.getDay()
+	const monOffsetForDates = (hostWdForDates + 6) % 7
+	const hostMondayForDates = new Date(hostNowForDates)
+	hostMondayForDates.setDate(hostNowForDates.getDate() - monOffsetForDates)
+	const hostThursdayForDates = new Date(hostMondayForDates)
+	hostThursdayForDates.setDate(hostMondayForDates.getDate() + 3)
+	const hostFridayForDates = new Date(hostMondayForDates)
+	hostFridayForDates.setDate(hostMondayForDates.getDate() + 4)
+	// Local-ISO formatter (matches production todayISO / isoOf in frontend/src/lib/format.js —
+	// uses local date components, not UTC, so the smoke date matches what the page sees).
+	const localIsoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+	const deterministicThursdayIso = localIsoOf(hostThursdayForDates)
+	const deterministicFridayIso = localIsoOf(hostFridayForDates)
+
+	// ----- 3.2c activate via UI → reload → assert activeBlock persisted -----
+	await runStep('open plan for block activate', ['goto', `${baseUrl}/#/plan`], signal)
+	await runStep('open block manager (no active yet)', ['click', "getByText(/^(Training blocks|Bloques de entrenamiento)$/)"], signal)
+	await runStep('open Smoke W for activate', ['click', ".list .item:has-text('Smoke W')"], signal)
 	await runStep('Save and activate block', ['click', "getByRole('button', { name: /Save & activate|Guardar y activar/ })"], signal)
 	await runStep('confirm activate', ['click', "getByRole('button', { name: /^Activate$|^Activar$/ })"], signal)
 	await runStep('reload after activate', ['reload'], signal)
@@ -577,67 +759,461 @@ async function runSmoke(signal) {
 	if (!afterActivate.activeBlock) throw new Error('activate: gym_state_v1.activeBlock is null after reload (lifecycle helper return-value was discarded by update)')
 	if (afterActivate.activeBlock.status !== 'active') throw new Error(`activate: status should be 'active', got '${afterActivate.activeBlock.status}'`)
 	if (afterActivate.activeBlock.blockId !== afterActivate.blocks[0].id) throw new Error(`activate: activeBlock.blockId (${afterActivate.activeBlock.blockId}) ≠ blocks[0].id (${afterActivate.blocks[0].id})`)
+	if (!Array.isArray(afterActivate.blocks[0].weeks) || afterActivate.blocks[0].weeks.length !== 4) throw new Error(`activate: block should have 4 weeks after reload, got ${afterActivate.blocks[0].weeks && afterActivate.blocks[0].weeks.length}`)
 
-	// ----- 3.3 edit (assign today's weekday to Push Day) + reload + Plan/Home show block -----
-	const weekdayOut = await runStep('read today weekday', ['--raw', 'eval', 'new Date().getDay()'], signal)
-	const weekday = parseInt(weekdayOut.stdout.trim())
-	const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+	// ----- 3.3 Plan shows the block-resolved routine/rest for every weekday of the current week -----
+	// This is the durable assertion the previous smoke was missing. We extract the rendered
+	// weekday rows from the DOM (in display order Mon-Sun) and compare each row's tag against
+	// the block's resolved day map. A Plan view that silently fell back to legacy S.week would
+	// pass the previous banner-only assertion and fail here.
+	await runStep('navigate to plan for row assertions', ['goto', `${baseUrl}/#/plan`], signal)
+	const planScheduleOut = await runStep('extract plan week schedule rows', ['--raw', 'eval', `
+		(() => {
+			// Walk the seven weekdays in display order (Mon=1, Tue=2, ..., Sat=6, Sun=0).
+			const order = [1, 2, 3, 4, 5, 6, 0];
+			const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+			const allItems = [...document.querySelectorAll('.list .item')];
+			const rows = [];
+			for (const wd of order) {
+				const name = dayNames[wd];
+				const item = allItems.find(el => el.querySelector('.tt') && el.querySelector('.tt').textContent.trim() === name);
+				if (!item) { rows.push({ wd, name, found: false }); continue; }
+				const tag = item.querySelector('.tag');
+				rows.push({ wd, name, found: true, tag: tag ? tag.textContent.trim() : null, tagAcc: !!(tag && tag.classList.contains('acc')) });
+			}
+			return rows;
+		})()
+	`], signal)
+	const planRows = JSON.parse(planScheduleOut.stdout.trim())
+	for (const row of planRows) {
+		if (!row.found) throw new Error(`plan rows: row for ${row.name} (wd ${row.wd}) not found in DOM`)
+		const expected = expectedForWd(row.wd)
+		if (expected == null) {
+			// Rest day: tag should be the localised "Rest" label and must NOT have .acc (which marks a routine tag).
+			if (row.tagAcc) throw new Error(`plan rows: ${row.name} (wd ${row.wd}) should be Rest (no .acc), got tag="${row.tag}" with .acc`)
+			if (!/Rest/i.test(row.tag || '')) throw new Error(`plan rows: ${row.name} (wd ${row.wd}) should be Rest, got "${row.tag}"`)
+		} else {
+			// Training day: tag must include the expected routine name and carry .acc.
+			if (!row.tagAcc) throw new Error(`plan rows: ${row.name} (wd ${row.wd}) should be ${expected} (with .acc), got tag="${row.tag}" without .acc`)
+			if (!row.tag.includes(expected)) throw new Error(`plan rows: ${row.name} (wd ${row.wd}) should be ${expected}, got "${row.tag}"`)
+		}
+	}
+
+	// ----- 3.4 Home weekly denominator = 4 (blockWeekTrainingDays), today row matches block -----
+	await runStep('navigate to home for assertions', ['goto', `${baseUrl}/#/home`], signal)
+	const homeOut = await runStep('extract home week + today row', ['--raw', 'eval', `(() => { var bt = document.body.innerText; var m = bt.match(/(\\d+)\\s*\\/\\s*(\\d+)\\s*this week/); var d = m ? Number(m[2]) : null; var tr = document.querySelector('.today-row'); var ttl = tr ? tr.querySelector('.ttl') : null; var tag = tr ? tr.querySelector('.tag') : null; return { denom: d, todayTtl: ttl ? ttl.textContent.trim() : null, todayTag: tag ? tag.textContent.trim() : null, bodyText: bt.slice(0, 1500) }; })()`], signal)
+	const homeState = JSON.parse(homeOut.stdout.trim())
+	if (homeState.denom !== 4) throw new Error(`home denominator: expected 4 (4 training days in block), got ${homeState.denom}; body="${homeState.bodyText.slice(0, 200)}"`)
+	if (todayIsRestDay) {
+		if (!/Rest day/i.test(homeState.todayTtl || '')) throw new Error(`home today: expected Rest day for weekday ${weekday} (${dayNamesEn[weekday]}), got "${homeState.todayTtl}"`)
+	} else {
+		if (!homeState.todayTtl || !homeState.todayTtl.includes(todayExpectedRoutine)) throw new Error(`home today: expected ${todayExpectedRoutine} for weekday ${weekday}, got "${homeState.todayTtl}"`)
+	}
+	// The compact active-block banner must include the block name and week label.
+	const bannerText = homeState.bodyText
+	if (!/Smoke W/.test(bannerText)) throw new Error(`home banner: 'Smoke W' missing; got "${bannerText.slice(0, 200)}"`)
+	if (!/Active/.test(bannerText)) throw new Error(`home banner: 'Active' status missing; got "${bannerText.slice(0, 200)}"`)
+
+	// ----- 3.5 explicit-rest contract: when today is a rest day, the resolver must NOT fall through -----
+	// to legacy S.week. We assert this even when today is a training day by reading the DOM today
+	// row + cross-checking the persisted effective routine for today's iso.
+	const effectiveOut = await runStep('assert effective routine for today iso', ['--raw', 'eval', `
+		(() => {
+			const S = JSON.parse(localStorage.getItem('gym_state_v1'));
+			const dayMap = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+			const d = new Date();
+			const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+			const wd = d.getDay();
+			const ab = S.activeBlock;
+			const block = (S.blocks || []).find(b => b.id === ab.blockId);
+			const blockStatus = (isoStr) => {
+				const start = ab.startedOn;
+				if (isoStr < start) return null;
+				const dn = (a, b) => new Date(a + 'T12:00:00');
+				let cur = dn(start);
+				const target = dn(isoStr);
+				let credited = 0;
+				while (cur <= target) { credited++; cur.setDate(cur.getDate() + 1); }
+				if (credited <= 0) return null;
+				return 1 + Math.floor((credited - 1) / 7);
+			};
+			const wk = blockStatus(iso);
+			const w = block.weeks[wk - 1];
+			const v = w.days[wd];
+			const routine = v && v !== 'rest' ? (S.routines.find(r => r.id === v) || { name: null }) : null;
+			return { iso, wd, blockWeek: wk, blockDayValue: v, resolvedRoutineName: routine ? routine.name : null, legacyWeekHasEntry: !!S.week[wd] };
+		})()
+	`], signal)
+	const eff = JSON.parse(effectiveOut.stdout.trim())
+	if (todayIsRestDay) {
+		// The block maps today to 'rest' — the resolver must return null, NEVER the legacy S.week entry.
+		if (eff.resolvedRoutineName !== null) throw new Error(`explicit rest: today (wd ${weekday}) should resolve to rest (null), got routine "${eff.resolvedRoutineName}"`)
+		// If the test machine happens to have a legacy S.week entry for this wd, that's the bug the
+		// original Plan.jsx had: it would have shown the legacy routine. Assert the block path wins.
+		if (eff.legacyWeekHasEntry) {
+			// The rendered today row must still show Rest day (block wins), not the legacy routine.
+			if (!/Rest day/i.test(homeState.todayTtl || '')) throw new Error(`explicit rest: legacy S.week has entry for wd ${weekday} but Plan/Home today row shows "${homeState.todayTtl}", not "Rest day" — block-resolved rest is being overridden by legacy week`)
+		}
+	} else {
+		if (eff.resolvedRoutineName !== todayExpectedRoutine) throw new Error(`today routine: block should resolve to "${todayExpectedRoutine}", got "${eff.resolvedRoutineName}"`)
+	}
+
+	// ----- 3.5b PERSISTED EDIT + BLOCK-SOURCED REST (verify-report #1256 gaps #1 + #3) -----
+	// The 3.2b create path builds a fresh block through the BlockEditor UI; the verify report
+	// pointed out that the previous smoke never re-opened a *persisted* block, changed a
+	// field, and asserted the change survived a reload. This section does exactly that:
+	//
+	//   1. Reopen the persisted Smoke W (h3 "Edit block" sheet).
+	//   2. Rename to "Smoke W V2" (proves the name field round-trips through Update).
+	//   3. Click a known non-today training weekday (Mon-Thu in the fixture) and pick "Rest"
+	//      in the BlockDayAssign picker (proves the day map round-trips through Update).
+	//   4. Click Update (NOT "Save & activate" — that button is hidden when the block is
+	//      active per `sheets.jsx` `!isActive && !ab && v.valid`).
+	//   5. Reload. Assert both edits persisted on `gym_state_v1` (Gap #1).
+	//   6. Resolve the edited weekday's ISO through the canonical block resolver
+	//      (replicated in eval) and assert: the resolver returns null (rest), the block's
+	//      day map has 'rest' for that weekday, AND S.dayPlan[that_iso] is undefined.
+	//      The rest source is the BLOCK, not a dayPlan override (Gap #3).
+	//   7. Cross-view check: navigate to /plan and read the row for the edited weekday —
+	//      the tag must read "Rest" without .acc, proving the cross-view surface honours
+	//      the block edit (not a stale cache, not the legacy S.week fallback).
+	//
+	// editWd is the first training weekday (Mon-Thu) that is NOT today. Picking a non-today
+	// training day leaves today's block resolution untouched, so the 3.6 active-block-selected
+	// workout path can still exercise today's "Today's plan" button when today is Mon-Thu.
+	const trainingWds = [1, 2, 3, 4]
+	const editWd = trainingWds.find(wd => wd !== weekday)
+	const editDayName = dayNamesEn[editWd]
+	// ISO of the edited weekday in the current local-calendar week (Mon-anchored).
+	const editMondayDate = new Date()
+	editMondayDate.setDate(editMondayDate.getDate() - ((editMondayDate.getDay() + 6) % 7))
+	const editDateObj = new Date(editMondayDate)
+	editDateObj.setDate(editMondayDate.getDate() + (editWd === 0 ? 6 : editWd - 1))
+	const editIso = editDateObj.toISOString().slice(0, 10)
 	await openBlockManagerFromPlan()
-	await runStep('open Smoke W for edit', ['click', ".list .item:has-text('Smoke W')"], signal)
-	await runStep(`open ${dayNamesEn[weekday]} day assign`, ['click', `#modal-root .list .item:has-text('${dayNamesEn[weekday]}')`], signal)
-	await runStep('assign Push Day to today', ['click', "#modal-root .list .item:has-text('Push Day')"], signal)
-	await runStep('Update block', ['click', "getByRole('button', { name: /^Update$|^Actualizar$/ })"], signal)
-	await runStep('reload after edit', ['reload'], signal)
+	await runStep('open Smoke W for edit (3.5b)', ['click', ".list .item:has-text('Smoke W')"], signal)
+	// Rename the block. The TextField uses the Block name placeholder in both English and Spanish.
+	await runStep('fill new block name (3.5b)', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Smoke W V2'], signal)
+	// Editor sheet for an EXISTING block reads h3 "Edit block" (not "New block"). The day rows
+	// and the day picker pattern stay the same as the create path.
+	const editorEditSel = ".sheet:has(h3:has-text('Edit block'))"
+	await runStep(`open ${editDayName} for reassign (3.5b)`, ['click', `${editorEditSel} .list .item:has-text('${editDayName}')`], signal)
+	// Click Rest in the BlockDayAssign picker. The .lrow-i marker is unique to the picker sheet
+	// and avoids matching the editor's underlying day-row tag.
+	await runStep(`assign Rest to ${editDayName} (3.5b)`, ['click', dayAssignSel('Rest')], signal)
+	// Update button — block is already active, so "Save & activate" is hidden. .last() guards
+	// against any future button named "Update" / "Actualizar" above the editor footer.
+	await runStep('click Update (3.5b)', ['click', "getByRole('button', { name: /^Update$|^Actualizar$/ })"], signal)
+	await runStep('reload after edit (3.5b)', ['reload'], signal)
 	const afterEdit = await readState()
-	const blockDays = afterEdit.blocks[0].weeks[0].days
-	if (!Object.values(blockDays).some(d => d && d !== 'rest'))
-		throw new Error(`edit: block has no routine assigned in week 1; days=${JSON.stringify(blockDays)}`)
-	const planBanner = await runStep('plan banner shows block', ['--raw', 'eval', "({ text: document.body.innerText })"], signal)
-	const planText = JSON.parse(planBanner.stdout.trim()).text
-	if (!/Smoke W/.test(planText) || !/Active/.test(planText))
-		throw new Error(`plan banner: 'Smoke W' or 'Active' missing; got "${planText.slice(0, 200)}"`)
-	await runStep('navigate to home', ['goto', `${baseUrl}/#/home`], signal)
-	const homeBanner = await runStep('home banner shows block', ['--raw', 'eval', "({ text: document.body.innerText })"], signal)
-	const homeText = JSON.parse(homeBanner.stdout.trim()).text
-	if (!/Smoke W/.test(homeText)) throw new Error(`home banner: 'Smoke W' missing; got "${homeText.slice(0, 200)}"`)
+	if (afterEdit.blocks[0].name !== 'Smoke W V2') throw new Error(`persisted edit (3.5b): blocks[0].name should be 'Smoke W V2' after reload, got '${afterEdit.blocks[0].name}'`)
+	if (afterEdit.blocks[0].weeks[0].days[editWd] !== 'rest') throw new Error(`persisted edit (3.5b): blocks[0].weeks[0].days[${editWd}] (${editDayName}) should be 'rest' after reload, got '${afterEdit.blocks[0].weeks[0].days[editWd]}'`)
+	// Block-sourced rest source check. We replicate the resolver precedence in eval because
+	// `effectiveRoutineId` is not exposed on `window`. The check covers both the structure of
+	// the block's day map (must be 'rest') AND the absence of a dayPlan override (proves the
+	// rest comes from the block, not a stale dayPlan entry). This is the durable proof for
+	// verify-report #1256 gap #3 (block-sourced rest, not dayPlan).
+	const restSourceOut = await runStep('assert block-sourced rest source (3.5b)', ['--raw', 'eval', `
+		(() => {
+			const S = JSON.parse(localStorage.getItem('gym_state_v1'));
+			const editIso = ${JSON.stringify(editIso)};
+			const editWd = ${editWd};
+			const dayPlanVal = S.dayPlan && S.dayPlan[editIso];
+			const ab = S.activeBlock;
+			const block = (S.blocks || []).find(b => b.id === ab.blockId);
+			const mondayOf = iso => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+			let blockWeekIdx = null;
+			if (ab) {
+				const start = ab.startedOn;
+				if (start) {
+					if (editIso < start && mondayOf(editIso) === mondayOf(start)) {
+						blockWeekIdx = 1;
+					} else if (editIso >= start) {
+						const dn = s => new Date(s + 'T12:00:00');
+						let cur = dn(start); const target = dn(editIso); let credited = 0;
+						while (cur <= target) { credited++; cur.setDate(cur.getDate() + 1); }
+						if (credited > 0) blockWeekIdx = 1 + Math.floor((credited - 1) / 7);
+					}
+				}
+			}
+			const w = blockWeekIdx != null ? block.weeks[Math.min(blockWeekIdx, block.weeks.length) - 1] : null;
+			const blockDayVal = w ? w.days[editWd] : null;
+			const routine = blockDayVal && blockDayVal !== 'rest' ? (S.routines.find(r => r.id === blockDayVal) || { name: null }) : null;
+			return {
+				dayPlanVal: dayPlanVal === undefined ? null : dayPlanVal,
+				dayPlanUndefined: S.dayPlan ? S.dayPlan[editIso] === undefined : true,
+				blockWeekIdx,
+				blockDayVal,
+				resolvedRoutineName: routine ? routine.name : null,
+			};
+		})()
+	`], signal)
+	const restSource = JSON.parse(restSourceOut.stdout.trim())
+	if (!restSource.dayPlanUndefined) throw new Error(`block-sourced rest (3.5b): dayPlan['${editIso}'] should be undefined (rest source must be the block, not a dayPlan override), got ${JSON.stringify(restSource.dayPlanVal)}`)
+	if (restSource.blockDayVal !== 'rest') throw new Error(`block-sourced rest (3.5b): block.weeks[blockWeekIdx-1].days[${editWd}] should be 'rest', got ${JSON.stringify(restSource.blockDayVal)}`)
+	if (restSource.resolvedRoutineName !== null) throw new Error(`block-sourced rest (3.5b): resolver should return null (rest) for ${editDayName} ${editIso}, got routine "${restSource.resolvedRoutineName}"`)
+	// Cross-view check: the Plan row for the edited weekday must read "Rest" without .acc.
+	await runStep('navigate to plan for edit cross-view (3.5b)', ['goto', `${baseUrl}/#/plan`], signal)
+	const planEditOut = await runStep('extract plan row for edited weekday (3.5b)', ['--raw', 'eval', `
+		(() => {
+			const allItems = [...document.querySelectorAll('.list .item')];
+			const item = allItems.find(el => el.querySelector('.tt') && el.querySelector('.tt').textContent.trim() === ${JSON.stringify(editDayName)});
+			const tag = item ? item.querySelector('.tag') : null;
+			return { found: !!item, tag: tag ? tag.textContent.trim() : null, tagAcc: !!(tag && tag.classList.contains('acc')) };
+		})()
+	`], signal)
+	const planEditRow = JSON.parse(planEditOut.stdout.trim())
+	if (!planEditRow.found) throw new Error(`block-sourced rest (3.5b): Plan row for ${editDayName} not found after edit`)
+	if (planEditRow.tagAcc) throw new Error(`block-sourced rest (3.5b): Plan row for ${editDayName} (wd ${editWd}) should be Rest (no .acc) after edit, got tag="${planEditRow.tag}" with .acc`)
+	if (!/Rest/i.test(planEditRow.tag || '')) throw new Error(`block-sourced rest (3.5b): Plan row for ${editDayName} (wd ${editWd}) should be Rest after edit, got "${planEditRow.tag}"`)
 
-	// ----- 3.4 start scheduled workout and assert frozen block context -----
-	await runStep('open workout chooser', ['goto', `${baseUrl}/#/workout`], signal)
-	await runStep('start today plan workout', ['click', "getByRole('button', { name: /^Start Push Day$|^Empezar Push Day$/ })"], signal)
-	await runStep('skip weigh-in', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
-	const afterStart = await readState()
-	if (!afterStart.active || !afterStart.active.block) throw new Error('workout: S.active.block is missing — block context was not frozen at workout start')
-	if (afterStart.active.block.name !== 'Smoke W') throw new Error(`workout: S.active.block.name should be 'Smoke W', got '${afterStart.active.block.name}'`)
-	if (afterStart.active.block.week !== 1) throw new Error(`workout: S.active.block.week should be 1, got ${afterStart.active.block.week}`)
-	// Discard the active workout so the lifecycle actions can run cleanly. Two clicks:
-	// first the X iconbtn (aria-label=Discard), then the confirm-sheet button (text=Discard).
-	await runStep('discard active workout', ['run-code', [
+	// ----- 3.6a deterministic workout chooser rest semantics (verify-report #1256 gap #3) -----
+	// Force today to be a rest day in the chooser by setting `dayPlan[today] = 'rest'` through
+	// the day-override UI, regardless of the test machine's weekday. This is the same code
+	// path the workout chooser hits on a block-rest day (dayPlan wins over the block), so
+	// deterministically exercising it via UI proves the rest branch in every run.
+	await runStep('navigate to home for day override', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('open day override for today via date strip', ['click', ".week .wday.today"], signal)
+	await runStep('pick Rest / skip this day in override sheet', ['click', ".sheet .list .item:has(.lrow-i):has-text('Rest / skip this day')"], signal)
+	await runStep('reload after forcing today to rest', ['reload'], signal)
+	const forcedRestState = await readState()
+	const todayIso = forcedRestState.dayPlan && Object.keys(forcedRestState.dayPlan).sort().slice(-1)[0]
+	if (todayIso !== new Date().toISOString().slice(0, 10) || forcedRestState.dayPlan[todayIso] !== 'rest') {
+		throw new Error(`forced rest: dayPlan[today=${todayIso}] should be 'rest', got ${JSON.stringify(forcedRestState.dayPlan)}`)
+	}
+	await runStep('navigate to workout on forced-rest day', ['goto', `${baseUrl}/#/workout`], signal)
+	const restWorkoutOut = await runStep('assert workout chooser rest semantics', ['--raw', 'eval', `
+		(() => {
+			const t = document.body.innerText;
+			// No "Start <routine>" button should be present; the page should reflect the rest semantics.
+			const startButtons = [...document.querySelectorAll('button')].filter(b => /^Start [A-Z]|^Empezar [A-Z]/.test((b.textContent || '').trim()));
+			return { hasRestDay: /Rest day/i.test(t), startButtons: startButtons.map(b => b.textContent.trim()), text: t.slice(0, 800) };
+		})()
+	`], signal)
+	const restW = JSON.parse(restWorkoutOut.stdout.trim())
+	if (restW.startButtons.length > 0) throw new Error(`explicit rest: workout chooser offers ${restW.startButtons.length} routine start(s) on a forced-rest day: ${JSON.stringify(restW.startButtons)}`)
+	if (!restW.hasRestDay) throw new Error(`explicit rest: workout screen does not surface 'Rest day' on a forced-rest day; got "${restW.text}"`)
+	// Clear the dayPlan override so subsequent assertions use the active block's resolved
+	// day map again (the override would otherwise force today to rest everywhere).
+	await runStep('navigate to home to clear override', ['goto', `${baseUrl}/#/home`], signal)
+	await runStep('open day override again', ['click', ".week .wday.today"], signal)
+	await runStep('clear dayPlan via Back to weekly plan', ['click', ".sheet .list .item:has(.lrow-i):has-text('Back to weekly plan')"], signal)
+	await runStep('reload after clearing dayPlan override', ['reload'], signal)
+	const clearedState = await readState()
+	const clearedToday = clearedState.dayPlan && clearedState.dayPlan[new Date().toISOString().slice(0, 10)]
+	if (clearedToday !== undefined) throw new Error(`clear override: dayPlan[today] should be undefined, got '${clearedToday}'`)
+
+	// ----- 3.6 ACTIVE-BLOCK-SELECTED WORKOUT (verify-report #1256 gaps #2 + #3) -----
+	// Verify-report #1256 critical findings #2 and #3 require deterministic runtime proof:
+	//   (a) Start the workout through the routine the active block resolves for today,
+	//       NOT from "Other routines" and NOT a manually chosen unrelated routine, and
+	//       assert the finished `S.workouts` record retains block {id, name, week}.
+	//   (b) Exercise the workout chooser for a date the active block maps to rest, and
+	//       assert rest/no-start behavior with the rest source being the BLOCK (not a
+	//       dayPlan override).
+	//
+	// To make BOTH checks deterministic regardless of the host machine's weekday, this
+	// section uses `page.clock.setSystemTime()` via run-code to mock the page's clock
+	// to a known date, then reloads so `new Date()` in the page returns the mocked date.
+	// The two mocked dates are the Thursday and Friday of the host's current local-
+	// calendar week:
+	//
+	//   Thursday (wd=4): always a training day in the fixture (Fourth Day). The 3.5b
+	//                    editWd is the first training wd != host weekday, in [1,2] — never 4 —
+	//                    so Thursday stays Fourth Day even after 3.5b.
+	//   Friday   (wd=5): always a rest day in the fixture. 3.5b only touches [1,2], so
+	//                    Friday stays rest.
+	//
+	// Both dates fall in the same calendar week as the host's today (whatever weekday
+	// the host is on), so the block resolver's `currentWeekBlockIndex` override fires
+	// and resolves them to block week 1 — even when the mocked date is before startedOn
+	// (the Thursday-before-Friday-start case).
+	//
+	// After this section the block remains active (workout completion only touches
+	// S.active and S.workouts, not S.activeBlock, so the block is already in the right
+	// state for 3.7).
+	//
+	// ----- 3.6 TRAINING: active-block-selected workout completion (gap #2) -----
+	const clockAtTraining = [
 		"async page => {",
-		"  await page.getByRole('button', { name: 'Discard', exact: true }).first().click();",
-		"  await page.getByRole('button', { name: 'Discard', exact: true }).last().click();",
-		"  return 'discarded';",
+		"  await page.clock.setSystemTime(new Date('" + deterministicThursdayIso + "T12:00:00'));",
+		"  return 'clock set to " + deterministicThursdayIso + " (Thursday, block training day)';",
 		"}"
-	].join('\n')], signal)
+	].join('\n')
+	await runStep('mock clock to block-training Thursday (3.6)', ['run-code', clockAtTraining], signal)
+	await runStep('reload with mocked training clock (3.6)', ['reload'], signal)
+	const mockedTrainingOut = await runStep('assert page sees mocked Thursday (3.6)', ['--raw', 'eval',
+		"(() => { const d = new Date(); return { iso: d.toISOString().slice(0, 10), wd: d.getDay() }; })()"
+	], signal)
+	const mockedTraining = JSON.parse(mockedTrainingOut.stdout.trim())
+	if (mockedTraining.wd !== 4) throw new Error(`3.6 training: page should see weekday 4 (Thursday), got ${JSON.stringify(mockedTraining)}`)
+	await runStep('navigate to workout (3.6 training)', ['goto', `${baseUrl}/#/workout`], signal)
+	const chooserTrainingOut = await runStep('assert chooser renders active-block Fourth Day (3.6)', ['--raw', 'eval', `
+		(() => {
+			const t = document.body.innerText;
+			const startButtons = [...document.querySelectorAll('button')].filter(b => /^Start [A-Z]|^Empezar [A-Z]/.test((b.textContent || '').trim()));
+			return {
+				hasTodaysPlan: /Today's plan/.test(t),
+				hasFourthDay: /Fourth Day/.test(t),
+				startButtons: startButtons.map(b => b.textContent.trim()),
+			};
+		})()
+	`], signal)
+	const chooserTraining = JSON.parse(chooserTrainingOut.stdout.trim())
+	if (!chooserTraining.hasTodaysPlan) throw new Error(`3.6 training: chooser should render "Today's plan" card on mocked Thursday, got "${chooserTraining.startButtons.join(', ')}"`)
+	if (!chooserTraining.hasFourthDay) throw new Error(`3.6 training: chooser should render "Fourth Day" on mocked Thursday`)
+	if (!chooserTraining.startButtons.includes('Start Fourth Day')) throw new Error(`3.6 training: chooser should have a "Start Fourth Day" button on mocked Thursday, got ${JSON.stringify(chooserTraining.startButtons)}`)
+	// Active-block-selected training: click "Start Fourth Day" in the "Today's plan" card
+	// (NOT "Other routines", NOT a manually selected unrelated routine).
+	await runStep('click "Start Fourth Day" in Today\'s plan (3.6 training)', ['click', "getByRole('button', { name: /^Start Fourth Day$/ })"], signal)
+	await runStep('skip weigh-in (3.6 training)', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
+	const afterStart = await readState()
+	if (!afterStart.active || !afterStart.active.block) throw new Error(`3.6 training: S.active.block missing after starting from Today's plan — block context was not frozen at workout start`)
+	if (afterStart.active.block.name !== 'Smoke W V2') throw new Error(`3.6 training: S.active.block.name should be 'Smoke W V2' (renamed in 3.5b), got '${afterStart.active.block.name}'`)
+	if (afterStart.active.block.week !== 1) throw new Error(`3.6 training: S.active.block.week should be 1, got '${afterStart.active.block.week}'`)
+	if (typeof afterStart.active.block.id !== 'string' || afterStart.active.block.id.length === 0) throw new Error(`3.6 training: S.active.block.id is empty`)
+	const blockIdAtStart = afterStart.active.block.id
+	// Workout UI banner: the frozen block context appears above the workout list.
+	const workoutBlockCtxOut = await runStep('assert workout block context banner (3.6 training)', ['--raw', 'eval',
+		"(() => { const t = document.body.innerText; return { hasSmokeW: /Smoke W V2/.test(t), hasWeek1: /Week 1/.test(t) }; })()"
+	], signal)
+	const workoutCtx = JSON.parse(workoutBlockCtxOut.stdout.trim())
+	if (!workoutCtx.hasSmokeW) throw new Error(`3.6 training: frozen block name 'Smoke W V2' missing from workout screen`)
+	if (!workoutCtx.hasWeek1) throw new Error(`3.6 training: frozen block week 'Week 1' missing from workout screen`)
+	// Check off just the FIRST set of the first exercise — avoids the topWeightSheet
+	// prompt (which fires when the last set of a loaded-reps exercise is checked) and
+	// keeps the finish path simple. The remaining unchecked sets trigger the "Finish
+	// early?" dialog, which is the canonical finish path used in real sessions.
+	await runStep('check off first set of first exercise (3.6 training)', ['click', "getByRole('checkbox').first()"], signal)
+	await runStep('click Finish workout early (3.6 training)', ['click', "getByRole('button', { name: /Finish workout/ }).last()"], signal)
+	await runStep('confirm Finish workout in early dialog (3.6 training)', ['click', "getByRole('button', { name: /^Finish workout$/ }).last()"], signal)
+	await runStep('dismiss FinishSummary with Nice! (3.6 training)', ['click', "getByRole('button', { name: /^Nice!$|^¡Genial!$/ })"], signal)
+	const afterFinish = await readState()
+	if (!Array.isArray(afterFinish.workouts) || afterFinish.workouts.length === 0) throw new Error(`3.6 training: S.workouts should contain the finished record, got ${JSON.stringify(afterFinish.workouts && afterFinish.workouts.length)}`)
+	const finished = afterFinish.workouts[afterFinish.workouts.length - 1]
+	if (!finished.block) throw new Error(`3.6 training: block attribution missing on the persisted record`)
+	if (finished.block.id !== blockIdAtStart) throw new Error(`3.6 training: block.id should match the start snapshot (${blockIdAtStart}), got '${finished.block.id}'`)
+	if (finished.block.name !== 'Smoke W V2') throw new Error(`3.6 training: block.name should be 'Smoke W V2', got '${finished.block.name}'`)
+	if (finished.block.week !== 1) throw new Error(`3.6 training: block.week should be 1, got '${finished.block.week}'`)
+	if (!Array.isArray(finished.entries) || finished.entries.length === 0) throw new Error(`3.6 training: entries missing`)
+	const doneSets = finished.entries.reduce((n, e) => n + e.sets.filter(s => s.done).length, 0)
+	if (doneSets < 1) throw new Error(`3.6 training: at least one set should be checked, got ${doneSets}`)
+	if (afterFinish.active !== null) throw new Error(`3.6 training: S.active should be null after finish`)
 
-	// ----- 3.5 pause, reload, assert status === 'paused' and pausedOn set -----
+	// ----- 3.6b BLOCK-SOURCED REST (verify-report #1256 gap #3 — deterministic) -----
+	// Mock the page clock to the current calendar week's Friday (block-rest day). The
+	// dayPlan is empty (3.6a only touched dayPlan[host's today] and then cleared it),
+	// so the rest source MUST BE the block — not a dayPlan override. The chooser must
+	// surface "Rest day" with zero "Start <Routine>" buttons. This is the durable proof
+	// that gap #3 (active-block rest source) is closed regardless of the host weekday.
+	const clockAtRest = [
+		"async page => {",
+		"  await page.clock.setSystemTime(new Date('" + deterministicFridayIso + "T12:00:00'));",
+		"  return 'clock set to " + deterministicFridayIso + " (Friday, block rest day)';",
+		"}"
+	].join('\n')
+	await runStep('mock clock to block-rest Friday (3.6b)', ['run-code', clockAtRest], signal)
+	await runStep('reload with mocked rest clock (3.6b)', ['reload'], signal)
+	const mockedRestOut = await runStep('assert page sees mocked Friday (3.6b)', ['--raw', 'eval',
+		"(() => { const d = new Date(); return { iso: d.toISOString().slice(0, 10), wd: d.getDay() }; })()"
+	], signal)
+	const mockedRest = JSON.parse(mockedRestOut.stdout.trim())
+	if (mockedRest.wd !== 5) throw new Error(`3.6b rest: page should see weekday 5 (Friday), got ${JSON.stringify(mockedRest)}`)
+	await runStep('navigate to workout (3.6b rest)', ['goto', `${baseUrl}/#/workout`], signal)
+	const restOut = await runStep('assert block-sourced rest chooser (3.6b)', ['--raw', 'eval', `
+		(() => {
+			const t = document.body.innerText;
+			const startButtons = [...document.querySelectorAll('button')].filter(b => /^Start [A-Z]|^Empezar [A-Z]/.test((b.textContent || '').trim()));
+			const S = JSON.parse(localStorage.getItem('gym_state_v1'));
+			const fridayIso = ${JSON.stringify(deterministicFridayIso)};
+			const dayPlanUndefined = S.dayPlan ? S.dayPlan[fridayIso] === undefined : true;
+			// Replicate blockStatus credited-days math in eval so we can prove the rest
+			// source is the block even though effectiveRoutineId is not on window.
+			const ab = S.activeBlock;
+			const block = (S.blocks || []).find(b => b.id === ab.blockId);
+			const dn = s => new Date(s + 'T12:00:00');
+			let cur = dn(ab.startedOn); const target = dn(fridayIso); let credited = 0;
+			while (cur <= target) { credited++; cur.setDate(cur.getDate() + 1); }
+			const wk = 1 + Math.floor((credited - 1) / 7);
+			const w = block.weeks[Math.min(wk, block.weeks.length) - 1];
+			const blockDayVal = w ? w.days[5] : null;
+			return {
+				hasRestDay: /rest day/i.test(t),
+				startButtons: startButtons.map(b => b.textContent.trim()),
+				dayPlanUndefined,
+				blockDayVal,
+			};
+		})()
+	`], signal)
+	const rest = JSON.parse(restOut.stdout.trim())
+	if (rest.startButtons.length > 0) throw new Error(`3.6b rest: chooser should have zero Start buttons on a block-rest day, got ${JSON.stringify(rest.startButtons)}`)
+	if (!rest.hasRestDay) throw new Error(`3.6b rest: chooser body should mention "rest day" on a block-rest day`)
+	if (!rest.dayPlanUndefined) throw new Error(`3.6b rest: dayPlan[${deterministicFridayIso}] should be undefined (rest source is the block, not a dayPlan override)`)
+	if (rest.blockDayVal !== 'rest') throw new Error(`3.6b rest: block.weeks[N].days[5] (Friday) should be 'rest', got '${rest.blockDayVal}'`)
+
+	// ----- 3.7 375x812 active lifecycle controls (verify-report #1256 gap #4) -----
+	// Block is active (status='active') after 3.6 — 3.6 completes a workout (or asserts
+	// block-sourced rest) without touching the block, so the block is still active here.
+	// Resize to 375, open the block manager, assert Pause + End block controls are visible
+	// and actionable, then exercise Pause/Resume at 375 to prove the controls render AND
+	// work at the verified mobile viewport. After Resume, the block returns to 'active'
+	// for the desktop lifecycle sections (3.8+) to continue from a known baseline.
+	await runStep('resize to 375 for active lifecycle check', ['resize', '375', '812'], signal)
+	const dims375 = await runStep('assert 375 viewport before lifecycle check', ['--raw', 'eval',
+		'({ innerWidth: window.innerWidth, innerHeight: window.innerHeight })'
+	], signal)
+	const dims375Parsed = JSON.parse(dims375.stdout.trim())
+	if (dims375Parsed.innerWidth !== 375) throw new Error(`375 lifecycle: innerWidth should be 375, got ${dims375Parsed.innerWidth}`)
+	if (dims375Parsed.innerHeight !== 812) throw new Error(`375 lifecycle: innerHeight should be 812, got ${dims375Parsed.innerHeight}`)
 	await openBlockManagerFromPlan()
-	await runStep('tap Pause button', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ })"], signal)
-	await runStep('confirm Pause', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ }).last()"], signal)
-	await runStep('reload after pause', ['reload'], signal)
-	const afterPause = await readState()
-	if (!afterPause.activeBlock || afterPause.activeBlock.status !== 'paused') throw new Error(`pause: status should be 'paused', got '${afterPause.activeBlock && afterPause.activeBlock.status}'`)
-	if (!afterPause.activeBlock.pausedOn) throw new Error(`pause: pausedOn should be set, got '${afterPause.activeBlock.pausedOn}'`)
-
-	// ----- 3.6 resume, reload, assert status === 'active' and pausedRanges closed -----
+	const activeCtrlOut = await runStep('assert active lifecycle controls at 375', ['--raw', 'eval', `
+		(() => {
+			const buttons = [...document.querySelectorAll('button')].map(b => (b.textContent || '').trim());
+			const hasPause = buttons.some(b => /^(Pause|Pausar)$/.test(b));
+			const hasEnd = buttons.some(b => /End block|Finalizar bloque/.test(b));
+			const hasResume = buttons.some(b => /^(Resume|Seguir)$/.test(b));
+			return { hasPause, hasEnd, hasResume, scrollWidth: document.body.scrollWidth, innerWidth: window.innerWidth };
+		})()
+	`], signal)
+	const activeCtrl = JSON.parse(activeCtrlOut.stdout.trim())
+	if (!activeCtrl.hasPause) throw new Error('375 lifecycle: Pause button missing while block is active')
+	if (!activeCtrl.hasEnd) throw new Error('375 lifecycle: End block button missing while block is active')
+	if (activeCtrl.scrollWidth > activeCtrl.innerWidth) throw new Error(`375 lifecycle: horizontal overflow in manager sheet: scrollWidth=${activeCtrl.scrollWidth} > innerWidth=${activeCtrl.innerWidth}`)
+	// Click Pause at 375 (the manager sheet's button), confirm in the center confirmSheet.
+	await runStep('tap Pause at 375', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ })"], signal)
+	await runStep('confirm Pause at 375', ['click', "getByRole('button', { name: /^Pause$|^Pausar$/ }).last()"], signal)
+	await runStep('reload after pause at 375', ['reload'], signal)
+	const afterPauseAt375 = await readState()
+	if (!afterPauseAt375.activeBlock || afterPauseAt375.activeBlock.status !== 'paused') throw new Error(`375 lifecycle pause: status should be 'paused', got '${afterPauseAt375.activeBlock && afterPauseAt375.activeBlock.status}'`)
+	if (!afterPauseAt375.activeBlock.pausedOn) throw new Error(`375 lifecycle pause: pausedOn should be set, got '${afterPauseAt375.activeBlock.pausedOn}'`)
+	// Resume from 375 — proves Resume + End controls are visible AND actionable when paused.
 	await openBlockManagerFromPlan()
-	await runStep('tap Resume button', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ })"], signal)
-	await runStep('confirm Resume', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ }).last()"], signal)
-	await runStep('reload after resume', ['reload'], signal)
-	const afterResume = await readState()
-	if (!afterResume.activeBlock || afterResume.activeBlock.status !== 'active') throw new Error(`resume: status should be 'active', got '${afterResume.activeBlock && afterResume.activeBlock.status}'`)
-	if (!Array.isArray(afterResume.activeBlock.pausedRanges) || afterResume.activeBlock.pausedRanges.length !== 1) throw new Error(`resume: pausedRanges should have 1 closed entry, got ${JSON.stringify(afterResume.activeBlock.pausedRanges)}`)
+	const pausedCtrlOut = await runStep('assert Resume + End controls at 375', ['--raw', 'eval', `
+		(() => {
+			const buttons = [...document.querySelectorAll('button')].map(b => (b.textContent || '').trim());
+			return { hasResume: buttons.some(b => /^(Resume|Seguir)$/.test(b)), hasEnd: buttons.some(b => /End block|Finalizar bloque/.test(b)), scrollWidth: document.body.scrollWidth, innerWidth: window.innerWidth };
+		})()
+	`], signal)
+	const pausedCtrl = JSON.parse(pausedCtrlOut.stdout.trim())
+	if (!pausedCtrl.hasResume) throw new Error('375 lifecycle: Resume button missing while block is paused')
+	if (!pausedCtrl.hasEnd) throw new Error('375 lifecycle: End block button missing while block is paused')
+	if (pausedCtrl.scrollWidth > pausedCtrl.innerWidth) throw new Error(`375 lifecycle: horizontal overflow in paused manager sheet: scrollWidth=${pausedCtrl.scrollWidth} > innerWidth=${pausedCtrl.innerWidth}`)
+	await runStep('tap Resume at 375', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ })"], signal)
+	await runStep('confirm Resume at 375', ['click', "getByRole('button', { name: /^Resume$|^Seguir$/ }).last()"], signal)
+	await runStep('reload after resume at 375', ['reload'], signal)
+	const afterResumeAt375 = await readState()
+	if (!afterResumeAt375.activeBlock || afterResumeAt375.activeBlock.status !== 'active') throw new Error(`375 lifecycle resume: status should be 'active', got '${afterResumeAt375.activeBlock && afterResumeAt375.activeBlock.status}'`)
+	if (!Array.isArray(afterResumeAt375.activeBlock.pausedRanges) || afterResumeAt375.activeBlock.pausedRanges.length !== 1) throw new Error(`375 lifecycle resume: pausedRanges should have 1 closed entry, got ${JSON.stringify(afterResumeAt375.activeBlock.pausedRanges)}`)
+	// Restore desktop layout for the next sections.
+	await runStep('resize back to desktop after 375 lifecycle', ['resize', '1280', '720'], signal)
+	const desktopRestore = await runStep('assert desktop viewport after 375 lifecycle', ['--raw', 'eval',
+		'({ innerWidth: window.innerWidth, innerHeight: window.innerHeight })'
+	], signal)
+	const desktopRestoreParsed = JSON.parse(desktopRestore.stdout.trim())
+	if (desktopRestoreParsed.innerWidth !== 1280) throw new Error(`375 lifecycle restore: innerWidth should be 1280, got ${desktopRestoreParsed.innerWidth}`)
+	if (desktopRestoreParsed.innerHeight !== 720) throw new Error(`375 lifecycle restore: innerHeight should be 720, got ${desktopRestoreParsed.innerHeight}`)
 
-	// ----- 3.7 end, reload, assert activeBlock === null and legacy resolution restored -----
+	// ----- 3.8 end, reload, assert activeBlock === null and legacy resolution restored -----
 	await openBlockManagerFromPlan()
 	await runStep('tap End block button', ['click', "getByRole('button', { name: /End block|Finalizar bloque/ })"], signal)
 	await runStep('confirm End block', ['click', "getByRole('button', { name: /End block|Finalizar bloque/ }).last()"], signal)
@@ -649,8 +1225,37 @@ async function runSmoke(signal) {
 	], signal)
 	const legacy = JSON.parse(legacyOut.stdout.trim())
 	if (!legacy.weekId) throw new Error(`legacy resolution: a scheduled legacy weekday should resolve via S.week, got ${JSON.stringify(legacy)}`)
+	// After end, Plan rows must revert to legacy S.week/dayPlan (block override is gone). Walk the
+	// rows and assert each matches what S.week[d] says (or Rest when no entry).
+	await runStep('navigate to plan after end for legacy fallback', ['goto', `${baseUrl}/#/plan`], signal)
+	const planLegacyOut = await runStep('extract plan rows after end', ['--raw', 'eval', `
+		(() => {
+			const order = [1, 2, 3, 4, 5, 6, 0];
+			const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+			const allItems = [...document.querySelectorAll('.list .item')];
+			const rows = [];
+			for (const wd of order) {
+				const name = dayNames[wd];
+				const item = allItems.find(el => el.querySelector('.tt') && el.querySelector('.tt').textContent.trim() === name);
+				const tag = item ? item.querySelector('.tag') : null;
+				rows.push({ wd, name, tag: tag ? tag.textContent.trim() : null, tagAcc: !!(tag && tag.classList.contains('acc')) });
+			}
+			return rows;
+		})()
+	`], signal)
+	const planLegacyRows = JSON.parse(planLegacyOut.stdout.trim())
+	const SafterEnd = afterEnd
+	for (const row of planLegacyRows) {
+		const legacyRoutineId = SafterEnd.week[row.wd]
+		const legacyRoutine = legacyRoutineId ? SafterEnd.routines.find(r => r.id === legacyRoutineId) : null
+		if (legacyRoutine) {
+			if (!row.tagAcc || !row.tag.includes(legacyRoutine.name)) throw new Error(`legacy fallback: ${row.name} (wd ${row.wd}) should show "${legacyRoutine.name}" after end, got "${row.tag}"`)
+		} else {
+			if (row.tagAcc) throw new Error(`legacy fallback: ${row.name} (wd ${row.wd}) should be Rest after end (no legacy entry), got "${row.tag}"`)
+		}
+	}
 
-	// ----- 3.8 invalid save preserves prior state (blank name) -----
+	// ----- 3.9 invalid save preserves prior state (blank name) -----
 	const baselineBlocks = afterEnd.blocks.length
 	await openBlockManagerFromPlan()
 	await runStep('Add block for invalid save', ['click', "getByRole('button', { name: /Add block|Añadir bloque/ })"], signal)
@@ -667,20 +1272,26 @@ async function runSmoke(signal) {
 	const afterInvalid = await readState()
 	if (afterInvalid.blocks.length !== baselineBlocks) throw new Error(`invalid save: blocks count changed from ${baselineBlocks} to ${afterInvalid.blocks.length} (partial persistence)`)
 
-	// ----- 3.9 cancel preserves prior state -----
+	// ----- 3.10 cancel preserves prior state -----
+	// The 3.5b edit renamed the block to "Smoke W V2", so the cancel test must accept that
+	// as the pre-cancel baseline. It still proves the cancel path leaves the persisted state
+	// untouched — the post-3.5b name is preserved across the cancelled edit.
 	await openBlockManagerFromPlan()
-	await runStep('open Smoke W for cancel test', ['click', ".list .item:has-text('Smoke W')"], signal)
-	await runStep('fill new name (will cancel)', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Modified Smoke W'], signal)
+	await runStep('open Smoke W V2 for cancel test', ['click', ".list .item:has-text('Smoke W V2')"], signal)
+	await runStep('fill new name (will cancel)', ['fill', "getByPlaceholder(/Block name|Nombre del bloque/)", 'Modified Smoke W V2'], signal)
 	await runStep('cancel the edit', ['click', "getByRole('button', { name: /^Cancel$|^Cancelar$/ })"], signal)
 	await runStep('reload after cancel', ['reload'], signal)
 	const afterCancel = await readState()
-	if (afterCancel.blocks[0].name !== 'Smoke W') throw new Error(`cancel: blocks[0].name should remain 'Smoke W', got '${afterCancel.blocks[0].name}'`)
+	if (afterCancel.blocks[0].name !== 'Smoke W V2') throw new Error(`cancel: blocks[0].name should remain 'Smoke W V2' (the post-3.5b rename), got '${afterCancel.blocks[0].name}'`)
 
-	// ----- 3.10 375x812 no overflow + lifecycle controls visible -----
-	await openBlockManagerFromPlan()
-	await runStep('reopen Smoke W to re-activate', ['click', ".list .item:has-text('Smoke W')"], signal)
-	await runStep('Save and re-activate', ['click', "getByRole('button', { name: /Save & activate|Guardar y activar/ })"], signal)
-	await runStep('confirm re-activate', ['click', "getByRole('button', { name: /^Activate$|^Activar$/ })"], signal)
+	// ----- 3.11 375x812 no overflow + manager controls + Plan rows still render -----
+	// Note on the missing "duplicate activate" assertion: the BlockEditor hides the "Save &
+	// activate" button whenever another block is already active (`!isActive && !ab && v.valid`),
+	// so the duplicate-activation failure feedback ("End the active block first") is unreachable
+	// from the UI. The activateBlock helper itself throws on duplicate activation — that contract
+	// is pinned by the unit tests in useStore.test.js. Here the lifecycle actions are already
+	// covered end-to-end by 3.2c (activate), 3.7 (pause), 3.8 (resume), 3.9 (end), 3.10 (invalid
+	// save), and 3.11 (cancel), so we move directly to the responsive check.
 	await runStep('resize to mobile 375x812', ['resize', '375', '812'], signal)
 	const dimsOut = await runStep('assert 375 viewport + no overflow', ['--raw', 'eval',
 		'({ innerWidth: window.innerWidth, innerHeight: window.innerHeight, scrollWidth: document.documentElement.scrollWidth })'
@@ -689,15 +1300,59 @@ async function runSmoke(signal) {
 	if (dims.innerWidth !== 375) throw new Error(`375: innerWidth should be 375, got ${dims.innerWidth}`)
 	if (dims.innerHeight !== 812) throw new Error(`375: innerHeight should be 812, got ${dims.innerHeight}`)
 	if (dims.scrollWidth > dims.innerWidth) throw new Error(`375: horizontal overflow: scrollWidth=${dims.scrollWidth} > innerWidth=${dims.innerWidth}`)
+	// The block manager at 375 must stay usable: the "Add block" + "Done" footer controls, the
+	// stored-block list, and the active-block lifecycle card (Pause/End) all need to render
+	// without horizontal overflow. We are inside the end-of-block state at this point in the
+	// smoke (3.9 ended the block, 3.10/3.11 only added and removed a throwaway draft), so the
+	// lifecycle card is absent — we assert the manager's always-present footer + list instead.
 	await openBlockManagerFromPlan()
-	const mobileOut = await runStep('assert lifecycle controls visible at 375', ['--raw', 'eval',
-		"({ hasPause: /Pause|Pausar/.test(document.body.innerText), hasEnd: /End block|Finalizar bloque/.test(document.body.innerText), scrollWidth: document.body.scrollWidth, innerWidth: window.innerWidth })"
+	const mobileOut = await runStep('assert manager controls visible at 375', ['--raw', 'eval',
+		"({ hasAdd: /Add block|Añadir bloque/.test(document.body.innerText), hasDone: /Done|Listo/.test(document.body.innerText), hasStoredBlock: /Smoke W/.test(document.body.innerText), scrollWidth: document.body.scrollWidth, innerWidth: window.innerWidth })"
 	], signal)
 	const mobile = JSON.parse(mobileOut.stdout.trim())
-	if (!mobile.hasEnd) throw new Error('375: End block control is not visible in the block manager')
+	if (!mobile.hasAdd) throw new Error('375: Add block control is not visible in the block manager')
+	if (!mobile.hasDone) throw new Error('375: Done control is not visible in the block manager')
+	if (!mobile.hasStoredBlock) throw new Error('375: stored block (Smoke W) is not visible in the block manager list')
 	if (mobile.scrollWidth > mobile.innerWidth) throw new Error(`375: body overflow in manager sheet: scrollWidth=${mobile.scrollWidth} > innerWidth=${mobile.innerWidth}`)
+	// Plan rows on the 375 layout must still render each weekday without horizontal overflow.
+	// The block was ended in 3.9, so the Plan view is now in legacy S.week resolution. The
+	// content check uses the persisted legacy S.week to verify each weekday's tag matches the
+	// resolved legacy routine (or "Rest" when no entry). The layout claim is not coverage
+	// without a content check.
+	await runStep('navigate to plan at 375 for layout content check', ['goto', `${baseUrl}/#/plan`], signal)
+	const plan375Out = await runStep('extract plan rows at 375', ['--raw', 'eval', `
+		(() => {
+			const order = [1, 2, 3, 4, 5, 6, 0];
+			const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+			const allItems = [...document.querySelectorAll('.list .item')];
+			const rows = [];
+			for (const wd of order) {
+				const name = dayNames[wd];
+				const item = allItems.find(el => el.querySelector('.tt') && el.querySelector('.tt').textContent.trim() === name);
+				const tag = item ? item.querySelector('.tag') : null;
+				rows.push({ wd, name, found: !!item, tag: tag ? tag.textContent.trim() : null });
+			}
+			const st = JSON.parse(localStorage.getItem('gym_state_v1') || 'null');
+			const week = (st && st.week) || {};
+			const rmap = {};
+			((st && st.routines) || []).forEach(r => { rmap[r.id] = r.name; });
+			const legacy = {};
+			for (const k of Object.keys(week)) {
+				const id = week[k];
+				legacy[k] = rmap[id] || null;
+			}
+			return { rows, legacy, scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth };
+		})()
+	`], signal)
+	const plan375 = JSON.parse(plan375Out.stdout.trim())
+	if (plan375.scrollWidth > plan375.innerWidth) throw new Error(`375: horizontal overflow on Plan: scrollWidth=${plan375.scrollWidth} > innerWidth=${plan375.innerWidth}`)
+	for (const row of plan375.rows) {
+		if (!row.found) throw new Error(`375: Plan row for ${row.name} missing`)
+		const expectedLegacy = plan375.legacy[String(row.wd)]
+		if (expectedLegacy && !(row.tag || '').includes(expectedLegacy)) throw new Error(`375: Plan row for ${row.name} (wd ${row.wd}) should be ${expectedLegacy} (legacy), got "${row.tag}"`)
+	}
 
-	console.log('Playwright smoke passed: picker dismissal (desktop routine-editor, mobile workout 375px, keyboard/focus, backdrop, CDP touch swipe) + block lifecycle (3.1 reset, 3.2-3.7 activate/edit/pause/resume/end persisted across reload, 3.3 Plan/Home show block, 3.4 workout freezes block context, 3.8 invalid save preserves state, 3.9 cancel preserves state, 3.10 375px no overflow + lifecycle controls visible).')
+	console.log('Playwright smoke passed: picker dismissal (desktop routine-editor, mobile workout 375px, keyboard/focus, backdrop, CDP touch swipe) + block lifecycle (3.1 reset, 3.2a add 4th routine via UI, 3.2b create 4-week block via BlockEditor UI (4 training days + 3 rest), 3.2c activate via UI, 3.3 Plan rows resolve to block routine/rest for every weekday of the start week, 3.4 Home denominator = 4 training days + today row matches block, 3.5 explicit rest remains rest, 3.5b PERSISTED EDIT + BLOCK-SOURCED REST (rename to "Smoke W V2" + change a non-today weekday to rest via BlockEditor Update round-trip across reload, resolver returns null for the edited iso with dayPlan undefined = rest source is the block, Plan row for the edited weekday reads "Rest"), 3.6a deterministic workout chooser rest semantics via day-override UI, 3.6 TRAINING (mock clock to Thursday: click "Start Fourth Day" in Today\'s plan card, skip weigh-in, complete, finished record carries block { id, name: "Smoke W V2", week: 1 }), 3.6b BLOCK-SOURCED REST (mock clock to Friday: chooser surfaces "Rest day" with zero Start buttons, dayPlan[Friday] is undefined, block.weeks[N].days[5] === "rest"), 3.7 375px active lifecycle controls (Pause/End visible + Pause/Resume actionable at 375), 3.8 end persisted across reload + legacy fallback restored, 3.9 invalid save preserves state, 3.10 cancel preserves state, 3.11 375px no overflow + manager controls + Plan legacy rows).')
 }
 
 const smokeController = new AbortController()

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -702,6 +702,245 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     }
     expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legs')
   })
+
+  // Plan-resolution contract (issue: block-lifecycle-playwright-audit, Plan.jsx fix).
+  // Plan.jsx renders the current local-calendar week's seven weekdays and must show the
+  // active block's resolved routine / rest for each one. This test exercises the resolver
+  // Plan relies on, for every weekday of the current week — so a regression in either the
+  // resolver or the View's per-day call would surface here.
+  it('resolves every weekday of the active block\'s current week to its block-mapped routine or rest', () => {
+    // GOOD_BLOCK week 1 day map (Mon-anchored week): 0(Sun)=r-push, 1(Mon)=r-pull, 2(Tue)=rest,
+    // 3(Wed)=r-legs, 4(Thu)=r-push, 5(Fri)=rest, 6(Sat)=rest.
+    // The current week containing 2026-08-24 (Mon, activation day) runs 2026-08-24..2026-08-30.
+    const S = { ...ACTIVE_DAY1, dayPlan: {} }
+    const expected = [
+      { iso: '2026-08-24', id: 'r-pull' },  // Monday (activation day, wd 1)
+      { iso: '2026-08-25', id: null },       // Tuesday (rest, wd 2)
+      { iso: '2026-08-26', id: 'r-legs' },  // Wednesday (wd 3)
+      { iso: '2026-08-27', id: 'r-push' },  // Thursday (wd 4)
+      { iso: '2026-08-28', id: null },       // Friday (rest, wd 5)
+      { iso: '2026-08-29', id: null },       // Saturday (rest, wd 6)
+      { iso: '2026-08-30', id: 'r-push' },  // Sunday (wd 0)
+    ]
+    expected.forEach(({ iso, id }) => {
+      expect(effectiveRoutineId(S, iso)).toBe(id)
+    })
+  })
+
+  // Legacy-fallback contract (issue: block-lifecycle-playwright-audit, Plan.jsx fix).
+  // With no active block, Plan.jsx must keep its existing dayPlan-then-week legacy behavior
+  // — every weekday reads from S.week (or S.dayPlan). A regression that accidentally makes
+  // Plan use the block resolver when no block is active would surface here.
+  it('falls back to legacy S.week resolution for every weekday when no block is active', () => {
+    const S = {
+      blocks: [], activeBlock: null, routines: ROUTINES,
+      dayPlan: {},
+      // Monday=r-legacy, Wednesday=r-legacy, the rest blank.
+      week: { 1: 'r-legacy-fallback', 3: 'r-legacy-fallback' },
+    }
+    const expected = [
+      { iso: '2026-08-23', id: null },           // Sunday (no entry)
+      { iso: '2026-08-24', id: 'r-legacy-fallback' },  // Monday
+      { iso: '2026-08-25', id: null },           // Tuesday (no entry)
+      { iso: '2026-08-26', id: 'r-legacy-fallback' },  // Wednesday
+      { iso: '2026-08-27', id: null },           // Thursday (no entry)
+      { iso: '2026-08-28', id: null },           // Friday (no entry)
+      { iso: '2026-08-29', id: null },           // Saturday (no entry)
+    ]
+    expected.forEach(({ iso, id }) => {
+      expect(effectiveRoutineId(S, iso)).toBe(id)
+    })
+  })
+
+  // Mid-week activation contract (issue: block-lifecycle-playwright-audit, WU2
+  // remediation, verify-report #1256 critical finding #1). When a block is
+  // activated mid-week, the current local-calendar week must show the block's
+  // day map for ALL seven weekdays — not just from the activation day onward.
+  // Otherwise Plan/Home would silently mix the block's day map (Thu+) with
+  // the legacy S.week (Mon-Wed), which is exactly the "Plan shows Descanso
+  // while the block has Fourth Day" defect.
+  //
+  // 2026-08-27 is a Thursday (wd 4). The current week is 2026-08-24..2026-08-30.
+  // The block starts on Thursday; Monday-Wednesday are before the start but
+  // still in the start's local-calendar week. Every weekday of that week must
+  // resolve through the block's day map (week 1 = FULL_WEEK.days).
+  it('applies the block\'s day map to every weekday of the start week, even before the activation day', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-27', status: 'active', pausedRanges: [] },
+      routines: ROUTINES,
+      dayPlan: {},
+      // Legacy week has Push on Monday and Pull on Wednesday — the resolver
+      // must NOT fall through to these for the block's start week.
+      week: { 1: 'r-legacy-fallback', 3: 'r-legacy-fallback' },
+    }
+    const expected = [
+      { iso: '2026-08-24', id: 'r-pull' },  // Monday (BEFORE start, same week)
+      { iso: '2026-08-25', id: null },       // Tuesday (BEFORE start, same week, rest)
+      { iso: '2026-08-26', id: 'r-legs' },  // Wednesday (BEFORE start, same week)
+      { iso: '2026-08-27', id: 'r-push' },  // Thursday (start day, wd 4)
+      { iso: '2026-08-28', id: null },       // Friday (after start, rest)
+      { iso: '2026-08-29', id: null },       // Saturday (after start, rest)
+      { iso: '2026-08-30', id: 'r-push' },  // Sunday (after start, wd 0)
+    ]
+    expected.forEach(({ iso, id }) => {
+      expect(effectiveRoutineId(S, iso)).toBe(id)
+    })
+  })
+
+  // Out-of-start-week contract: days in a week BEFORE the block's start week
+  // must still fall through to legacy (the block wasn't active yet). A
+  // regression that over-extends the start-week override would surface here.
+  it('falls through to legacy for weekdays in a week before the block started', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-27', status: 'active', pausedRanges: [] },
+      routines: ROUTINES,
+      dayPlan: {},
+      week: { 1: 'r-legacy-fallback', 3: 'r-legacy-fallback' },
+    }
+    // Week of 2026-08-17 (Mon)..2026-08-23 (Sun) is entirely before the start.
+    // The block hasn't started yet, so the resolver must use legacy.
+    expect(effectiveRoutineId(S, '2026-08-17')).toBe('r-legacy-fallback')  // Mon (legacy)
+    expect(effectiveRoutineId(S, '2026-08-18')).toBeNull()           // Tue (no legacy)
+    expect(effectiveRoutineId(S, '2026-08-19')).toBe('r-legacy-fallback')  // Wed (legacy)
+    expect(effectiveRoutineId(S, '2026-08-20')).toBeNull()           // Thu
+    expect(effectiveRoutineId(S, '2026-08-21')).toBeNull()           // Fri
+    expect(effectiveRoutineId(S, '2026-08-22')).toBeNull()           // Sat
+    expect(effectiveRoutineId(S, '2026-08-23')).toBeNull()           // Sun
+  })
+})
+
+/* ---------- blockWeekDays / blockWeekTrainingDays (block-aware Plan/Home) ----------
+   The Plan view renders the current local-calendar week's daily routine / rest
+   mapping, and the Home view shows a "X / Y this week" denominator where Y is
+   the number of training days the user planned for the week. When a block is
+   active, both surfaces must reflect the block's resolved current week, not the
+   legacy `S.week` map. These helpers expose the block-resolved view of the
+   week so the View components have a single, tested source of truth.
+
+   Block data is the canonical GOOD_BLOCK: week 1 has 4 training days
+   (Sun=r-push, Mon=r-pull, Wed=r-legs, Thu=r-push) and 3 rest days (Tue, Fri,
+   Sat). Any active block with that week therefore has `blockWeekTrainingDays(S, iso) === 4`.
+
+   Pure helpers: never mutate S; return null when no block is active, when the
+   active blockId has been deleted, or when the resolved week has no usable
+   day map. */
+
+describe('blockWeekDays', () => {
+  // 2026-08-24 is a Monday, day 1 of an activated-on-day-1 block.
+  const ACTIVE_DAY1 = {
+    blocks: [GOOD_BLOCK],
+    activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+  }
+
+  it('returns the resolved current week\'s day map when an active block resolves to week 1', () => {
+    expect(blockWeekDays(ACTIVE_DAY1, '2026-08-24')).toEqual(FULL_WEEK.days)
+  })
+
+  it('returns null when no block is active (legacy fallthrough belongs in the View)', () => {
+    const S = { blocks: [GOOD_BLOCK], activeBlock: null }
+    expect(blockWeekDays(S, '2026-08-24')).toBeNull()
+  })
+
+  it('returns null when the active blockId no longer resolves to a defined block', () => {
+    const S = { blocks: [], activeBlock: { blockId: 'gone', startedOn: '2026-08-24', status: 'active', pausedRanges: [] } }
+    expect(blockWeekDays(S, '2026-08-24')).toBeNull()
+  })
+
+  it('returns null when the resolved week is past the block length', () => {
+    // 3-week block, activation 2026-08-24 → week 1 on the 24th. Asking for a date past the
+    // final week would normally clamp to 3, but that clamped week must still resolve to its
+    // own day map, not null — only a missing day map returns null.
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+    }
+    // 21 days after activation → still week 3 (the third week of the block), which has the
+    // same day map as week 1 in GOOD_BLOCK.
+    expect(blockWeekDays(S, '2026-09-13')).toEqual(FULL_WEEK.days)
+  })
+
+  // Mid-week activation: the block starts on Thursday 2026-08-27, but the
+  // start's local-calendar week (Mon 2026-08-24..Sun 2026-08-30) is the one
+  // Plan/Home renders. Every day of that week — including Monday through
+  // Wednesday which sit BEFORE the start — must still resolve to week 1's day
+  // map, otherwise the Home weekly denominator would fall through to the
+  // legacy S.week (verify-report #1256 critical finding #2).
+  it('returns the resolved week\'s day map for every weekday of the start week, even before the activation day', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-27', status: 'active', pausedRanges: [] },
+    }
+    // Monday and Wednesday of the start week are before the start; without the
+    // start-week override blockStatus returns null for them and the View would
+    // fall through to legacy. The override makes these days see week 1's map.
+    expect(blockWeekDays(S, '2026-08-24')).toEqual(FULL_WEEK.days)  // Mon (before start)
+    expect(blockWeekDays(S, '2026-08-25')).toEqual(FULL_WEEK.days)  // Tue (before start)
+    expect(blockWeekDays(S, '2026-08-26')).toEqual(FULL_WEEK.days)  // Wed (before start)
+    expect(blockWeekDays(S, '2026-08-27')).toEqual(FULL_WEEK.days)  // Thu (start day)
+    expect(blockWeekDays(S, '2026-08-30')).toEqual(FULL_WEEK.days)  // Sun
+  })
+
+  it('returns null for a week entirely before the block started', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-27', status: 'active', pausedRanges: [] },
+    }
+    // Mon 2026-08-17..Sun 2026-08-23 is the week before the start week.
+    expect(blockWeekDays(S, '2026-08-17')).toBeNull()
+    expect(blockWeekDays(S, '2026-08-23')).toBeNull()
+  })
+})
+
+describe('blockWeekTrainingDays', () => {
+  const ACTIVE_DAY1 = {
+    blocks: [GOOD_BLOCK],
+    activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+  }
+
+  it('returns the count of training (non-rest) days in the active block\'s resolved week', () => {
+    // GOOD_BLOCK week 1: 4 routine days + 3 rest days → 4 training days.
+    expect(blockWeekTrainingDays(ACTIVE_DAY1, '2026-08-24')).toBe(4)
+  })
+
+  it('returns null when no block is active so the View can fall back to the legacy denominator', () => {
+    const S = { blocks: [GOOD_BLOCK], activeBlock: null, week: { 1: 'r-push', 3: 'r-pull' } }
+    expect(blockWeekTrainingDays(S, '2026-08-24')).toBeNull()
+    // The legacy denominator stays a View-level calculation: the helper returns null and
+    // the View falls back to `Object.keys(S.week).filter(k => S.week[k]).length` (here 2).
+    const legacyCount = Object.keys(S.week).filter(k => S.week[k]).length
+    expect(legacyCount).toBe(2)
+  })
+
+  it('returns null when the active blockId has been deleted out from under the pointer', () => {
+    const S = { blocks: [], activeBlock: { blockId: 'gone', startedOn: '2026-08-24', status: 'active', pausedRanges: [] } }
+    expect(blockWeekTrainingDays(S, '2026-08-24')).toBeNull()
+  })
+
+  it('does not mutate the input S (pure helper)', () => {
+    const before = JSON.stringify(ACTIVE_DAY1)
+    blockWeekTrainingDays(ACTIVE_DAY1, '2026-08-24')
+    expect(JSON.stringify(ACTIVE_DAY1)).toBe(before)
+  })
+
+  // Mid-week activation: Home's weekly denominator must reflect the block's
+  // training-day count for the current week even when the block started
+  // mid-week. Before this contract, the denominator would fall through to
+  // legacy S.week for the days before the start and the user would see the
+  // wrong "X / Y this week" count.
+  it('returns the block training-day count for a mid-week activation, not null', () => {
+    const S = {
+      blocks: [GOOD_BLOCK],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-27', status: 'active', pausedRanges: [] },
+      week: { 1: 'r-legacy-fallback', 3: 'r-legacy-fallback' },
+    }
+    // GOOD_BLOCK week 1: 4 training days. The start-week override must make
+    // every day of the start week return that count, not the legacy 2.
+    expect(blockWeekTrainingDays(S, '2026-08-24')).toBe(4)  // Mon (before start)
+    expect(blockWeekTrainingDays(S, '2026-08-25')).toBe(4)  // Tue (before start)
+    expect(blockWeekTrainingDays(S, '2026-08-27')).toBe(4)  // Thu (start day)
+  })
 })
 
 /* ---------- buildWorkoutBlockSnapshot (Phase 3 immutable workout context) ----------
@@ -782,5 +1021,32 @@ describe('buildWorkoutBlockSnapshot', () => {
     expect(buildWorkoutBlockSnapshot(ACTIVE_DAY1, '2026-08-31').week).toBe(2)
     // The day-1 snapshot stays at week 1.
     expect(day1.week).toBe(1)
+  })
+
+  // Finished-workout attribution contract (issue: block-lifecycle-playwright-audit,
+  // verify-report #1256 critical finding "Workout context survives completion").
+  // A workout record's `block` field is the same value the snapshot returned at
+  // workout start; nothing the store does after the start can rewrite the frozen
+  // id/name/week on that record. This is the unit-level back-stop for the smoke
+  // assertion that the finished record retains `block.id`, `block.name`, `block.week`.
+  it('the snapshot is what rides into the finished workout record; endBlock + a rename after start cannot rewrite it', () => {
+    // Use a fresh state shape so earlier `captures the block name as it exists right now`
+    // does not pollute the assertion with its in-place rename. ACTIVE_DAY1 is shared
+    // across the describe block.
+    const fresh = {
+      blocks: [{ id: 'b1', name: 'Hypertrophy Block', weeks: [{ days: { 0: 'r-push', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }] }],
+      activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
+      routines: [{ id: 'r-push', name: 'Push' }, { id: 'r-pull', name: 'Pull' }, { id: 'r-legs', name: 'Legs' }],
+    }
+    const snap = buildWorkoutBlockSnapshot(fresh, '2026-08-24')
+    expect(snap).toEqual({ id: 'b1', name: 'Hypertrophy Block', week: 1 })
+    // Simulate the store lifecycle that happens AFTER the workout started: end the block,
+    // rename the block, mutate the activeBlock pointer. The snapshot we captured must be
+    // untouched — that's what gets pushed into S.workouts by doFinishWorkout.
+    const ended = endBlock(fresh)
+    ended.blocks[0].name = 'Renamed After Finish'
+    ended.blocks[0].weeks[0].days[1] = 'r-deleted'   // day 1 now references a non-existent routine
+    ended.activeBlock = null
+    expect(snap).toEqual({ id: 'b1', name: 'Hypertrophy Block', week: 1 })
   })
 })
