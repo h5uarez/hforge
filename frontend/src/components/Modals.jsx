@@ -83,7 +83,7 @@ function Sheet({ sheet }) {
   return (
     <div>
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className={'sheet' + (sheet.tall ? ' sheet-tall' : '')} ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" />
         {!sheet.locked && <button ref={closeRef} className="modal-close" onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
         {sheet.render(close)}

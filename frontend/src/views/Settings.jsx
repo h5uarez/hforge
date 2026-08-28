@@ -117,14 +117,14 @@ export default function Settings() {
 
     {/* ---------- during a workout ---------- */}
     <Section title={t('During a workout')} footer={wakeOK ? t('The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.') : null}>
-      <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
-        value={S.restSec} onChange={v => update(s => { s.restSec = v })}
-        options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />
       <Row icon="timer" iconTint="var(--orange)" title={t('Enable rest timer')}
         subtitle={t('Automatically and manually timed rests between sets.') }>
         <Switch aria-label={t('Enable rest timer')} checked={S.restTimerEnabled !== false}
           onChange={v => { update(s => { s.restTimerEnabled = !!v }); if (!v) useUI.getState().stopRest() }} />
       </Row>
+      {S.restTimerEnabled !== false && <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
+        value={S.restSec} onChange={v => update(s => { s.restSec = v })}
+        options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />}
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>
