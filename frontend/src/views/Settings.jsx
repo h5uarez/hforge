@@ -209,7 +209,7 @@ export default function Settings() {
     </Section>}
 
     <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-      Hforge · <a href="https://github.com/h5uarez/hforge" target="_blank" rel="noopener">source code</a>
+      Hforge · <a href="https://github.com/h5uarez/hforge" target="_blank" rel="noopener">{t('source code')}</a>
     </div>
   </div>
 }
