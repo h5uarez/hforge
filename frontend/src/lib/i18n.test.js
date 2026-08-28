@@ -68,3 +68,35 @@ describe('initial language selection', () => {
     expect(values.get('gym_lang_v1')).toBe('es')
   })
 })
+
+describe('Spanish translation and instruction contracts', () => {
+  it('looks up Spanish values and interpolates source-key arguments', async () => {
+    const { setLang, t } = await import('./i18n.js')
+    await setLang('es')
+    expect(t('Start {0}', 'Push Day')).toBe('Empezar Push Day')
+    expect(t('a key absent from every locale')).toBe('a key absent from every locale')
+  })
+
+  it('keeps generated Spanish instructions and intentional English fallback behavior', async () => {
+    const { setLang, instrFor } = await import('./i18n.js')
+    const exercise = { id: '1000', st: ['Stand up and move.'] }
+    await setLang('es')
+    expect(instrFor(exercise)[0]).toBe('Ponte de pie con los pies separados a la altura de las caderas y coloca la banda alrededor de la base de los dedos del pie.')
+    await setLang('pt')
+    expect(instrFor(exercise)).toEqual(exercise.st)
+  })
+})
+
+describe('source completeness guard', () => {
+  it('reports the missing source key with an actionable file and line', async () => {
+    const { findMissingSourceKeys } = await import('../../scripts/check-locales.mjs')
+    const issues = findMissingSourceKeys("const x = t('Missing source key')", new Set(), 'Fixture.jsx')
+    expect(issues).toEqual([{ key: 'Missing source key', file: 'Fixture.jsx', line: 1 }])
+  })
+
+  it('does not classify documented unit or brand literals as raw accessibility UI', async () => {
+    const { findRawAccessibilityLiterals } = await import('../../scripts/check-locales.mjs')
+    const issues = findRawAccessibilityLiterals('<button aria-label="L" title="Hforge" />', new Set(), 'Fixture.jsx')
+    expect(issues).toEqual([])
+  })
+})
