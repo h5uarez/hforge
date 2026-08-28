@@ -12,7 +12,7 @@ import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
 import { loadOfWorkouts, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { e1rmSeries, best1RM } from '../lib/onerm.js'
-import { projectSideSet } from '../lib/history.js'
+import { projectSideSet, weightOfSet } from '../lib/history.js'
 import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
@@ -162,7 +162,7 @@ export default function Stats() {
   })() : 'reps'
   const curCardio = curMode === 'cardio'
   const curTimed = curMode === 'time'
-  const metric = raw => { const s = projectSideSet(raw); return curCardio ? (s.speed || 0) : curTimed ? (s.sec || 0) : (s.w || 0) }
+  const metric = raw => { const s = projectSideSet(raw); return curCardio ? (s.speed || 0) : curTimed ? (s.sec || 0) : weightOfSet(raw) }
   const exUnit = curCardio ? 'km/h' : curTimed ? 's' : S.unit
   let exPts = [], exList = [], exBest = 0
   if (curEx) {

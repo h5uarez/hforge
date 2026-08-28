@@ -78,13 +78,14 @@ export function SearchField({ value, onChange, onClear, ...rest }) {
 
 /* ============================ switch ============================ */
 
-export function Switch({ checked, onChange, disabled, 'aria-label': ariaLabel }) {
+export function Switch({ checked, onChange, disabled, 'aria-label': ariaLabel, ...rest }) {
   return (
     <button
       role="switch"
       aria-checked={!!checked}
       aria-label={ariaLabel}
       disabled={disabled}
+      {...rest}
       className={'sw' + (checked ? ' on' : '')}
       onClick={() => onChange(!checked)}
     >
@@ -99,7 +100,7 @@ export function Switch({ checked, onChange, disabled, 'aria-label': ariaLabel })
 export function Segmented({ options, value, onChange, className = '' }) {
   const i = Math.max(0, options.findIndex(o => o.value === value))
   return (
-    <div className={'seg ' + className} style={{ '--n': options.length, '--i': i }}>
+    <div className={'seg ' + className} role="group" aria-label={options.map(o => o.label).filter(Boolean).join(', ')} style={{ '--n': options.length, '--i': i }}>
       <span className="seg-sel" aria-hidden="true" />
       {options.map(o => (
         <button
@@ -118,16 +119,16 @@ export function Segmented({ options, value, onChange, className = '' }) {
 
 /* ============================ stepper ============================ */
 
-export function Stepper({ value, step = 1, onChange, onRawChange, decimal = true, className = '', label, unit }) {
+export function Stepper({ value, step = 1, onChange, onRawChange, onStep, decimal = true, className = '', label, unit }) {
   const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
   const inner = (
     <div className={'stp ' + className}>
-      <button onClick={() => set((+value || 0) - step)} aria-label={t('Decrease')}><Icon name="minus" /></button>
+      <button onClick={() => { const v = (+value || 0) - step; onStep && onStep(v); set(v) }} aria-label={t('Decrease')}><Icon name="minus" /></button>
       <span className="val">
         <NumberField value={value} decimal={decimal} onChange={onChange} onRawChange={onRawChange} />
         {unit && <i>{unit}</i>}
       </span>
-      <button onClick={() => set((+value || 0) + step)} aria-label={t('Increase')}><Icon name="plus" /></button>
+      <button onClick={() => { const v = (+value || 0) + step; onStep && onStep(v); set(v) }} aria-label={t('Increase')}><Icon name="plus" /></button>
     </div>
   )
   if (!label) return inner
@@ -199,11 +200,12 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange, classNam
 
 /* ============================ checkbox ============================ */
 
-export function Check({ checked, onChange, className = '', size }) {
+export function Check({ checked, onChange, className = '', size, ...rest }) {
   return (
     <button
       role="checkbox"
       aria-checked={!!checked}
+      {...rest}
       className={'chk' + (checked ? ' on' : '') + ' ' + className}
       style={size ? { width: size, height: size } : null}
       onClick={() => onChange(!checked)}

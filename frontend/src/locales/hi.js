@@ -1,6 +1,6 @@
 // Hindi UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': 'पुष्टि करें',
+  'Confirm': 'पुष्टि करें', 'Close': 'बंद करें',
   'Cancel': 'रद्द करें',
   'Delete': 'हटाएँ',
   'Save': 'सहेजें',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': 'वर्कआउट चलने के दौरान स्क्रीन चालू रहती है, ताकि सेट के बीच फ़ोन अनलॉक न करना पड़े।',
   'Weight unit': 'वज़न की इकाई',
   'Rest timer': 'आराम टाइमर',
+  'Enable rest timer': 'आराम टाइमर सक्षम करें',
   'Sounds': 'ध्वनियाँ',
   'Note: switching units only changes the label — logged numbers are not converted.': 'नोट: इकाई बदलने से केवल लेबल बदलता है — दर्ज संख्याएँ परिवर्तित नहीं होतीं।',
   'Data': 'डेटा',

@@ -59,13 +59,22 @@ describe('readSession', () => {
     expect(readSession({ id: LIFT, target: { sets: 2, sec: 45, mode: 'time' }, sets: [{ sec: 45, done: true }, { sec: 30, done: true }] }).ok).toBe(false)
   })
 
-  it('treats both explicit sides as one authoritative completed set', () => {
-    const s = readSession({ id: LIFT, target: { sets: 1, reps: 8, side: true }, sets: [{
-      left: { w: 20, r: 8, done: true }, right: { w: 20, r: 8, done: true }
+  it('requires both explicit sides and sums their recorded reps', () => {
+    const target = { sets: 1, reps: 8, side: true }
+    const incomplete = readSession({ id: LIFT, target, sets: [{
+      left: { r: 8, w: 20, done: true },
+      right: { r: 6, w: 20, done: false },
     }] })
-    expect(s.ok).toBe(true)
-    expect(s.reps).toEqual([16])
-    expect(s.weight).toBe(20)
+    expect(incomplete.reps).toEqual([0])
+    expect(incomplete.ok).toBe(false)
+
+    const complete = readSession({ id: LIFT, target, sets: [{
+      left: { r: 8, w: 20, done: true },
+      right: { r: 8, w: 20, done: true },
+    }] })
+    expect(complete.reps).toEqual([16])
+    expect(complete.ok).toBe(true)
+    expect(complete.weight).toBe(20)
   })
 })
 

@@ -1,6 +1,6 @@
 // Russian UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': 'Подтвердить',
+  'Confirm': 'Подтвердить', 'Close': 'Закрыть',
   'Cancel': 'Отмена',
   'Delete': 'Удалить',
   'Save': 'Сохранить',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': 'Экран не гаснет, пока идёт тренировка, — не нужно разблокировать телефон между подходами.',
   'Weight unit': 'Единица веса',
   'Rest timer': 'Таймер отдыха',
+  'Enable rest timer': 'Включить таймер отдыха',
   'Sounds': 'Звуки',
   'Note: switching units only changes the label — logged numbers are not converted.': 'Примечание: смена единиц меняет только подпись — записанные числа не пересчитываются.',
   'Data': 'Данные',

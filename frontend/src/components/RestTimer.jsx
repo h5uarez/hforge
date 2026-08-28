@@ -28,7 +28,7 @@ export default function RestTimer() {
 
   if (work) return (
     <div id="timer" className="working">
-      <div className="t">{clock(work.left)}</div>
+        <div className="t" role="timer" aria-label={t('Time') + ': ' + clock(work.left)}>{clock(work.left)}</div>
       <div className="grow">
         {work.label && <div className="lbl">{work.label}</div>}
         <div className="bar"><i style={{ width: pct + '%' }} /></div>
@@ -44,7 +44,7 @@ export default function RestTimer() {
   return (
     <div id="timer" className="rest">
       <div className="head">
-        <div className="t">{clock(timer.left)}</div>
+      <div className="t" role="timer" aria-label={t('Rest') + ': ' + clock(timer.left)}>{clock(timer.left)}</div>
         <div className="bar"><i style={{ width: pct + '%' }} /></div>
       </div>
       <div className="acts">

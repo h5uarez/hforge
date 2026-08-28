@@ -1,6 +1,6 @@
 // Portuguese UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': 'Confirmar',
+  'Confirm': 'Confirmar', 'Close': 'Fechar',
   'Cancel': 'Cancelar',
   'Delete': 'Eliminar',
   'Save': 'Guardar',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': 'O ecrã fica ligado enquanto há um treino a decorrer, para não teres de desbloquear o telemóvel entre séries.',
   'Weight unit': 'Unidade de peso',
   'Rest timer': 'Temporizador de descanso',
+  'Enable rest timer': 'Ativar temporizador de descanso',
   'Sounds': 'Sons',
   'Note: switching units only changes the label — logged numbers are not converted.': 'Nota: mudar a unidade só muda o rótulo — os números registados não são convertidos.',
   'Data': 'Dados',

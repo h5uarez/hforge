@@ -8,10 +8,12 @@ function Sheet({ sheet }) {
   const ref = useRef(null)
   const closeRef = useRef(null)
   const drag = useRef({ startY: null, delta: 0 })
+  const returnFocus = useRef(typeof document !== 'undefined' ? document.activeElement : null)
 
   const restoreFocus = () => {
     const opener = sheet.opener
-    if (opener && typeof opener.focus === 'function') setTimeout(() => opener.focus(), 0)
+    const target = opener && typeof opener.focus === 'function' ? opener : returnFocus.current
+    if (target?.isConnected && typeof target.focus === 'function') setTimeout(() => target.focus(), 0)
   }
   const close = () => {
     closeSheet(sheet.id)
@@ -22,14 +24,17 @@ function Sheet({ sheet }) {
   // the sheet. Locked surfaces intentionally have no shared close action or Escape listener.
   useEffect(() => {
     if (!sheet.locked) closeRef.current?.focus()
-    if (sheet.locked) return undefined
     const onKeyDown = e => {
-      if (e.key !== 'Escape' || useUI.getState().sheets.at(-1)?.id !== sheet.id) return
-      e.preventDefault()
-      close()
+      if (e.key === 'Escape' && !sheet.locked && useUI.getState().sheets.at(-1)?.id === sheet.id) {
+        e.preventDefault()
+        close()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (returnFocus.current?.isConnected && returnFocus.current !== document.activeElement) returnFocus.current.focus()
+    }
   }, [sheet.id, sheet.locked])
 
   const onTouchStart = e => {
@@ -56,7 +61,7 @@ function Sheet({ sheet }) {
     const el = ref.current, d = drag.current
     if (d.startY === null) return
     el.style.transition = 'transform .2s'
-    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => closeSheet(sheet.id), 180) }
+    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => close(), 180) }
     else el.style.transform = ''
     d.startY = null
   }
@@ -74,7 +79,7 @@ function Sheet({ sheet }) {
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
         <div className="center" role="dialog" aria-modal="true">
-          {!sheet.locked && <button ref={closeRef} className="modal-close" onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+          {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
           {sheet.render(close)}
         </div>
       </div>
@@ -85,7 +90,7 @@ function Sheet({ sheet }) {
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
       <div className={'sheet' + (sheet.tall ? ' sheet-tall' : '')} ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" />
-        {!sheet.locked && <button ref={closeRef} className="modal-close" onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+        {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
         {sheet.render(close)}
       </div>
     </div>

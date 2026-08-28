@@ -1,6 +1,6 @@
 // Turkish UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': 'Onayla',
+  'Confirm': 'Onayla', 'Close': 'Kapat',
   'Cancel': 'İptal',
   'Delete': 'Sil',
   'Save': 'Kaydet',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': 'Antrenman sürerken ekran açık kalır, böylece setler arasında telefonunu açmak zorunda kalmazsın.',
   'Weight unit': 'Ağırlık birimi',
   'Rest timer': 'Dinlenme sayacı',
+  'Enable rest timer': 'Dinlenme sayacını etkinleştir',
   'Sounds': 'Sesler',
   'Note: switching units only changes the label — logged numbers are not converted.': 'Not: birim değiştirmek sadece etiketi değiştirir — kayıtlı sayılar dönüştürülmez.',
   'Data': 'Veriler',

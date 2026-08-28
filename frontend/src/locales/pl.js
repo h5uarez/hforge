@@ -1,6 +1,6 @@
 // Polish UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': 'Potwierdź',
+  'Confirm': 'Potwierdź', 'Close': 'Zamknij',
   'Cancel': 'Anuluj',
   'Delete': 'Usuń',
   'Save': 'Zapisz',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': 'Ekran pozostaje włączony w trakcie treningu, więc nie musisz odblokowywać telefonu między seriami.',
   'Weight unit': 'Jednostka wagi',
   'Rest timer': 'Minutnik przerwy',
+  'Enable rest timer': 'Włącz minutnik przerwy',
   'Sounds': 'Dźwięki',
   'Note: switching units only changes the label — logged numbers are not converted.': 'Uwaga: zmiana jednostki zmienia tylko etykietę — zapisane liczby nie są przeliczane.',
   'Data': 'Dane',

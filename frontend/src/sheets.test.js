@@ -13,7 +13,8 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('./store/useStore.js', () => ({ useStore: {} }))
 vi.mock('./store/useUI.js', () => ({ useUI: {} }))
 
-const { commitPickerSelection, validTimedSeconds } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds } = await import('./sheets.jsx')
+const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 
 describe('commitPickerSelection', () => {
   it('calls commit() before closePicker() when the commit succeeds', () => {
@@ -60,18 +61,36 @@ describe('commitPickerSelection', () => {
 })
 
 describe('timed prescription validation', () => {
-  it('accepts only safe whole positive seconds', () => {
-    expect(validTimedSeconds('1')).toBe(true)
-    expect(validTimedSeconds('45')).toBe(true)
-    expect(validTimedSeconds(' 90 ')).toBe(true)
-  })
-
-  it.each(['', ' ', '0', '-1', '12.5', 'abc', '1e3', '9007199254740992'])('rejects invalid seconds %j', raw => {
-    expect(validTimedSeconds(raw)).toBe(false)
-  })
-
-  it('uses 45 seconds as the explicit new timed default', async () => {
-    const { defaultConfig } = await import('./lib/history.js')
+  it('initializes only a genuinely new timed config to 45 seconds', () => {
+    expect(timedSecondsInput(undefined, '0001')).toBe('45')
     expect(defaultConfig('0001', 'time').sec).toBe(45)
+  })
+  it('keeps a missing existing value invalid instead of mutating it to 45', () => {
+    const existing = { mode: 'time', sets: 3 }
+    expect(timedSecondsInput(existing, '0001')).toBe('')
+    expect(parseTimedSeconds(timedSecondsInput(existing, '0001'))).toBeNull()
+    expect(existing.sec).toBeUndefined()
+  })
+  it('rejects missing input instead of producing NaN', () => {
+    expect(parseTimedSeconds(undefined)).toBeNull()
+    expect(parseTimedSeconds('')).toBeNull()
+  })
+  it('returns the validated value used for persistence', () => {
+    expect(parseTimedSeconds('45')).toBe(45)
+  })
+  it.each(['1', '45', ' 90 '])('accepts positive whole seconds %j', raw => expect(validTimedSeconds(raw)).toBe(true))
+  it.each(['', ' ', '0', '-1', '12.5', 'abc', '1e3', '9007199254740992'])('rejects unsafe seconds %j', raw => expect(validTimedSeconds(raw)).toBe(false))
+  it('keeps stepper decrement at one second without a fallback', () => {
+    expect(clampTimedSeconds(0)).toBe(1)
+    expect(clampTimedSeconds(1 - 5)).toBe(1)
+    expect(validTimedSeconds(String(clampTimedSeconds(1 - 5)))).toBe(true)
+  })
+  it('does not restore a malformed timed config with a 45-second fallback', () => {
+    const S = { exWeights: {}, workouts: [] }
+    expect(buildSets(S, { id: '0001', mode: 'time', sets: 1 }).at(0).sec).toBeUndefined()
+  })
+  it('persists a valid whole-second value exactly', () => {
+    expect(parseTimedSeconds('75')).toBe(75)
+    expect(parseTimedSeconds('12.5')).toBeNull()
   })
 })

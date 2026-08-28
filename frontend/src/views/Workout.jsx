@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, parseTimedSeconds } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -79,7 +79,10 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   // config brings it back, now labelled as the addition it is.
   const cfg = { ...(entry.target || {}), id: entry.id }
   const bw = !cardio && isBw(cfg)
-  const added = bw && entry.sets.some(s => s.w > 0)
+  const added = bw && entry.sets.some(s => {
+    const p = projectSideSet(s)
+    return p.w > 0 || s.left?.w > 0 || s.right?.w > 0
+  })
   const loadCol = { f: 'w', step: 2.5, dec: true, hd: bw ? t('Added ({0})', S.unit) : t('Weight ({0})', S.unit) }
   // The reps column is the total in every mode, unilateral included — the stepper walks in
   // twos there so the number you land on is one you can actually split evenly.
@@ -115,20 +118,16 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
     <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
-      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
+      <span className="val"><NumberField aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
-      <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
+      <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   )
-  const sideCell = (s, i, side, col, cls) => {
-    const value = s[side][col.f]
-    return <div className={'stp ' + cls}>
-      <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((value || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={value ?? ''}
-        onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
-      <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((value || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
-    </div>
-  }
+  const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls}>
+    <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
+    <span className="val"><NumberField aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+   <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+   </div>
   // Disclosure: which set rows have their immutable planned target revealed. A new Set on
   // every change so React notices — disclosure is local UI state, never persisted.
   const [disclosed, setDisclosed] = useState(() => new Set())
@@ -158,7 +157,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
       {/* You log the total; this is the split, so the set in front of you is unambiguous
           without the rep count having to mean two different things (issue #31). */}
-      {!cardio && !timed && isPerSide(cfg) && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !s.done)?.r ?? entry.sets[0]?.r)))}</span>}
+      {!cardio && !timed && isPerSide(cfg) && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !projectSideSet(s).done)?.r ?? entry.sets[0]?.r)))}</span>}
       {(ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
@@ -175,7 +174,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         const target = setTarget(s)
         const isOpen = disclosed.has(i)
         return <Fragment key={i}>
-            <div className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}
+           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + (col3 ? ' eff3' : '')}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
@@ -193,7 +192,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
             </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
             {/* A timed set is started, not typed: the timer counts the hold down and checks the
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-            {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
+            {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
               onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
             {/* Per-set info button: only when this set actually has a compatible target.
                 The disclosure toggles on tap; on a row with no target the button is not
@@ -205,9 +204,9 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
               <Icon name={isOpen ? 'chevronUp' : 'info'} />
             </button>}
             {isPerSide(cfg) && !cardio && !timed ? <div className="side-checks">
-              <Check checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
-              <Check checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
-            </div> : <Check checked={s.done} onChange={() => onToggle(i)} />}
+              <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
+              <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
+            </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
           </div>
           {isOpen && target && <div className="setrow-info" role="region" aria-label={t('Programmed target')}>
             <span className="lbl">{t('Target')}</span>
@@ -257,7 +256,7 @@ function ActiveWorkout() {
     const l = e.sets[e.sets.length - 1]
     const m = modeOf({ ...(e.target || {}), id: e.id })
     if (m === 'cardio') e.sets.push({ min: l ? l.min : (e.target.min || 20), speed: l ? l.speed : (e.target.speed || 8), done: false })
-    else if (m === 'time') e.sets.push({ sec: l ? l.sec : (e.target.sec || 45), w: l ? (l.w || 0) : (e.target.weight || 0), done: false })
+    else if (m === 'time') e.sets.push({ sec: l ? l.sec : e.target.sec, w: l ? (l.w || 0) : (e.target.weight || 0), done: false })
     else if (isPerSide(e.target)) e.sets.push({ left: { w: l?.left?.w ?? 0, r: l?.left?.r ?? sideReps(e.target.reps), done: false }, right: { w: l?.right?.w ?? 0, r: l?.right?.r ?? sideReps(e.target.reps), done: false }, w: e.target.weight || 0, r: e.target.reps, done: false })
     else e.sets.push({ w: l ? l.w : 0, r: l ? l.r : e.target.reps, done: false })
   })
@@ -269,7 +268,12 @@ function ActiveWorkout() {
   // behave exactly as they do for a reps set.
   const startTimed = (idx, i) => {
     const e = A.entries[idx]
-    useUI.getState().startWork(e.sets[i].sec || 45, exOr(e.id).n, elapsed => {
+    const seconds = parseTimedSeconds(e.sets[i].sec)
+    if (seconds === null) {
+      useUI.getState().toast(t('Enter a valid whole number of seconds'))
+      return
+    }
+    useUI.getState().startWork(seconds, exOr(e.id).n, elapsed => {
       mutEntry(idx, en => { en.sets[i].sec = elapsed })
       if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
     })
@@ -285,18 +289,21 @@ function ActiveWorkout() {
         e.sets[i][side].done = !e.sets[i][side].done
         syncSideSet(e.sets[i])
       } else e.sets[i].done = !e.sets[i].done
-      if (e.sets[i].done) {
+      if (projectSideSet(e.sets[i]).done) {
         beep(S.sound, 1040, 0.12); vibrate(30)
         const isLastExInUnit = idx === unit[unit.length - 1]
-        const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => x.done))
+          const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => projectSideSet(x).done))
         if (isLastExInUnit && !unitDone) startRest(S.restSec)
         else if (unitDone) stopRest()
         if (unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
         // Only loaded reps training has a "working weight" worth confirming — a bodyweight
         // plank has nothing to put in that slider, and neither does a set of push-ups
         // (issue #32: the fewest taps that still record what happened).
-        const loaded = m === 'reps' && !(isBw({ ...(e.target || {}), id: e.id }) && !e.sets.some(x => x.w > 0))
-        if (e.sets.every(x => x.done)) { exJustDone = true; if (loaded && !e.asked) { e.asked = true; askTop = true } }
+        const loaded = m === 'reps' && !(isBw({ ...(e.target || {}), id: e.id }) && !e.sets.some(x => {
+          const p = projectSideSet(x)
+          return p.w > 0 || x.left?.w > 0 || x.right?.w > 0
+        }))
+        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (loaded && !e.asked) { e.asked = true; askTop = true } }
       }
     })
     // reps: topWeight first (it chains into the finish/continue prompt on the last unit).
@@ -384,7 +391,7 @@ function ActiveWorkout() {
     }), closePicker), null, S.routines.find(r => r.id === A.routineId)))} icon="plus">{t('Add exercise')}</Button>
     <div style={{ height: 10 }} />
     {(() => {
-      const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => s.done)).length
+       const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
       const allDone = A.entries.length > 0 && exDone === A.entries.length
       return <button className={allDone ? 'btn primary' : 'btn ghost dim'} onClick={finishWorkout}>
         {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}

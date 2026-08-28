@@ -161,7 +161,7 @@ describe('useStore.update × endBlock — persistence integration', () => {
   })
 })
 
-describe('restTimerEnabled persistence compatibility', () => {
+describe('restTimerEnabled compatibility', () => {
   it('defaults old profiles to enabled and persists a disabled choice', () => {
     useStore.getState().replaceState({ routines: [], workouts: [] })
 
@@ -173,7 +173,8 @@ describe('restTimerEnabled persistence compatibility', () => {
   })
 
   it('restores the persisted disabled choice while retaining defaults for other fields', async () => {
-    useStore.getState().update(s => { s.restTimerEnabled = false }, false)
+    useStore.getState().replaceState({ restTimerEnabled: false, routines: [], workouts: [] })
+    expect(JSON.parse(storage.get(KEY)).restTimerEnabled).toBe(false)
     vi.resetModules()
     const { useStore: restored } = await import('./useStore.js')
 
