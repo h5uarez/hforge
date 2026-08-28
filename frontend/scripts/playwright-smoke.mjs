@@ -546,6 +546,182 @@ async function runSmoke(signal) {
 	if (swipeState.hash !== '#/workout') throw new Error(`swipe dismissal: route changed to ${swipeState.hash}, expected #/workout`)
 	if (swipeState.hasError) throw new Error('swipe dismissal: error view is visible after CDP touch swipe')
 
+	// =========================================================================
+	// exercise picker search dialog sizing (exercise-picker-search-dialog-sizing)
+	// =========================================================================
+	//
+	// Spec: at 390x844, the multi-word queries `bench press`, `chest fly`, and `ankle circles`
+	// keep their matching results visible AND selectable, and the sheet stays at least 320 CSS
+	// pixels high even when results are sparse. A zero-result query outside the Chosen filter
+	// renders the localized "No match" state and keeps the Create-your-own action reachable. At
+	// 320x568 the empty state is usable inside the viewport (sheet height <= 90vh) with
+	// controls reachable by scrolling. This reuses the in-progress workout on /workout after
+	// the swipe-dismissal test dismissed the previous picker. The search input is re-used
+	// across queries — Playwright `fill` replaces the previous value without reopening the
+	// sheet — so each query gets the same `getByPlaceholder` selector.
+	await runStep('resize to 390x844 for picker sizing', ['resize', '390', '844'], signal)
+	const afterResize390 = await runStep('assert 390x844 viewport', [
+		'--raw', 'eval',
+		'JSON.stringify({ innerWidth: window.innerWidth, innerHeight: window.innerHeight })'
+	], signal)
+	let resize390
+	try {
+		resize390 = JSON.parse(afterResize390.stdout.trim())
+		if (typeof resize390 === 'string') resize390 = JSON.parse(resize390)
+	} catch {
+		throw new Error(`390x844 resize returned invalid JSON${details(afterResize390)}`)
+	}
+	if (resize390.innerWidth !== 390) throw new Error(`390x844 resize: expected innerWidth 390, got ${resize390.innerWidth}`)
+	if (resize390.innerHeight !== 844) throw new Error(`390x844 resize: expected innerHeight 844, got ${resize390.innerHeight}`)
+
+	await runStep('open picker for sizing tests', ['click', "getByRole('button', { name: /Add exercise|Añadir ejercicio/ }).last()"], signal)
+
+	// --- multi-word queries: bench press, chest fly, ankle circles (visible + selectable) ---
+	const multiWord = [
+		{ query: 'bench press', pick: 'barbell bench press' },
+		{ query: 'chest fly', pick: 'cable one arm decline chest fly' },
+		{ query: 'ankle circles', pick: 'ankle circles' }
+	]
+	for (const { query, pick } of multiWord) {
+		await runStep(`search ${query} in picker`, ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", query], signal)
+		const matchVisible = await runStep(`assert ${query} result visible in picker list`, [
+			'--raw', 'eval',
+			`JSON.stringify({ count: document.querySelectorAll('#modal-root .sheet .item .tt.capitalize').length, hasMatch: [...document.querySelectorAll('#modal-root .sheet .item .tt.capitalize')].some(n => n.textContent.trim() === '${pick}') })`
+		], signal)
+		let matchState
+		try {
+			matchState = JSON.parse(matchVisible.stdout.trim())
+			if (typeof matchState === 'string') matchState = JSON.parse(matchState)
+		} catch {
+			throw new Error(`${query} visibility returned invalid JSON${details(matchVisible)}`)
+		}
+		if (!matchState.hasMatch) throw new Error(`search ${query}: expected matching result '${pick}' visible in picker list; got ${JSON.stringify(matchState)}`)
+		// Click proves the result is selectable (ExConfig sheet opens).
+		await runStep(`pick ${query} from picker`, ['click', `getByText('${pick}', { exact: true })`], signal)
+		await runStep(`confirm ${query} in ExConfig`, ['click', "getByRole('button', { name: /Add to routine|Añadir a la rutina/ })"], signal)
+		// Reopen the picker for the next query (the previous selection dismissed it).
+		await runStep(`reopen picker after ${query}`, ['click', "getByRole('button', { name: /Add exercise|Añadir ejercicio/ }).last()"], signal)
+	}
+
+	// Sparse-result sheet height: with `ankle circles` filtered, sheet height must be >= 320px
+	// even when the result list is small. Re-fill (the last query in the loop already opened the
+	// picker, so the next fill just narrows the existing open sheet).
+	await runStep('refine picker to ankle circles for height check', ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", 'ankle circles'], signal)
+	const ankleHeight = await runStep('assert sparse sheet height >= 320', [
+		'--raw', 'eval',
+		"JSON.stringify({ sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, viewportHeight: window.innerHeight })"
+	], signal)
+	let ankleState
+	try {
+		ankleState = JSON.parse(ankleHeight.stdout.trim())
+		if (typeof ankleState === 'string') ankleState = JSON.parse(ankleState)
+	} catch {
+		throw new Error(`ankle circles height returned invalid JSON${details(ankleHeight)}`)
+	}
+	if (ankleState.sheetHeight < 320) throw new Error(`sparse result sheet height: expected >= 320, got ${ankleState.sheetHeight}`)
+
+	// Zero-result state: `zzzzz nothing` must show localized "No match" + Create-your-own
+	// and keep the sheet at least 320px high.
+	await runStep('search zzzzz nothing for empty state', ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", 'zzzzz nothing'], signal)
+	const zeroResult = await runStep('assert zero result empty state at 390x844', [
+		'--raw', 'eval',
+		"JSON.stringify({ noMatch: /\\bNo match\\b|\\bSin resultados\\b/i.test(document.body.innerText), createYourOwn: /Create your own exercise|Crea tu propio ejercicio/i.test(document.body.innerText), sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, pickerH3: [...document.querySelectorAll('#modal-root .sheet h3')].some(h => /^(Add exercise|Añadir ejercicio)$/i.test(h.textContent.trim())) })"
+	], signal)
+	let zeroState
+	try {
+		zeroState = JSON.parse(zeroResult.stdout.trim())
+		if (typeof zeroState === 'string') zeroState = JSON.parse(zeroState)
+	} catch {
+		throw new Error(`zero result assertion returned invalid JSON${details(zeroResult)}`)
+	}
+	if (!zeroState.pickerH3) throw new Error(`zero result: picker sheet h3 missing; got ${JSON.stringify(zeroState)}`)
+	if (!zeroState.noMatch) throw new Error(`zero result: localized "No match" text not visible; got ${JSON.stringify(zeroState)}`)
+	if (!zeroState.createYourOwn) throw new Error(`zero result: Create your own exercise action not visible; got ${JSON.stringify(zeroState)}`)
+	if (zeroState.sheetHeight < 320) throw new Error(`zero result sheet height: expected >= 320, got ${zeroState.sheetHeight}`)
+
+	// --- 320x568 short viewport: zero result still usable inside viewport ---
+	await runStep('resize to 320x568 for short viewport test', ['resize', '320', '568'], signal)
+	const afterResize320 = await runStep('assert 320x568 viewport', [
+		'--raw', 'eval',
+		'JSON.stringify({ innerWidth: window.innerWidth, innerHeight: window.innerHeight })'
+	], signal)
+	let resize320
+	try {
+		resize320 = JSON.parse(afterResize320.stdout.trim())
+		if (typeof resize320 === 'string') resize320 = JSON.parse(resize320)
+	} catch {
+		throw new Error(`320x568 resize returned invalid JSON${details(afterResize320)}`)
+	}
+	if (resize320.innerWidth !== 320) throw new Error(`320x568 resize: expected innerWidth 320, got ${resize320.innerWidth}`)
+	if (resize320.innerHeight !== 568) throw new Error(`320x568 resize: expected innerHeight 568, got ${resize320.innerHeight}`)
+
+	// Re-assert zero result at 320x568. The picker is still open with `zzzzz nothing`; just
+	// re-inspect after the resize because the picker state survives a viewport change.
+	const shortState = await runStep('assert short viewport empty state', [
+		'--raw', 'eval',
+		"JSON.stringify({ sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, viewportHeight: window.innerHeight, noMatch: /\\bNo match\\b|\\bSin resultados\\b/i.test(document.body.innerText), createYourOwn: /Create your own exercise|Crea tu propio ejercicio/i.test(document.body.innerText), pickerH3: [...document.querySelectorAll('#modal-root .sheet h3')].some(h => /^(Add exercise|Añadir ejercicio)$/i.test(h.textContent.trim())) })"
+	], signal)
+	let short
+	try {
+		short = JSON.parse(shortState.stdout.trim())
+		if (typeof short === 'string') short = JSON.parse(short)
+	} catch {
+		throw new Error(`short viewport assertion returned invalid JSON${details(shortState)}`)
+	}
+	if (!short.pickerH3) throw new Error(`short viewport: picker sheet h3 missing; got ${JSON.stringify(short)}`)
+	if (!short.noMatch) throw new Error(`short viewport: localized "No match" text not visible; got ${JSON.stringify(short)}`)
+	if (!short.createYourOwn) throw new Error(`short viewport: Create your own exercise action not visible; got ${JSON.stringify(short)}`)
+	// 90vh cap = 0.9 * 568 = 511.2. Sheet must be at most that and at least 320 to be usable.
+	const shortCap = 0.9 * short.viewportHeight
+	if (short.sheetHeight > shortCap + 0.5) throw new Error(`short viewport: sheet height ${short.sheetHeight} exceeded 90vh cap ${shortCap.toFixed(1)}`)
+	if (short.sheetHeight < 320) throw new Error(`short viewport sheet height: expected >= 320, got ${short.sheetHeight}`)
+
+	// Verify controls and Create action are reachable by scrolling: scroll the sheet to its
+	// bottom and verify the Create-your-own item is still in the viewport. This proves the
+	// sheet is genuinely scrollable rather than truncated, so a real user at 320x568 can
+	// reach the action even when the picker is taller than the visible area.
+	await runStep('scroll sheet to bottom in short viewport', [
+		'--raw', 'eval',
+		"(() => { const sheet = document.querySelector('#modal-root .sheet'); if (!sheet) throw new Error('no #modal-root .sheet found before scroll'); sheet.scrollTop = sheet.scrollHeight; return 'ok'; })()"
+	], signal)
+	const scrollState = await runStep('assert controls reachable after scroll at 320x568', [
+		'--raw', 'eval',
+		"JSON.stringify((() => { const sheet = document.querySelector('#modal-root .sheet'); const sheetRect = sheet.getBoundingClientRect(); const create = [...sheet.querySelectorAll('.item')].find(item => /Create your own exercise|Crea tu propio ejercicio/i.test(item.querySelector('.tt')?.textContent || '')); const empty = [...sheet.querySelectorAll('.empty')].find(item => /\\bNo match\\b|\\bSin resultados\\b/i.test(item.textContent)); const viewport = { top: 0, right: window.innerWidth, bottom: window.innerHeight, left: 0 }; const reachable = element => { if (!element) return false; const rect = element.getBoundingClientRect(); return rect.width > 0 && rect.height > 0 && rect.right > Math.max(sheetRect.left, viewport.left) && rect.left < Math.min(sheetRect.right, viewport.right) && rect.bottom > Math.max(sheetRect.top, viewport.top) && rect.top < Math.min(sheetRect.bottom, viewport.bottom); }; return { createYourOwn: /Create your own exercise|Crea tu propio ejercicio/i.test(document.body.innerText), noMatch: /\\bNo match\\b|\\bSin resultados\\b/i.test(document.body.innerText), createReachable: reachable(create), noMatchReachable: reachable(empty), sheetHeight: sheetRect.height, sheetScrollTop: sheet.scrollTop, sheetMaxScroll: sheet.scrollHeight - sheet.clientHeight }; })())"
+	], signal)
+	let scrolled
+	try {
+		scrolled = JSON.parse(scrollState.stdout.trim())
+		if (typeof scrolled === 'string') scrolled = JSON.parse(scrolled)
+	} catch {
+		throw new Error(`short viewport scroll assertion returned invalid JSON${details(scrollState)}`)
+	}
+	if (!scrolled.createYourOwn) throw new Error(`short viewport scroll: Create your own exercise not visible after scrolling; got ${JSON.stringify(scrolled)}`)
+	if (!scrolled.noMatch) throw new Error(`short viewport scroll: localized "No match" text not visible after scrolling; got ${JSON.stringify(scrolled)}`)
+	if (!scrolled.createReachable) throw new Error(`short viewport scroll: Create your own exercise is not geometrically reachable; got ${JSON.stringify(scrolled)}`)
+	if (!scrolled.noMatchReachable) throw new Error(`short viewport scroll: localized "No match" state is not geometrically reachable; got ${JSON.stringify(scrolled)}`)
+	if (scrolled.sheetHeight < 320) throw new Error(`short viewport scroll: sheet collapsed below 320 after scrolling; got ${scrolled.sheetHeight}`)
+
+	// Dismiss the picker before the second deterministic reset. Reuse the verified
+	// `.mback` backdrop click so we do not depend on Escape, which the picker does not
+	// bind. The backdrop is well above the min-height-320 sheet at 320x568.
+	const pickerSizingBackdropClick = await runStep('click .mback backdrop to dismiss the picker after sizing', [
+		'run-code',
+		[
+			"async page => {",
+			"  const point = await page.evaluate(() => {",
+			"    const mback = document.querySelector('.mback');",
+			"    if (!mback) throw new Error('No .mback found before sizing-backdrop click');",
+			"    const r = mback.getBoundingClientRect();",
+			"    if (r.width <= 0 || r.height <= 0) throw new Error('.mback has zero-size bounds');",
+			"    return { x: Math.round(r.left + 24), y: Math.round(r.top + 24) };",
+			"  });",
+			"  await page.mouse.click(point.x, point.y);",
+			"  return point;",
+			"}"
+		].join('\n')
+	], signal)
+	if (!pickerSizingBackdropClick.stdout.trim()) throw new Error(`picker sizing backdrop click: no point reported from run-code${details(pickerSizingBackdropClick)}`)
+
 	// ----- second deterministic reset (picker-cleanup) -----
 	// The earlier picker journeys (desktop routine-editor, mobile workout 375px,
 	// keyboard/focus, backdrop, CDP touch swipe) intentionally start Push Day from the
@@ -732,30 +908,6 @@ async function runSmoke(signal) {
 	}
 	const todayExpectedRoutine = expectedForWd(weekday)
 	const todayIsRestDay = todayExpectedRoutine == null
-	// Deterministic 3.6 training/rest dates: pick the Thursday and Friday of the host's
-	// current local-calendar week. Both fall in the same calendar week as the host's today
-	// (whatever weekday that is), so the block resolver's `currentWeekBlockIndex` override
-	// fires and resolves them to block week 1. Thursday is always a training day in the
-	// block fixture (Mon=Push, Tue=Pull, Wed=Leg, Thu=Fourth); the 3.5b editWd is the
-	// first training weekday != host weekday, which is in [1,2] — never 4 (Thursday) —
-	// so Thursday is always Fourth Day even after the 3.5b edit. Friday (wd=5) is always
-	// a rest day in the fixture; 3.5b only ever touches [1,2], so Friday is always rest
-	// in the post-3.5b block regardless of the host weekday.
-	const hostNowForDates = new Date()
-	const hostWdForDates = hostNowForDates.getDay()
-	const monOffsetForDates = (hostWdForDates + 6) % 7
-	const hostMondayForDates = new Date(hostNowForDates)
-	hostMondayForDates.setDate(hostNowForDates.getDate() - monOffsetForDates)
-	const hostThursdayForDates = new Date(hostMondayForDates)
-	hostThursdayForDates.setDate(hostMondayForDates.getDate() + 3)
-	const hostFridayForDates = new Date(hostMondayForDates)
-	hostFridayForDates.setDate(hostMondayForDates.getDate() + 4)
-	// Local-ISO formatter (matches production todayISO / isoOf in frontend/src/lib/format.js —
-	// uses local date components, not UTC, so the smoke date matches what the page sees).
-	const localIsoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-	const deterministicThursdayIso = localIsoOf(hostThursdayForDates)
-	const deterministicFridayIso = localIsoOf(hostFridayForDates)
-
 	// ----- 3.2c activate via UI → reload → assert activeBlock persisted -----
 	await runStep('open plan for block activate', ['goto', `${baseUrl}/#/plan`], signal)
 	await runStep('open block manager (no active yet)', ['click', "getByText(/^(Training blocks|Bloques de entrenamiento)$/)"], signal)
@@ -768,6 +920,23 @@ async function runSmoke(signal) {
 	if (afterActivate.activeBlock.status !== 'active') throw new Error(`activate: status should be 'active', got '${afterActivate.activeBlock.status}'`)
 	if (afterActivate.activeBlock.blockId !== afterActivate.blocks[0].id) throw new Error(`activate: activeBlock.blockId (${afterActivate.activeBlock.blockId}) ≠ blocks[0].id (${afterActivate.blocks[0].id})`)
 	if (!Array.isArray(afterActivate.blocks[0].weeks) || afterActivate.blocks[0].weeks.length !== 4) throw new Error(`activate: block should have 4 weeks after reload, got ${afterActivate.blocks[0].weeks && afterActivate.blocks[0].weeks.length}`)
+	// Deterministic 3.6 training/rest dates: derive the training Thursday from the
+	// persisted activation date, selecting the first Thursday on or after activation.
+	// This keeps the mocked training date within the block's valid snapshot range when
+	// activation occurs on Friday, Saturday, or Sunday. The following Friday remains the
+	// fixture's rest day; 3.5b only edits weekdays [1,2].
+	const activationDateForDates = new Date(afterActivate.activeBlock.startedOn + 'T12:00:00')
+	const activationWdForDates = activationDateForDates.getDay()
+	const daysToThursday = (4 - activationWdForDates + 7) % 7
+	const trainingThursdayForDates = new Date(activationDateForDates)
+	trainingThursdayForDates.setDate(activationDateForDates.getDate() + daysToThursday)
+	const deterministicFridayForDates = new Date(trainingThursdayForDates)
+	deterministicFridayForDates.setDate(trainingThursdayForDates.getDate() + 1)
+	// Local-ISO formatter (matches production todayISO / isoOf in frontend/src/lib/format.js —
+	// uses local date components, not UTC, so the smoke date matches what the page sees).
+	const localIsoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+	const deterministicThursdayIso = localIsoOf(trainingThursdayForDates)
+	const deterministicFridayIso = localIsoOf(deterministicFridayForDates)
 
 	// ----- 3.3 Plan shows the block-resolved routine/rest for every weekday of the current week -----
 	// This is the durable assertion the previous smoke was missing. We extract the rendered
@@ -897,7 +1066,7 @@ async function runSmoke(signal) {
 	editMondayDate.setDate(editMondayDate.getDate() - ((editMondayDate.getDay() + 6) % 7))
 	const editDateObj = new Date(editMondayDate)
 	editDateObj.setDate(editMondayDate.getDate() + (editWd === 0 ? 6 : editWd - 1))
-	const editIso = editDateObj.toISOString().slice(0, 10)
+	const editIso = localIsoOf(editDateObj)
 	await openBlockManagerFromPlan()
 	await runStep('open Smoke W for edit (3.5b)', ['click', ".list .item:has-text('Smoke W')"], signal)
 	// Rename the block. The TextField uses the Block name placeholder in both English and Spanish.
