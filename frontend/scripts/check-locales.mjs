@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Guards locale key parity and the source-English-key contract.  The source scan is
 // intentionally limited to frontend-owned UI files; API data, user/catalog data,
 // units, brand text, generated instructions, and deliberate English fallbacks are
@@ -57,7 +56,7 @@ export async function runChecks({ cwd = frontendDir, log = console } = {}) {
   if (!files.length) throw new Error(`No locale files found in ${join(cwd, 'src', 'locales')}`)
   const locales = new Map()
   for (const file of files) {
-    const { default: dict } = await import(pathToFileURL(join(cwd, 'src', 'locales', file)).href + `?guard=${Date.now()}`)
+    const { default: dict } = await import(/* @vite-ignore */ pathToFileURL(join(cwd, 'src', 'locales', file)).href + `?guard=${Date.now()}`)
     if (!dict || typeof dict !== 'object') throw new Error(`${file}: no default-exported object`)
     locales.set(file.replace(/\.js$/, ''), new Set(Object.keys(dict)))
   }
