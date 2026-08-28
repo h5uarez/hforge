@@ -8,6 +8,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const frontendDir = dirname(scriptDir)
 const repoDir = dirname(frontendDir)
 const cliPath = join(frontendDir, 'node_modules', '@playwright', 'cli', 'playwright-cli.js')
+const cliConfigPath = join(repoDir, '.agents', 'skills', 'playwright-cli', 'playwright-cli.config.json')
 const launcherPath = join(repoDir, 'start-local.bat')
 const sessionArgs = ['-s=hforge-playwright-smoke']
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080'
@@ -300,7 +301,7 @@ async function runSmoke(signal) {
 	// once. Every later journey (routine-editor, active-workout picker, persisted block edit,
 	// active Today's-plan training, block-rest, 375px lifecycle, legacy fallback) runs against
 	// this single, deterministic boot.
-	await runStep('open hforge', ['open', baseUrl], signal)
+	await runStep('open hforge (iPhone 13 Pro Max)', ['open', baseUrl, `--config=${cliConfigPath}`], signal)
 	await runStep('navigate to home before reset', ['goto', `${baseUrl}/#/home`], signal)
 	await runStep('clear cookies', ['cookie-clear'], signal)
 	await runStep('clear localStorage', ['localstorage-clear'], signal)
