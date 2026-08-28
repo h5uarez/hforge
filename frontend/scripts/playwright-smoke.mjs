@@ -559,8 +559,8 @@ async function runSmoke(signal) {
 	// =========================================================================
 	//
 	// Spec: at 390x844, the multi-word queries `bench press`, `chest fly`, and `ankle circles`
-	// keep their matching results visible AND selectable, and the sheet stays at least 320 CSS
-	// pixels high even when results are sparse. A zero-result query outside the Chosen filter
+	// keep their matching results visible AND selectable, and the picker keeps its standard 75vh
+	// height even when results are sparse. A zero-result query outside the Chosen filter
 	// renders the localized "No match" state and keeps the Create-your-own action reachable. At
 	// 320x568 the empty state is usable inside the viewport (sheet height <= 90vh) with
 	// controls reachable by scrolling. This reuses the in-progress workout on /workout after
@@ -611,13 +611,13 @@ async function runSmoke(signal) {
 		await runStep(`reopen picker after ${query}`, ['click', "getByRole('button', { name: /Add exercise|Añadir ejercicio/ }).last()"], signal)
 	}
 
-	// Sparse-result sheet height: with `ankle circles` filtered, sheet height must be >= 320px
-	// even when the result list is small. Re-fill (the last query in the loop already opened the
+	// Sparse-result sheet height: with `ankle circles` filtered, sheet height must be the standard
+	// 75vh even when the result list is small. Re-fill (the last query in the loop already opened the
 	// picker, so the next fill just narrows the existing open sheet).
 	await runStep('refine picker to ankle circles for height check', ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", 'ankle circles'], signal)
-	const ankleHeight = await runStep('assert sparse sheet height >= 320', [
+	const ankleHeight = await runStep('assert sparse sheet has standard height', [
 		'--raw', 'eval',
-		"JSON.stringify({ sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, viewportHeight: window.innerHeight })"
+		"JSON.stringify({ sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, viewportHeight: window.innerHeight, expectedHeight: window.innerHeight * 0.75 })"
 	], signal)
 	let ankleState
 	try {
@@ -626,14 +626,14 @@ async function runSmoke(signal) {
 	} catch {
 		throw new Error(`ankle circles height returned invalid JSON${details(ankleHeight)}`)
 	}
-	if (ankleState.sheetHeight < 320) throw new Error(`sparse result sheet height: expected >= 320, got ${ankleState.sheetHeight}`)
+	if (Math.abs(ankleState.sheetHeight - ankleState.expectedHeight) > 0.5) throw new Error(`sparse result sheet height: expected ${ankleState.expectedHeight}, got ${ankleState.sheetHeight}`)
 
 	// Zero-result state: `zzzzz nothing` must show localized "No match" + Create-your-own
-	// and keep the sheet at least 320px high.
+	// and keep the standard 75vh picker height.
 	await runStep('search zzzzz nothing for empty state', ['fill', "getByPlaceholder(/Search.*exercises|Buscar.*ejercicios/)", 'zzzzz nothing'], signal)
 	const zeroResult = await runStep('assert zero result empty state at 390x844', [
 		'--raw', 'eval',
-		"JSON.stringify({ noMatch: /\\bNo match\\b|\\bSin resultados\\b/i.test(document.body.innerText), createYourOwn: /Create your own exercise|Crea tu propio ejercicio/i.test(document.body.innerText), sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, pickerH3: [...document.querySelectorAll('#modal-root .sheet h3')].some(h => /^(Add exercise|Añadir ejercicio)$/i.test(h.textContent.trim())) })"
+		"JSON.stringify({ noMatch: /\\bNo match\\b|\\bSin resultados\\b/i.test(document.body.innerText), createYourOwn: /Create your own exercise|Crea tu propio ejercicio/i.test(document.body.innerText), sheetHeight: document.querySelector('#modal-root .sheet').getBoundingClientRect().height, viewportHeight: window.innerHeight, pickerH3: [...document.querySelectorAll('#modal-root .sheet h3')].some(h => /^(Add exercise|Añadir ejercicio)$/i.test(h.textContent.trim())) })"
 	], signal)
 	let zeroState
 	try {
@@ -645,7 +645,8 @@ async function runSmoke(signal) {
 	if (!zeroState.pickerH3) throw new Error(`zero result: picker sheet h3 missing; got ${JSON.stringify(zeroState)}`)
 	if (!zeroState.noMatch) throw new Error(`zero result: localized "No match" text not visible; got ${JSON.stringify(zeroState)}`)
 	if (!zeroState.createYourOwn) throw new Error(`zero result: Create your own exercise action not visible; got ${JSON.stringify(zeroState)}`)
-	if (zeroState.sheetHeight < 320) throw new Error(`zero result sheet height: expected >= 320, got ${zeroState.sheetHeight}`)
+	const zeroExpectedHeight = 0.75 * zeroState.viewportHeight
+	if (Math.abs(zeroState.sheetHeight - zeroExpectedHeight) > 0.5) throw new Error(`zero result sheet height: expected ${zeroExpectedHeight}, got ${zeroState.sheetHeight}`)
 
 	// --- 320x568 short viewport: zero result still usable inside viewport ---
 	await runStep('resize to 320x568 for short viewport test', ['resize', '320', '568'], signal)
@@ -679,10 +680,11 @@ async function runSmoke(signal) {
 	if (!short.pickerH3) throw new Error(`short viewport: picker sheet h3 missing; got ${JSON.stringify(short)}`)
 	if (!short.noMatch) throw new Error(`short viewport: localized "No match" text not visible; got ${JSON.stringify(short)}`)
 	if (!short.createYourOwn) throw new Error(`short viewport: Create your own exercise action not visible; got ${JSON.stringify(short)}`)
-	// 90vh cap = 0.9 * 568 = 511.2. Sheet must be at most that and at least 320 to be usable.
+	// 90vh cap = 0.9 * 568 = 511.2. The standard 75vh height must stay inside that cap.
 	const shortCap = 0.9 * short.viewportHeight
 	if (short.sheetHeight > shortCap + 0.5) throw new Error(`short viewport: sheet height ${short.sheetHeight} exceeded 90vh cap ${shortCap.toFixed(1)}`)
-	if (short.sheetHeight < 320) throw new Error(`short viewport sheet height: expected >= 320, got ${short.sheetHeight}`)
+	const shortExpectedHeight = 0.75 * short.viewportHeight
+	if (Math.abs(short.sheetHeight - shortExpectedHeight) > 0.5) throw new Error(`short viewport sheet height: expected ${shortExpectedHeight}, got ${short.sheetHeight}`)
 
 	// Verify controls and Create action are reachable by scrolling: scroll the sheet to its
 	// bottom and verify the Create-your-own item is still in the viewport. This proves the

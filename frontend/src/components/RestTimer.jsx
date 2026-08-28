@@ -15,7 +15,7 @@ export default function RestTimer() {
   const work = useUI(s => s.work)
   const restEnabled = useStore(s => s.S.restTimerEnabled !== false)
   const { addRest, stopRest, finishWorkEarly, stopWork } = useUI()
-  const on = work || timer
+  const on = work || (restEnabled ? timer : null)
   // The bar is fixed above the tab bar and floats over whatever is beneath it — during a
   // rest that was the next set's row. Extra bottom padding lets the page scroll clear.
   useEffect(() => {
