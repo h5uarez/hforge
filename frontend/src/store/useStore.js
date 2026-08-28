@@ -8,7 +8,7 @@ import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/
 
 const KEY = 'gym_state_v1'
 export const DEF = {
-  unit: 'kg', restSec: 90, sound: true, keepAwake: true, lang: 'en',
+  unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
   theme: 'dark', accent: 'lime', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
@@ -104,7 +104,7 @@ export const useStore = create((set, get) => {
       persist(S, push)
     },
     replaceState(S, push = false) {
-      const next = clone(S)
+      const next = Object.assign(clone(DEF), clone(S))
       next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
       persist(next, push)
     },

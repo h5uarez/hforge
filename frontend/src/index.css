@@ -362,10 +362,8 @@ h4.sec{
 
 /* ---------------------------------------------------------------- chips -- */
 .chips{
-  display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  display:flex;flex-wrap:wrap;gap:7px;max-width:100%;padding-bottom:2px;
 }
-.chips::-webkit-scrollbar{display:none}
 .chip{
   flex:none;padding:6px 13px;border-radius:99px;background:var(--surface);
   font-size:14px;font-weight:400;color:var(--label);text-transform:capitalize;
@@ -679,6 +677,13 @@ h4.sec{
   animation:pop .28s var(--ease);
 }
 :root[data-theme="light"] .center{background:#fff}
+.modal-close{
+  position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--label-2);font-size:28px;
+  line-height:1;transition:background var(--fast),color var(--fast);
+}
+.modal-close:active{background:var(--surface-2);color:var(--label)}
+.sheet>.modal-close{top:12px;right:14px}
 @keyframes pop{from{transform:translate(-50%,-50%) scale(.94);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
 /* --- RIR/RPE conversion table (effort help sheet) ---

@@ -40,6 +40,34 @@ export const sideReps = reps => (reps || 0) / 2
 // that stayed odd would put a rep on one side and not the other.
 export const repStep = cfg => (isPerSide(cfg) ? 2 : 1)
 
+// A side-aware set carries both records explicitly.  The aggregate fields are a projection for
+// old consumers, not a second source of truth.  In particular, a legacy set with only one side
+// (or no sides) is never "completed" by inventing the missing record.
+export const hasBothSides = s => !!(s && s.left && s.right && typeof s.left === 'object' && typeof s.right === 'object')
+export function projectSideSet(s) {
+  if (!hasBothSides(s)) return s
+  const out = { ...s, done: !!s.left.done && !!s.right.done }
+  const reps = [s.left.r, s.right.r].filter(v => typeof v === 'number' && Number.isFinite(v))
+  if (reps.length) out.r = reps.reduce((a, b) => a + b, 0)
+  else delete out.r
+  const lw = s.left.w, rw = s.right.w
+  if (typeof lw === 'number' && typeof rw === 'number' && Number.isFinite(lw) && lw === rw) out.w = lw
+  else delete out.w
+  for (const key of ['rir', 'rpe']) {
+    const values = [s.left[key], s.right[key]].filter(v => typeof v === 'number' && Number.isFinite(v))
+    if (values.length) out[key] = values.reduce((a, b) => a + b, 0) / values.length
+    else delete out[key]
+  }
+  return out
+}
+export function syncSideSet(s) {
+  if (!hasBothSides(s)) return s
+  const p = projectSideSet(s)
+  Object.keys(s).forEach(k => { if (k !== 'left' && k !== 'right') delete s[k] })
+  Object.assign(s, p, { left: s.left, right: s.right })
+  return s
+}
+
 // mm:ss for a work duration — seconds alone read badly past a minute ("90 s" vs "1:30").
 export function fmtSec(sec) {
   const n = Math.max(0, Math.round(Number(sec) || 0))
@@ -92,6 +120,7 @@ const effortTail = s => {
 // One-line summary of a logged set. `cfg` carries the mode when the caller has it (a routine
 // entry or a workout entry); passing an id alone keeps the old body-part behaviour.
 export function setLabel(id, s, cfg) {
+  s = projectSideSet(s)
   const c = cfg || { id }
   const mode = modeOf(c)
   if (mode === 'cardio') return `${s.min || 0} min @ ${fmtNum(s.speed || 0)} km/h`
@@ -114,8 +143,9 @@ export function defaultConfig(id, mode) {
   // Written only when it is true, so a barbell config is byte-for-byte what it was before
   // the flag existed and a plan file gains nothing it does not need.
   const bw = isBodyweightEq(id) ? { bodyweight: true } : {}
+  const side = id === '0739' ? { side: true } : {}
   if (m === 'time') return { sets: 3, sec: 45, weight: 0, mode: 'time', ...bw }
-  return { sets: 3, reps: 10, weight: 0, mode: 'reps', ...bw }
+  return { sets: 3, reps: 10, weight: 0, mode: 'reps', ...bw, ...side }
 }
 // One-line summary of a planned exercise ("3 × 10 · 60 kg"), shared by the routine editor
 // and the plan export so a mode is described the same way everywhere.
@@ -237,7 +267,7 @@ export function lastEntryFor(S, exId) {
     // `target` is what the session prescribed; finished workouts carry it so labels and the
     // progression engine can read a session back the way it was logged. Older workouts have
     // none — modeOf() falls back to the body part for them, which is what they were.
-    if (en && en.sets.some(s => s.done)) return { d: S.workouts[i].d, sets: en.sets.filter(s => s.done), target: en.target || null }
+    if (en && en.sets.some(s => projectSideSet(s).done)) return { d: S.workouts[i].d, sets: en.sets.map(projectSideSet).filter(s => s.done), target: en.target || null }
   }
   return null
 }
@@ -245,7 +275,7 @@ export function bestWeightFor(S, exId) {
   let best = 0
   S.workouts.forEach(w => w.entries.forEach(e => {
     if (e.id === exId) {
-      e.sets.forEach(s => { if (s.done && s.w > best) best = s.w })
+       e.sets.forEach(raw => { const s = projectSideSet(raw); if (s.done && s.w > best) best = s.w })
       if (e.topW && e.topW > best) best = e.topW
     }
   }))
@@ -366,7 +396,9 @@ export function buildSets(S, cfg) {
     const w = blockId
       ? (usable ? usable.w : 0)
       : (conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight))
-    const set = { w, r: usable ? usable.r : cfg.reps, done: false }
+    const set = isPerSide(cfg)
+      ? { left: { w, r: sideReps(usable ? usable.r : cfg.reps), done: false }, right: { w, r: sideReps(usable ? usable.r : cfg.reps), done: false }, w, r: cfg.reps, done: false }
+      : { w, r: usable ? usable.r : cfg.reps, done: false }
     // Snapshot the programmed target onto each set at workout start. The
     // snapshot rides alongside actual `rir`/`rpe` and is never edited by
     // the logger; metric mismatch yields `undefined`, which omits the key
@@ -382,17 +414,17 @@ export function workoutVolume(w) {
   let v = 0
   // No special case for unilateral work: a per-side set logs its total, so both sides are
   // already in the rep count that arrives here.
-  w.entries.forEach(e => e.sets.forEach(s => { if (s.done) v += (s.w || 0) * (s.r || 0) }))
+  w.entries.forEach(e => e.sets.forEach(raw => { const s = projectSideSet(raw); if (s.done) v += (s.w || 0) * (s.r || 0) }))
   return v
 }
 export function setsDone(w) {
   let n = 0
-  w.entries.forEach(e => e.sets.forEach(s => { if (s.done) n++ }))
+  w.entries.forEach(e => e.sets.forEach(s => { if (projectSideSet(s).done) n++ }))
   return n
 }
 export function setsDoneActive(A) {
   let n = 0
-  if (A) A.entries.forEach(e => e.sets.forEach(s => { if (s.done) n++ }))
+  if (A) A.entries.forEach(e => e.sets.forEach(s => { if (projectSideSet(s).done) n++ }))
   return n
 }
 export const lastBW = S => (S.bodyweight.length ? S.bodyweight[S.bodyweight.length - 1] : null)

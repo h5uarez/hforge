@@ -622,4 +622,7 @@ export default {
   'read-only': '읽기 전용',
   'Programmed targets per set': '세트별 계획된 목표',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': '루틴의 각 세트에 RIR/RPE 목표를 설정하세요. 운동 중에 표시됩니다.',
+  'Close': '닫기',
+  'Decrease rest by 15 seconds': '휴식 15초 줄이기',
+  'Increase rest by 15 seconds': '휴식 15초 늘리기',
 }

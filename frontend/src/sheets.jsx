@@ -37,6 +37,16 @@ export function commitPickerSelection(commit, closePicker) {
   closePicker()
 }
 
+// Validate the text before NumberField's numeric projection can truncate fractions or turn
+// blank/non-numeric input into zero. Trimming is intentional: surrounding whitespace is not
+// part of the value a user means to save, while decimal and unsafe integer text is rejected.
+export const validTimedSeconds = raw => {
+  const s = String(raw ?? '').trim()
+  if (!/^\d+$/.test(s)) return false
+  const n = Number(s)
+  return Number.isSafeInteger(n) && n >= 1
+}
+
 /* ============================ custom confirm dialog ============================ */
 function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, close }) {
   return <div style={{ textAlign: 'center', padding: '4px 0' }}>
@@ -556,6 +566,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
+  const [timedSecondsRaw, setTimedSecondsRaw] = useState(() => String((existing || defaultConfig(ex.id)).sec ?? 45))
   // Cardio keeps its own duration+speed form; the reps/time choice (issue #16) is offered for
   // everything else, which is where the gap was — planks, hangs, wall sits, loaded carries.
   const mode = cardio ? 'cardio' : modeOf({ ...c, id: ex.id })
@@ -574,6 +585,10 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   // the array in lockstep so the index the stepper is editing is always safe.
   const n = Math.max(1, Math.round(c.sets) || 1)
   const save = () => {
+    if (mode === 'time' && !validTimedSeconds(timedSecondsRaw)) {
+      toast(t('Enter a valid whole number of seconds'))
+      return
+    }
     close()
     const sets = Math.max(1, Math.round(c.sets) || (cardio ? 1 : 3))
     // Only carry progression settings that differ from the inherited default, so a plan file
@@ -633,7 +648,8 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         <Stepper label={t('Speed (km/h)')} value={c.speed} step={0.5} onChange={v => setC(x => ({ ...x, speed: v }))} />
       </> : mode === 'time' ? <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
-        <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onChange={v => setC(x => ({ ...x, sec: v }))} />
+        <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false}
+          onRawChange={setTimedSecondsRaw} onChange={v => setC(x => ({ ...x, sec: v }))} />
         <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
       </> : <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />

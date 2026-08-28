@@ -622,4 +622,7 @@ export default {
   'read-only': '只读',
   'Programmed targets per set': '每组预设目标',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': '为动作的每一组设定 RIR/RPE 目标，训练时会显示出来。',
+  'Close': '关闭',
+  'Decrease rest by 15 seconds': '减少休息 15 秒',
+  'Increase rest by 15 seconds': '增加休息 15 秒',
 }

@@ -129,6 +129,13 @@ describe('hasEffort', () => {
   it('ignores sets that were never finished', () => {
     expect(hasEffort(S(W(2, [{ rir: 2, done: false }])))).toBe(false)
   })
+
+  it('counts a completed pair once and does not complete a one-sided set', () => {
+    const pair = S(W(2, [{ left: { rir: 2, done: true }, right: { rir: 2, done: true } }]))
+    expect(effortSummary(pair, 0).done).toBe(1)
+    const half = S(W(2, [{ left: { rir: 2, done: true }, right: { rir: 2, done: false } }]))
+    expect(effortSummary(half, 0).done).toBe(0)
+  })
 })
 
 describe('effortWeeks', () => {

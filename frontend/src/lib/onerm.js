@@ -1,4 +1,5 @@
 // Estimated one-rep max (issue #18).
+import { projectSideSet } from './history.js'
 //
 // Deliberately knows nothing about the exercise database: an estimate needs a weight AND a
 // rep count, and only reps-mode sets carry both. Cardio sets ({min, speed}) and timed sets
@@ -43,7 +44,8 @@ export function estimate1RM(w, r, formula = DEFAULT_FORMULA) {
 // exercise, with no rep count attached, so it cannot produce an estimate.
 export function bestSetOf(entry, formula = DEFAULT_FORMULA) {
   let best = null
-  ;(entry?.sets || []).forEach(s => {
+  ;(entry?.sets || []).forEach(raw => {
+    const s = projectSideSet(raw)
     if (!s.done) return
     const est = estimate1RM(s.w, s.r, formula)
     if (est !== null && (!best || est > best.est)) best = { est, w: Number(s.w), r: Math.round(Number(s.r)) }

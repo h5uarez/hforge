@@ -270,6 +270,13 @@ function details(result) {
   return output ? `: ${output.slice(-500)}` : ''
 }
 
+// `playwright-cli eval` serializes a string return value once more in raw mode.
+// Keep JSON.stringify expressions readable while accepting both CLI encodings.
+function parseRawEvalJson(result) {
+  const value = JSON.parse(result.stdout.trim())
+  return typeof value === 'string' ? JSON.parse(value) : value
+}
+
 async function runStep(stage, args, signal) {
 	const result = await runCli([...sessionArgs, ...args], signal)
 	if (result.code !== 0) throw new Error(`${stage} failed (exit ${result.code})${details(result)}`)
@@ -752,6 +759,75 @@ async function runSmoke(signal) {
 		throw new Error(`second reset: gym_state_v1 should be empty or {blocks:[],activeBlock:null}; got ${JSON.stringify(cleanParsed2)}`)
 	await runStep('guest entry after second reset', ['click', "getByRole('button', { name: /Continue without account|Continuar sin cuenta/ })"], signal)
 	await runStep('load starter plan after second reset', ['click', "getByRole('button', { name: /Load starter plan.*PPL|Cargar plan inicial.*PPL/ })"], signal)
+
+	// ----- PR4 modal/chip/rest acceptance at the required 375px viewport -----
+	await runStep('resize to iPhone 13 Pro Max viewport for PR4', ['resize', '375', '812'], signal)
+	await runStep('open Library for wrapping acceptance', ['goto', `${baseUrl}/#/library`], signal)
+	const chipLayout = await runStep('assert wrapped chips and keyboard focus at 375', ['run-code', [
+		"async page => {",
+		"  const chips = page.locator('.chips').first();",
+		"  const buttons = chips.locator('.chip');",
+		"  if (await buttons.count() < 3) throw new Error('PR4 chips: expected at least three filter chips');",
+		"  await buttons.first().focus();",
+		"  await buttons.first().press('Enter');",
+		"  const state = await chips.evaluate(el => { const bs = [...el.querySelectorAll('.chip')]; const tops = [...new Set(bs.map(b => Math.round(b.getBoundingClientRect().top)))]; return { tops, wrap: getComputedStyle(el).flexWrap, focused: document.activeElement === bs[0], active: bs[0].classList.contains('on'), width: innerWidth, scrollWidth: document.documentElement.scrollWidth }; });",
+		"  if (state.width !== 375) throw new Error('PR4 chips: expected 375px viewport');",
+		"  if (state.wrap !== 'wrap') throw new Error(`PR4 chips: computed flex-wrap should be wrap, got ${state.wrap}`);",
+		"  if (!state.focused || !state.active) throw new Error('PR4 chips: keyboard focus/activation was not preserved');",
+		"  if (state.scrollWidth > state.width) throw new Error(`PR4 chips: horizontal overflow ${state.scrollWidth} > ${state.width}`);",
+		"  return state;",
+		"}"
+	].join('\n')], signal)
+	if (!chipLayout.stdout.trim()) throw new Error(`PR4 chips: no layout evidence returned${details(chipLayout)}`)
+
+	// A real focusable opener proves both the shared close button and focus return. The locked
+	// summary is exercised below after a completed workout; it must not expose this action.
+	await runStep('open dismissible exercise sheet', ['click', "getByRole('button', { name: /^Plan$/ }).first()"], signal)
+	const dismissible = await runStep('assert accessible sheet close action', ['--raw', 'eval',
+		"JSON.stringify({ close: !!document.querySelector('#modal-root .modal-close'), dialog: !!document.querySelector('#modal-root [role=dialog][aria-modal=true]') })"
+	], signal)
+	const dismissibleState = parseRawEvalJson(dismissible)
+	if (!dismissibleState.close || !dismissibleState.dialog) throw new Error(`PR4 modal: dismissible sheet lacks accessible close/dialog semantics: ${dismissible.stdout.trim()}`)
+	await runStep('dismiss sheet with Escape and return focus', ['press', 'Escape'], signal)
+	const focusReturn = await runStep('assert focus returned to sheet opener', ['--raw', 'eval',
+		"JSON.stringify({ sheets: document.querySelectorAll('#modal-root .sheet').length, tag: document.activeElement?.tagName, name: document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent?.trim() })"
+	], signal)
+	const focusReturned = parseRawEvalJson(focusReturn)
+	if (focusReturned.sheets !== 0 || focusReturned.tag !== 'BUTTON' || focusReturned.name !== 'Plan') throw new Error(`PR4 modal: Escape did not close and return focus to Plan opener: ${focusReturn.stdout.trim()}`)
+
+	await runStep('open Settings for rest preference acceptance', ['goto', `${baseUrl}/#/settings`], signal)
+	const restSwitch = "getByRole('switch', { name: 'Enable rest timer' })"
+	const enabledSetting = await runStep('assert rest setting is enabled by default', ['--raw', 'eval',
+		"document.querySelector('[role=switch][aria-label=\"Enable rest timer\"]')?.getAttribute('aria-checked')"
+	], signal)
+	const enabledValue = parseRawEvalJson(enabledSetting)
+	if (enabledValue !== 'true' && enabledValue !== true) throw new Error(`PR4 rest setting: expected aria-checked=true, got ${enabledSetting.stdout.trim()}`)
+	await runStep('focus rest setting for keyboard acceptance', ['run-code',
+		"async page => { await page.locator('[role=switch][aria-label=\"Enable rest timer\"]').focus(); }"
+	], signal)
+	await runStep('toggle rest setting off with keyboard', ['press', 'Space'], signal)
+	const disabledRest = await runStep('assert rest setting disabled and persisted', ['--raw', 'eval',
+		"JSON.stringify({ checked: document.querySelector('[role=switch][aria-label=\"Enable rest timer\"]')?.getAttribute('aria-checked'), saved: JSON.parse(localStorage.getItem('gym_state_v1') || '{}').restTimerEnabled })"
+	], signal)
+	const disabledRestState = parseRawEvalJson(disabledRest)
+	if (disabledRestState.checked !== 'false' || disabledRestState.saved !== false) throw new Error(`PR4 rest setting: keyboard toggle did not persist false: ${disabledRest.stdout.trim()}`)
+	await runStep('restore rest setting enabled', ['press', 'Space'], signal)
+
+	// Start the existing Push Day path and use its first real checkbox to trigger automatic rest.
+	await runStep('open workout chooser for enabled-rest acceptance', ['goto', `${baseUrl}/#/workout`], signal)
+	await runStep('select Push Day for enabled-rest acceptance', ['click', "getByText('Push Day', { exact: true }).first()"], signal)
+	await runStep('skip weigh-in for enabled-rest acceptance', ['click', "getByRole('button', { name: /Start without weighing in|Empezar sin pesarse/ })"], signal)
+	await runStep('complete first set to start rest clock', ['click', "getByRole('checkbox').first()"], signal)
+	const restClock = await runStep('assert enabled rest clock controls', ['--raw', 'eval',
+		"JSON.stringify({ timer: !!document.querySelector('#timer.rest'), clock: document.querySelector('#timer.rest .t')?.textContent, controls: [...document.querySelectorAll('#timer.rest button')].map(b => b.getAttribute('aria-label') || b.textContent.trim()) })"
+	], signal)
+	const restClockState = parseRawEvalJson(restClock)
+	if (!restClockState.timer || !/^\d+:\d\d$/.test(restClockState.clock || '') || !restClockState.controls.includes('Decrease rest by 15 seconds') || !restClockState.controls.includes('Increase rest by 15 seconds') || !restClockState.controls.includes('Skip'))
+		throw new Error(`PR4 rest clock: expected clock, ±15, and Skip controls: ${restClock.stdout.trim()}`)
+	await runStep('increase enabled rest by 15 seconds', ['click', "getByRole('button', { name: 'Increase rest by 15 seconds' })"], signal)
+	await runStep('decrease enabled rest by 15 seconds', ['click', "getByRole('button', { name: 'Decrease rest by 15 seconds' })"], signal)
+	await runStep('skip enabled rest', ['click', "getByRole('button', { name: 'Skip' })"], signal)
+
 
 	// =========================================================================
 	// block lifecycle smoke (issue: block-lifecycle-playwright-audit, WU2 + verify-remediation + WU4 final remediation)
@@ -1265,6 +1341,17 @@ async function runSmoke(signal) {
 	await runStep('check off first set of first exercise (3.6 training)', ['click', "getByRole('checkbox').first()"], signal)
 	await runStep('click Finish workout early (3.6 training)', ['click', "getByRole('button', { name: /Finish workout/ }).last()"], signal)
 	await runStep('confirm Finish workout in early dialog (3.6 training)', ['click', "getByRole('button', { name: /^Finish workout$/ }).last()"], signal)
+	const lockedSummary = await runStep('assert locked finish summary has no shared close', ['--raw', 'eval',
+		"JSON.stringify({ center: !!document.querySelector('#modal-root .center'), close: !!document.querySelector('#modal-root .center .modal-close') })"
+	], signal)
+	const lockedSummaryState = parseRawEvalJson(lockedSummary)
+	if (!lockedSummaryState.center || lockedSummaryState.close) throw new Error(`3.6 locked summary: shared close action should be absent: ${lockedSummary.stdout.trim()}`)
+	await runStep('press Escape on locked finish summary', ['press', 'Escape'], signal)
+	const lockedStillOpen = await runStep('assert locked summary remains after Escape', ['--raw', 'eval',
+		"document.querySelector('#modal-root .center') ? 'open' : 'closed'"
+	], signal)
+	const lockedValue = parseRawEvalJson(lockedStillOpen)
+	if (lockedValue !== 'open') throw new Error('3.6 locked summary: Escape closed an explicit-action-only surface')
 	await runStep('dismiss FinishSummary with Nice! (3.6 training)', ['click', "getByRole('button', { name: /^Nice!$|^¡Genial!$/ })"], signal)
 	const afterFinish = await readState()
 	if (!Array.isArray(afterFinish.workouts) || afterFinish.workouts.length === 0) throw new Error(`3.6 training: S.workouts should contain the finished record, got ${JSON.stringify(afterFinish.workouts && afterFinish.workouts.length)}`)

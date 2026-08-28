@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, exLine, workoutVolume, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -51,6 +51,22 @@ describe('fmtSec', () => {
     expect(fmtSec(null)).toBe('0:00')
     expect(fmtSec(NaN)).toBe('0:00')
     expect(fmtSec(44.6)).toBe('0:45')
+  })
+})
+
+describe('side-aware set accounting', () => {
+  it('requires both sides and projects explicit values without fabricating legacy sides', () => {
+    const side = { left: { done: true, w: 20, r: 8 }, right: { done: false, w: 20, r: 7 } }
+    expect(projectSideSet(side)).toMatchObject({ done: false, w: 20, r: 15 })
+    side.right.done = true
+    expect(projectSideSet(side)).toMatchObject({ done: true, w: 20, r: 15 })
+    const legacy = { done: true, w: 20, r: 8 }
+    expect(projectSideSet(legacy)).toBe(legacy)
+    expect(legacy.left).toBeUndefined()
+  })
+
+  it('omits aggregate weight when side weights differ', () => {
+    expect(projectSideSet({ left: { done: true, w: 20, r: 8 }, right: { done: true, w: 22, r: 8 } })).not.toHaveProperty('w')
   })
 })
 
@@ -262,6 +278,11 @@ describe('defaultConfig', () => {
     expect(defaultConfig(BW)).toEqual({ sets: 3, reps: 10, weight: 0, mode: 'reps', bodyweight: true })
     expect(defaultConfig(BW, 'time')).toEqual({ sets: 3, sec: 45, weight: 0, mode: 'time', bodyweight: true })
     expect('bodyweight' in defaultConfig(LIFT)).toBe(false)
+  })
+
+  it('builds explicit left and right records for the corrected unilateral exercise', () => {
+    const sets = buildSets({ workouts: [], exWeights: {}, active: null }, { id: '0739', sets: 1, reps: 16, weight: 40, side: true })
+    expect(sets[0]).toMatchObject({ done: false, left: { done: false, r: 8, w: 40 }, right: { done: false, r: 8, w: 40 } })
   })
 })
 

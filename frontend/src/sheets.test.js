@@ -13,7 +13,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('./store/useStore.js', () => ({ useStore: {} }))
 vi.mock('./store/useUI.js', () => ({ useUI: {} }))
 
-const { commitPickerSelection } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds } = await import('./sheets.jsx')
 
 describe('commitPickerSelection', () => {
   it('calls commit() before closePicker() when the commit succeeds', () => {
@@ -56,5 +56,22 @@ describe('commitPickerSelection', () => {
     expect(() => commitPickerSelection(failing, thisCloser)).toThrow('boom')
     expect(thisCloser).not.toHaveBeenCalled()
     expect(otherCloser).not.toHaveBeenCalled()
+  })
+})
+
+describe('timed prescription validation', () => {
+  it('accepts only safe whole positive seconds', () => {
+    expect(validTimedSeconds('1')).toBe(true)
+    expect(validTimedSeconds('45')).toBe(true)
+    expect(validTimedSeconds(' 90 ')).toBe(true)
+  })
+
+  it.each(['', ' ', '0', '-1', '12.5', 'abc', '1e3', '9007199254740992'])('rejects invalid seconds %j', raw => {
+    expect(validTimedSeconds(raw)).toBe(false)
+  })
+
+  it('uses 45 seconds as the explicit new timed default', async () => {
+    const { defaultConfig } = await import('./lib/history.js')
+    expect(defaultConfig('0001', 'time').sec).toBe(45)
   })
 })

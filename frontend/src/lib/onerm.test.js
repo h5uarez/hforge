@@ -77,6 +77,11 @@ describe('bestSetOf', () => {
     expect(bestSetOf(entry).w).toBe(100)
   })
 
+  it('uses both explicit side values without doubling the set', () => {
+    const best = bestSetOf({ id: 'x', sets: [{ left: { w: 100, r: 5, done: true }, right: { w: 100, r: 5, done: true } }] })
+    expect(best).toEqual({ est: 133.3, w: 100, r: 10 })
+  })
+
   it('ignores topW, which carries no rep count', () => {
     const entry = { id: 'x', topW: 200, sets: [{ w: 100, r: 5, done: true }] }
     expect(bestSetOf(entry).est).toBe(116.7)
