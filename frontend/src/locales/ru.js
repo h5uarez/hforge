@@ -622,4 +622,7 @@ export default {
   'read-only': 'только чтение',
   'Programmed targets per set': 'Запланированные цели на подход',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'Задай цели RIR/RPE на каждый подход программы; они показываются на тренировке.',
+  'Close': 'Закрыть',
+  'Decrease rest by 15 seconds': 'Уменьшить отдых на 15 секунд',
+  'Increase rest by 15 seconds': 'Увеличить отдых на 15 секунд',
 }

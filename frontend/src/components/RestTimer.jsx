@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useUI } from '../store/useUI.js'
+import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
 import { Button } from './ui.jsx'
 
@@ -12,14 +13,16 @@ const clock = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '
 export default function RestTimer() {
   const timer = useUI(s => s.timer)
   const work = useUI(s => s.work)
+  const restEnabled = useStore(s => s.S.restTimerEnabled !== false)
   const { addRest, stopRest, finishWorkEarly, stopWork } = useUI()
   const on = work || timer
   // The bar is fixed above the tab bar and floats over whatever is beneath it — during a
   // rest that was the next set's row. Extra bottom padding lets the page scroll clear.
   useEffect(() => {
+    if (!restEnabled && timer) stopRest()
     document.body.classList.toggle('resting', !!on)
     return () => document.body.classList.remove('resting')
-  }, [!!on])
+  }, [!!on, restEnabled, timer, stopRest])
   if (!on) return null
   const pct = (on.left / on.total) * 100
 
@@ -45,8 +48,8 @@ export default function RestTimer() {
         <div className="bar"><i style={{ width: pct + '%' }} /></div>
       </div>
       <div className="acts">
-        <Button size="sm" icon="minus" onClick={() => addRest(-15)}>15s</Button>
-        <Button size="sm" icon="plus" onClick={() => addRest(15)}>15s</Button>
+        <Button size="sm" icon="minus" aria-label={t('Decrease rest by 15 seconds')} onClick={() => addRest(-15)}>15s</Button>
+        <Button size="sm" icon="plus" aria-label={t('Increase rest by 15 seconds')} onClick={() => addRest(15)}>15s</Button>
         <Button size="sm" variant="primary" className="skip" onClick={stopRest}>{t('Skip')}</Button>
       </div>
     </div>

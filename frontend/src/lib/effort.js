@@ -6,7 +6,7 @@
 // half-empty series. So everything aggregates in RIR and is converted back for display.
 // RIR is the internal unit because it has a real zero — a set taken to failure — where RPE's
 // floor of 6 is only a convention about which sets are worth rating. RPE 8 == RIR 2.
-import { EFFORT, effortOf } from './history.js'
+import { EFFORT, effortOf, projectSideSet } from './history.js'
 import { weekKey } from './format.js'
 
 // At or below this a set is close enough to failure to be the kind that drives adaptation.
@@ -44,7 +44,7 @@ export const scaleName = kind => EFFORT[kind].hd
 function eachDoneSet(S, fn) {
   ;(S.workouts || []).forEach(w =>
     (w.entries || []).forEach(e =>
-      (e.sets || []).forEach(s => { if (s.done) fn(s, w, e) })))
+      (e.sets || []).forEach(raw => { const s = projectSideSet(raw); if (s.done) fn(s, w, e) })))
 }
 
 // A window in days, counted back from now. 0 = everything, which is also what an empty

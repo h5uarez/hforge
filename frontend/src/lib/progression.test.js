@@ -58,6 +58,15 @@ describe('readSession', () => {
     expect(s.best).toBe(50)
     expect(readSession({ id: LIFT, target: { sets: 2, sec: 45, mode: 'time' }, sets: [{ sec: 45, done: true }, { sec: 30, done: true }] }).ok).toBe(false)
   })
+
+  it('treats both explicit sides as one authoritative completed set', () => {
+    const s = readSession({ id: LIFT, target: { sets: 1, reps: 8, side: true }, sets: [{
+      left: { w: 20, r: 8, done: true }, right: { w: 20, r: 8, done: true }
+    }] })
+    expect(s.ok).toBe(true)
+    expect(s.reps).toEqual([16])
+    expect(s.weight).toBe(20)
+  })
 })
 
 describe('stallCount', () => {

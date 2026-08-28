@@ -622,4 +622,7 @@ export default {
   'read-only': 'salt okunur',
   'Programmed targets per set': 'Set başına planlanan hedefler',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'Rutindeki her set için RIR/RPE hedefleri belirle; antrenmanda görünürler.',
+  'Close': 'Kapat',
+  'Decrease rest by 15 seconds': 'Dinlenmeyi 15 saniye azalt',
+  'Increase rest by 15 seconds': 'Dinlenmeyi 15 saniye artır',
 }

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseWorkoutCSV } from './import-csv.js'
+import { matchExercise } from './import-csv.js'
+import { EXDB } from './exercises-data.js'
 import { setLabel, effortOf } from './history.js'
 
 // Headers as the real exports write them, trimmed to the columns that matter here.
@@ -12,6 +14,11 @@ const rows = (head, ...lines) => parseWorkoutCSV([head, ...lines].join('\n'), { 
 const setsOf = p => p.workouts.flatMap(w => w.entries.flatMap(e => e.sets))
 
 describe('importing effort from another app', () => {
+  it('keeps the corrected 0739 title and resolves the observed legacy alias', () => {
+    expect(EXDB.find(e => e.id === '0739').n).toBe('sled 45° leg press')
+    expect(matchExercise('sled 45в° leg press')).toBe('0739')
+  })
+
   it('reads the RPE Hevy writes per set', () => {
     const p = rows(HEVY,
       'Push,"12 Jan 2026, 18:00","12 Jan 2026, 19:00",Bench Press (Barbell),0,normal,60,10,8',

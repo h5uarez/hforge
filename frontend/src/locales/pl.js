@@ -622,4 +622,7 @@ export default {
   'read-only': 'tylko do odczytu',
   'Programmed targets per set': 'Zaplanowane cele na serię',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'Ustal cele RIR/RPE dla każdej serii rutyny; pojawią się w trakcie treningu.',
+  'Close': 'Zamknij',
+  'Decrease rest by 15 seconds': 'Skróć odpoczynek o 15 sekund',
+  'Increase rest by 15 seconds': 'Wydłuż odpoczynek o 15 sekund',
 }

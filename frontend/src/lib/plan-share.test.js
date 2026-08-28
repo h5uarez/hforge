@@ -163,3 +163,12 @@ describe('programmedEffort round-trip (Phase 2)', () => {
     expect(target.routines[0].ex[0]).not.toHaveProperty('programmedEffort')
   })
 })
+
+describe('per-side plan compatibility', () => {
+  it('preserves the side marker while sharing legacy-shaped plans unchanged', () => {
+    const bundle = buildPlanBundle({ routines: [{ id: 'r', name: 'Legs', ex: [{ id: 'e-bench', sets: 3, reps: 16, side: true }] }], customEx: [], week: {} }, 'side')
+    expect(bundle.routines[0].ex[0]).toMatchObject({ id: 'e-bench', reps: 16, side: true })
+    const legacy = buildPlanBundle({ routines: [{ id: 'r', name: 'Legs', ex: [{ id: 'e-bench', sets: 3, reps: 10 }] }], customEx: [], week: {} }, 'legacy')
+    expect(legacy.routines[0].ex[0]).not.toHaveProperty('side')
+  })
+})

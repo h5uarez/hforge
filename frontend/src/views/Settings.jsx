@@ -120,6 +120,11 @@ export default function Settings() {
       <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
         value={S.restSec} onChange={v => update(s => { s.restSec = v })}
         options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />
+      <Row icon="timer" iconTint="var(--orange)" title={t('Enable rest timer')}
+        subtitle={t('Automatically and manually timed rests between sets.') }>
+        <Switch aria-label={t('Enable rest timer')} checked={S.restTimerEnabled !== false}
+          onChange={v => { update(s => { s.restTimerEnabled = !!v }); if (!v) useUI.getState().stopRest() }} />
+      </Row>
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>

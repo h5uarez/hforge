@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -120,6 +120,15 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       <button aria-label="Increase" onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   )
+  const sideCell = (s, i, side, col, cls) => {
+    const value = s[side][col.f]
+    return <div className={'stp ' + cls}>
+      <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((value || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
+      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={value ?? ''}
+        onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+      <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((value || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+    </div>
+  }
   // Disclosure: which set rows have their immutable planned target revealed. A new Set on
   // every change so React notices — disclosure is local UI state, never persisted.
   const [disclosed, setDisclosed] = useState(() => new Set())
@@ -166,7 +175,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         const target = setTarget(s)
         const isOpen = disclosed.has(i)
         return <Fragment key={i}>
-          <div className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}
+            <div className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
@@ -178,9 +187,10 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
             onPointerCancel={cancelLongPress}
             onPointerLeave={cancelLongPress}>
             <div className="n">{i + 1}</div>
-            {cell(s, i, col1, 'w')}
-            {col2 && cell(s, i, col2, 'r')}
-            {col3 && cell(s, i, col3, 'eff')}
+            {isPerSide(cfg) && !cardio && !timed ? <>
+              <span className="side-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}
+              <span className="side-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}
+            </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
             {/* A timed set is started, not typed: the timer counts the hold down and checks the
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
             {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
@@ -194,7 +204,10 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
               onClick={e => { e.stopPropagation(); toggleDisclosed(i) }}>
               <Icon name={isOpen ? 'chevronUp' : 'info'} />
             </button>}
-            <Check checked={s.done} onChange={() => onToggle(i)} />
+            {isPerSide(cfg) && !cardio && !timed ? <div className="side-checks">
+              <Check checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
+              <Check checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
+            </div> : <Check checked={s.done} onChange={() => onToggle(i)} />}
           </div>
           {isOpen && target && <div className="setrow-info" role="region" aria-label={t('Programmed target')}>
             <span className="lbl">{t('Target')}</span>
@@ -231,7 +244,12 @@ function ActiveWorkout() {
   const mutEntry = (idx, fn) => update(s => { fn(s.active.entries[idx]) }, true)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
-  const setField = (idx, i, field, v) => mutEntry(idx, e => {
+  const setField = (idx, i, field, v, side) => mutEntry(idx, e => {
+    if (side) {
+      if (v == null) delete e.sets[i][side][field]; else e.sets[i][side][field] = v
+      syncSideSet(e.sets[i])
+      return
+    }
     if (v == null) delete e.sets[i][field]; else e.sets[i][field] = v
   })
   const modeAt = idx => modeOf({ ...(A.entries[idx].target || {}), id: A.entries[idx].id })
@@ -240,6 +258,7 @@ function ActiveWorkout() {
     const m = modeOf({ ...(e.target || {}), id: e.id })
     if (m === 'cardio') e.sets.push({ min: l ? l.min : (e.target.min || 20), speed: l ? l.speed : (e.target.speed || 8), done: false })
     else if (m === 'time') e.sets.push({ sec: l ? l.sec : (e.target.sec || 45), w: l ? (l.w || 0) : (e.target.weight || 0), done: false })
+    else if (isPerSide(e.target)) e.sets.push({ left: { w: l?.left?.w ?? 0, r: l?.left?.r ?? sideReps(e.target.reps), done: false }, right: { w: l?.right?.w ?? 0, r: l?.right?.r ?? sideReps(e.target.reps), done: false }, w: e.target.weight || 0, r: e.target.reps, done: false })
     else e.sets.push({ w: l ? l.w : 0, r: l ? l.r : e.target.reps, done: false })
   })
   const removeSet = idx => mutEntry(idx, e => { if (e.sets.length > 1) e.sets.pop() })
@@ -256,13 +275,16 @@ function ActiveWorkout() {
     })
   }
 
-  const toggle = (idx, i) => {
+  const toggle = (idx, i, side) => {
     const m = modeAt(idx)
     const cardioEntry = m === 'cardio'
     const isLastUnit = unitIdx >= units.length - 1
     let askTop = false, exJustDone = false, workoutDone = false
     mutEntry(idx, e => {
-      e.sets[i].done = !e.sets[i].done
+      if (side && e.sets[i].left && e.sets[i].right) {
+        e.sets[i][side].done = !e.sets[i][side].done
+        syncSideSet(e.sets[i])
+      } else e.sets[i].done = !e.sets[i].done
       if (e.sets[i].done) {
         beep(S.sound, 1040, 0.12); vibrate(30)
         const isLastExInUnit = idx === unit[unit.length - 1]
@@ -340,11 +362,11 @@ function ActiveWorkout() {
           {unit.map((idx, k) => <div key={idx} className="ss-ex">
             {k > 0 && <div className="ss-amp">+</div>}
             <ExerciseBlock entryIdx={idx} compact
-              onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+              onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
           </div>)}
         </div>
       ) : (
-        <ExerciseBlock entryIdx={cur} onToggle={i => toggle(cur, i)} onField={(i, f, v) => setField(cur, i, f, v)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
+        <ExerciseBlock entryIdx={cur} onToggle={(i, side) => toggle(cur, i, side)} onField={(i, f, v, side) => setField(cur, i, f, v, side)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
       )}
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 

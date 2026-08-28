@@ -20,7 +20,7 @@
 //           and `sheets.jsx` lifecycle callbacks are fixed to the same Object.assign shape.
 //           Tests then pass and prove state + localStorage `gym_state_v1` round-trip.
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // Node 24 exposes a read-only navigator getter; defineProperty makes the assignment safe across
 // runtimes (cf. wakelock.test.js / i18n.test.js).
@@ -158,5 +158,26 @@ describe('useStore.update × endBlock — persistence integration', () => {
     expect(S.activeBlock).toBeNull()
     const persisted = JSON.parse(storage.get(KEY))
     expect(persisted.activeBlock).toBeNull()
+  })
+})
+
+describe('restTimerEnabled persistence compatibility', () => {
+  it('defaults old profiles to enabled and persists a disabled choice', () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+
+    expect(useStore.getState().S.restTimerEnabled).toBe(true)
+    useStore.getState().update(s => { s.restTimerEnabled = false }, false)
+
+    expect(useStore.getState().S.restTimerEnabled).toBe(false)
+    expect(JSON.parse(storage.get(KEY)).restTimerEnabled).toBe(false)
+  })
+
+  it('restores the persisted disabled choice while retaining defaults for other fields', async () => {
+    useStore.getState().update(s => { s.restTimerEnabled = false }, false)
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+
+    expect(restored.getState().S.restTimerEnabled).toBe(false)
+    expect(restored.getState().S.restSec).toBe(90)
   })
 })

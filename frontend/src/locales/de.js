@@ -639,4 +639,7 @@ export default {
   'read-only': 'schreibgeschützt',
   'Programmed targets per set': 'Vorgaben pro Satz',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'Lege RIR/RPE-Vorgaben für jeden Satz der Routine fest; im Training werden sie auf Wunsch sichtbar.',
+  'Close': 'Schließen',
+  'Decrease rest by 15 seconds': 'Pause um 15 Sekunden verkürzen',
+  'Increase rest by 15 seconds': 'Pause um 15 Sekunden verlängern',
 }

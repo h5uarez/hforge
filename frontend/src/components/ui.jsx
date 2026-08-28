@@ -23,12 +23,13 @@ import Icon from './Icon.jsx'
 // 0). Keeps a local string draft while focused so partial input like "33," survives.
 // `nullable` is for fields where "nothing entered" and 0 mean different things (RIR: a
 // logged 0 is a set taken to failure). Those clear back to null instead of snapping to 0.
-export function NumberField({ value, onChange, decimal = true, nullable = false, className = '', ...rest }) {
+export function NumberField({ value, onChange, onRawChange, decimal = true, nullable = false, className = '', ...rest }) {
   const [draft, setDraft] = useState(null)
   const committed = useRef(null)
   // null and undefined are the same "empty" here — a nullable field's key is dropped once cleared.
   if (draft !== null && (committed.current ?? null) !== (value ?? null)) { setDraft(null); committed.current = null }
   const commit = raw => {
+    onRawChange && onRawChange(raw)
     let s = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '')
     const i = s.indexOf('.')
     if (i !== -1) s = decimal ? s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '') : s.slice(0, i)
@@ -76,11 +77,12 @@ export function SearchField({ value, onChange, onClear, ...rest }) {
 
 /* ============================ switch ============================ */
 
-export function Switch({ checked, onChange, disabled }) {
+export function Switch({ checked, onChange, disabled, 'aria-label': ariaLabel }) {
   return (
     <button
       role="switch"
       aria-checked={!!checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       className={'sw' + (checked ? ' on' : '')}
       onClick={() => onChange(!checked)}
@@ -115,13 +117,13 @@ export function Segmented({ options, value, onChange, className = '' }) {
 
 /* ============================ stepper ============================ */
 
-export function Stepper({ value, step = 1, onChange, decimal = true, className = '', label, unit }) {
+export function Stepper({ value, step = 1, onChange, onRawChange, decimal = true, className = '', label, unit }) {
   const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
   const inner = (
     <div className={'stp ' + className}>
       <button onClick={() => set((+value || 0) - step)} aria-label="Decrease"><Icon name="minus" /></button>
       <span className="val">
-        <NumberField value={value} decimal={decimal} onChange={onChange} />
+        <NumberField value={value} decimal={decimal} onChange={onChange} onRawChange={onRawChange} />
         {unit && <i>{unit}</i>}
       </span>
       <button onClick={() => set((+value || 0) + step)} aria-label="Increase"><Icon name="plus" /></button>

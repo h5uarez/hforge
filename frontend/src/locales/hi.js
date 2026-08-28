@@ -622,4 +622,7 @@ export default {
   'read-only': 'केवल-पढ़ने योग्य',
   'Programmed targets per set': 'हर सेट के लिए निर्धारित लक्ष्य',
   'Set RIR/RPE targets on each routine set; reveal them during the workout.': 'रूटीन के हर सेट पर RIR/RPE लक्ष्य तय करें; वर्कआउट में ये दिखाए जाते हैं।',
+  'Close': 'बंद करें',
+  'Decrease rest by 15 seconds': 'आराम 15 सेकंड घटाएँ',
+  'Increase rest by 15 seconds': 'आराम 15 सेकंड बढ़ाएँ',
 }

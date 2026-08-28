@@ -25,7 +25,8 @@ export const useUI = create((set, get) => ({
 
   openSheet(render, { kind = 'sheet', locked = false } = {}) {
     const id = uid()
-    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked }] }))
+    const opener = typeof document !== 'undefined' ? document.activeElement : null
+    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked, opener }] }))
     const close = () => get().closeSheet(id)
     return { id, close, lock: v => set(s => ({ sheets: s.sheets.map(x => x.id === id ? { ...x, locked: v } : x) })) }
   },
@@ -40,6 +41,7 @@ export const useUI = create((set, get) => ({
 
   startRest(sec) {
     get().stopRest()
+    if (useStore.getState().S.restTimerEnabled === false) return
     const endsAt = Date.now() + sec * 1000
     set({ timer: { left: sec, total: sec, endsAt } })
     pushRestTimer(sec)
@@ -60,6 +62,7 @@ export const useUI = create((set, get) => ({
     document.addEventListener('visibilitychange', timerTick)
   },
   addRest(sec) {
+    if (useStore.getState().S.restTimerEnabled === false) { get().stopRest(); return }
     const tm = get().timer
     if (!tm) return
     const left = tm.left + sec

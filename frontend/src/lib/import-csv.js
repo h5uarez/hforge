@@ -165,7 +165,7 @@ const ALIAS_EX = {
   'barbell row': '0027', 'bent over row': '0027', 'bent-over row': '0027',
   'dumbbell row': '0292', 'one arm dumbbell row': '0292',
   'leg curl': '0586', 'lying leg curl': '0586', 'seated leg curl': '0586',
-  'leg press': '0739', 'leg extension': '0585',
+  'leg press': '0739', 'sled 45в° leg press': '0739', 'leg extension': '0585',
   'calf raise': '1372', 'standing calf raise': '1372', 'seated calf raise': '0088',
   'lateral raise': '0334', 'side raise': '0334', 'reverse fly': '0348', 'rear delt fly': '0348',
   'bicep curl': '0294', 'biceps curl': '0294', 'dumbbell curl': '0294',

@@ -1,11 +1,36 @@
 import { useEffect, useRef } from 'react'
 import { useUI } from '../store/useUI.js'
+import { t } from '../lib/i18n.js'
 
 // One bottom sheet (or centered dialog) with swipe-to-dismiss.
 function Sheet({ sheet }) {
   const { closeSheet } = useUI()
   const ref = useRef(null)
+  const closeRef = useRef(null)
   const drag = useRef({ startY: null, delta: 0 })
+
+  const restoreFocus = () => {
+    const opener = sheet.opener
+    if (opener && typeof opener.focus === 'function') setTimeout(() => opener.focus(), 0)
+  }
+  const close = () => {
+    closeSheet(sheet.id)
+    restoreFocus()
+  }
+
+  // Put keyboard users on the shared close action, then return them to the control that opened
+  // the sheet. Locked surfaces intentionally have no shared close action or Escape listener.
+  useEffect(() => {
+    if (!sheet.locked) closeRef.current?.focus()
+    if (sheet.locked) return undefined
+    const onKeyDown = e => {
+      if (e.key !== 'Escape' || useUI.getState().sheets.at(-1)?.id !== sheet.id) return
+      e.preventDefault()
+      close()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [sheet.id, sheet.locked])
 
   const onTouchStart = e => {
     const el = ref.current
@@ -44,20 +69,23 @@ function Sheet({ sheet }) {
     return () => el.removeEventListener('touchmove', onTouchMove)
   }, [])
 
-  const close = () => closeSheet(sheet.id)
   if (sheet.kind === 'center') {
     return (
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center">{sheet.render(close)}</div>
+        <div className="center" role="dialog" aria-modal="true">
+          {!sheet.locked && <button ref={closeRef} className="modal-close" onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+          {sheet.render(close)}
+        </div>
       </div>
     )
   }
   return (
     <div>
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="sheet" ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" />
+        {!sheet.locked && <button ref={closeRef} className="modal-close" onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
         {sheet.render(close)}
       </div>
     </div>
