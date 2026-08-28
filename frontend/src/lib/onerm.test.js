@@ -97,6 +97,15 @@ describe('bestSetOf', () => {
     expect(bestSetOf(null)).toBeNull()
     expect(bestSetOf({ sets: [] })).toBeNull()
   })
+
+  it('uses the heaviest explicit side load without fabricating an aggregate load', () => {
+    const set = {
+      left: { w: 80, r: 5, done: true },
+      right: { w: 90, r: 5, done: true },
+    }
+    expect(bestSetOf({ id: 'x', sets: [set] })).toEqual({ est: 120, w: 90, r: 10 })
+    expect(set.w).toBeUndefined()
+  })
 })
 
 const S = {

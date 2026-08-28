@@ -40,6 +40,7 @@ export const useUI = create((set, get) => ({
   },
 
   startRest(sec) {
+    if (useStore.getState().S.restTimerEnabled === false) { get().stopRest(); return }
     get().stopRest()
     if (useStore.getState().S.restTimerEnabled === false) return
     const endsAt = Date.now() + sec * 1000

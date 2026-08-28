@@ -1,6 +1,6 @@
 // Korean UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Confirm': '확인',
+  'Confirm': '확인', 'Close': '닫기',
   'Cancel': '취소',
   'Delete': '삭제',
   'Save': '저장',
@@ -254,6 +254,7 @@ export default {
   'The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.': '운동이 진행되는 동안 화면이 켜져 있어 세트 사이에 잠금을 해제할 필요가 없습니다.',
   'Weight unit': '무게 단위',
   'Rest timer': '휴식 타이머',
+  'Enable rest timer': '휴식 타이머 켜기',
   'Sounds': '소리',
   'Note: switching units only changes the label — logged numbers are not converted.': '참고: 단위 변경은 표기만 바꿉니다 — 기록된 숫자는 환산되지 않아요.',
   'Data': '데이터',

@@ -60,6 +60,16 @@ export function projectSideSet(s) {
   }
   return out
 }
+export const setIsDone = s => !!projectSideSet(s)?.done
+// A load projection for consumers that need the heaviest side. Aggregate `w` is retained only
+// for legacy sets or equal side loads; differing explicit side loads remain authoritative here.
+export function weightOfSet(s) {
+  if (!hasBothSides(s)) return Number.isFinite(s?.w) ? s.w : 0
+  return Math.max(
+    Number.isFinite(s.left.w) ? s.left.w : 0,
+    Number.isFinite(s.right.w) ? s.right.w : 0
+  )
+}
 export function syncSideSet(s) {
   if (!hasBothSides(s)) return s
   const p = projectSideSet(s)
@@ -111,6 +121,16 @@ export const effortOf = S => {
   const e = S && S.effort
   return e === 'none' || EFFORT[e] ? e : (S && S.showRir ? 'rir' : 'none')
 }
+// Timed values are validated at the editor boundary. A missing value on an existing
+// config is not a new config and must remain invalid rather than being defaulted.
+export const parseTimedSeconds = raw => {
+  const s = String(raw ?? '').trim()
+  if (!/^\d+$/.test(s)) return null
+  const n = Number(s)
+  return Number.isSafeInteger(n) && n >= 1 ? n : null
+}
+export const timedSecondsInput = (existing, id) =>
+  existing ? String(existing.sec ?? '') : String(defaultConfig(id, 'time').sec)
 // The "(RIR 2)" / "(RPE 8)" tail on a set summary, empty when nothing was logged.
 const effortTail = s => {
   const k = s.rir != null ? 'rir' : s.rpe != null ? 'rpe' : null
@@ -155,7 +175,7 @@ export function exLine(cfg, unit) {
   // Added weight reads as added: "+10 kg" on a dip belt, "60 kg" on a barbell.
   const load = cfg.weight ? ' · ' + (isBw(cfg) ? '+' : '') + fmtNum(cfg.weight) + ' ' + unit : ''
   if (mode === 'cardio') return `${n} × ${cfg.min || 20} min @ ${fmtNum(cfg.speed || 8)} km/h`
-  if (mode === 'time') return `${n} × ${fmtSec(cfg.sec || 45)}${load}`
+  if (mode === 'time') return `${n} × ${fmtSec(cfg.sec)}${load}`
   // This is the line with room for it, so the split is spelled out: "3 × 16 · 8/side".
   const split = isPerSide(cfg) ? ' · ' + t('{0}/side', fmtNum(sideReps(cfg.reps))) : ''
   return `${n} × ${cfg.reps}${load}${split}`
@@ -240,8 +260,8 @@ export function sameBlockWeight(S, exId, blockId) {
     const w = workouts[i]
     if (!w || !w.block || w.block.id !== blockId) continue
     const en = (w.entries || []).find(e => e && e.id === exId)
-    if (en && (en.sets || []).some(s => s && s.done)) {
-      return { d: w.d, sets: en.sets.filter(s => s && s.done), target: en.target || null }
+    if (en && (en.sets || []).some(s => projectSideSet(s)?.done)) {
+      return { d: w.d, sets: en.sets.map(projectSideSet).filter(setIsDone), target: en.target || null }
     }
   }
   return null
@@ -267,7 +287,7 @@ export function lastEntryFor(S, exId) {
     // `target` is what the session prescribed; finished workouts carry it so labels and the
     // progression engine can read a session back the way it was logged. Older workouts have
     // none — modeOf() falls back to the body part for them, which is what they were.
-    if (en && en.sets.some(s => projectSideSet(s).done)) return { d: S.workouts[i].d, sets: en.sets.map(projectSideSet).filter(s => s.done), target: en.target || null }
+    if (en && en.sets.some(setIsDone)) return { d: S.workouts[i].d, sets: en.sets.map(projectSideSet).filter(setIsDone), target: en.target || null }
   }
   return null
 }
@@ -275,7 +295,7 @@ export function bestWeightFor(S, exId) {
   let best = 0
   S.workouts.forEach(w => w.entries.forEach(e => {
     if (e.id === exId) {
-       e.sets.forEach(raw => { const s = projectSideSet(raw); if (s.done && s.w > best) best = s.w })
+      e.sets.forEach(raw => { if (projectSideSet(raw).done) best = Math.max(best, weightOfSet(raw)) })
       if (e.topW && e.topW > best) best = e.topW
     }
   }))
@@ -381,7 +401,7 @@ export function buildSets(S, cfg) {
       const w = blockId
         ? (carried ? (carried.w || 0) : 0)
         : (carried ? (carried.w || 0) : (cfg.weight || 0))
-      sets.push({ sec: carried ? carried.sec : (cfg.sec || 45), w, done: false })
+      sets.push({ sec: carried ? carried.sec : cfg.sec, w, done: false })
     }
     return sets
   }
@@ -397,7 +417,7 @@ export function buildSets(S, cfg) {
       ? (usable ? usable.w : 0)
       : (conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight))
     const set = isPerSide(cfg)
-      ? { left: { w, r: sideReps(usable ? usable.r : cfg.reps), done: false }, right: { w, r: sideReps(usable ? usable.r : cfg.reps), done: false }, w, r: cfg.reps, done: false }
+      ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.left.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.right.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, w, r: cfg.reps, done: false }
       : { w, r: usable ? usable.r : cfg.reps, done: false }
     // Snapshot the programmed target onto each set at workout start. The
     // snapshot rides alongside actual `rir`/`rpe` and is never edited by
@@ -414,7 +434,7 @@ export function workoutVolume(w) {
   let v = 0
   // No special case for unilateral work: a per-side set logs its total, so both sides are
   // already in the rep count that arrives here.
-  w.entries.forEach(e => e.sets.forEach(raw => { const s = projectSideSet(raw); if (s.done) v += (s.w || 0) * (s.r || 0) }))
+  w.entries.forEach(e => e.sets.forEach(raw => { const s = projectSideSet(raw); if (s.done) v += weightOfSet(raw) * (s.r || 0) }))
   return v
 }
 export function setsDone(w) {

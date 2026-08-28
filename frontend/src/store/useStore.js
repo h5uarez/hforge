@@ -27,16 +27,24 @@ export const DEF = {
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
+// Backups and server/mobile restores predate the preference. Only an explicit false disables
+// the timer; malformed or absent values retain the historical enabled behavior.
+const normalizeState = state => {
+  const next = Object.assign(clone(DEF), state || {})
+  next.restTimerEnabled = state?.restTimerEnabled !== false
+  return next
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      const state = Object.assign(clone(DEF), JSON.parse(raw))
+      const state = normalizeState(JSON.parse(raw))
       state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
       return state
     }
   } catch (e) { /* ignore */ }
-  return Object.assign(clone(DEF), { lang: getInitialLang() })
+  return normalizeState({ lang: getInitialLang() })
 }
 
 const hasData = st => !!((st.workouts || []).length || (st.routines || []).length || (st.bodyweight || []).length)
@@ -53,6 +61,7 @@ export const useStore = create((set, get) => {
   }
 
   const persist = (S, push = true) => {
+    S = normalizeState(S)
     S._ts = Date.now()
     registerCustom(S.customEx)
     localStorage.setItem(KEY, JSON.stringify(S))
@@ -104,7 +113,7 @@ export const useStore = create((set, get) => {
       persist(S, push)
     },
     replaceState(S, push = false) {
-      const next = Object.assign(clone(DEF), clone(S))
+      const next = normalizeState(S)
       next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
       persist(next, push)
     },
@@ -131,7 +140,7 @@ export const useStore = create((set, get) => {
         const dirty = localStorage.getItem('gym_dirty') === '1'
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const active = S.active
-          const next = Object.assign(clone(DEF), state)
+          const next = normalizeState(state)
           const explicitLang = getExplicitLang()
           next.lang = explicitLang || normalizeLang(next.lang) || getInitialLang()
           if (active) next.active = active
@@ -162,7 +171,7 @@ export const useStore = create((set, get) => {
       const { buildDemoState } = await import('../lib/demoSeed.js')
       const language = getExplicitLang() || normalizeLang(getLang()) || getInitialLang()
       localStorage.removeItem('gym_dirty')
-      persist(Object.assign(clone(DEF), buildDemoState(), { lang: language }), false)
+      persist(normalizeState(Object.assign(buildDemoState(), { lang: language })), false)
     },
 
     // Boot: ask the server who we are, then pull.
@@ -173,7 +182,7 @@ export const useStore = create((set, get) => {
         const saved = await nativeLoad()
         const S = get().S
         if (saved && (!hasData(S) || (saved._ts || 0) >= (S._ts || 0))) {
-          const next = Object.assign(clone(DEF), saved)
+          const next = normalizeState(saved)
           next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
           persist(next, false)
         } else if (hasData(S)) {

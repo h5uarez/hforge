@@ -128,12 +128,12 @@ export default function Settings() {
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>
-          <Switch checked={wakeOK && S.keepAwake !== false} disabled={!wakeOK}
+          <Switch aria-label={t('Keep screen awake')} checked={wakeOK && S.keepAwake !== false} disabled={!wakeOK}
             onChange={v => update(s => { s.keepAwake = v })} />
         </Row>
       )}
       <Row icon="bell" iconTint="var(--pink)" title={t('Sounds')}>
-        <Switch checked={!!S.sound} onChange={v => update(s => { s.sound = v })} />
+        <Switch aria-label={t('Sounds')} checked={!!S.sound} onChange={v => update(s => { s.sound = v })} />
       </Row>
       {/* Two names for the same judgement, so the column asks in the scale you already think in.
           The (i) sits before the control — you read it on the way to the choice, not after it. */}
@@ -149,7 +149,7 @@ export default function Settings() {
           erase saved targets; turning it on again reveals the same field. */}
       <Row icon="flag" iconTint="var(--teal)" title={t('Programmed targets per set')}
         subtitle={t('Set RIR/RPE targets on each routine set; reveal them during the workout.')}>
-        <Switch checked={!!S.programmedEffort}
+        <Switch aria-label={t('Programmed targets per set')} checked={!!S.programmedEffort}
           onChange={v => update(s => { s.programmedEffort = !!v })} />
       </Row>
     </Section>

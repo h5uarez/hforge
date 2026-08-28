@@ -20,7 +20,7 @@ function fakeBrowser() {
       removeItem: key => values.delete(key),
     },
   })
-  globalThis.document = { addEventListener: vi.fn(), removeEventListener: vi.fn() }
+  globalThis.document = { addEventListener: vi.fn(), removeEventListener: vi.fn(), visibilityState: 'visible' }
   setNavigator({ userAgent: 'node-test', languages: ['en-US'], language: 'en-US' })
 }
 
@@ -88,5 +88,25 @@ describe('rest timer setting gate', () => {
     useUI.getState().stopRest()
     expect(useUI.getState().timer).toBeNull()
     expect(api).toHaveBeenCalledWith('/api/push/rest-timer/cancel', expect.objectContaining({ method: 'POST' }))
+  })
+  it('fires the existing enabled completion effects and clears the timer', () => {
+    useStore.getState().replaceState({ restTimerEnabled: true, sound: true })
+    useStore.getState().setUser({ id: 'u1' })
+    useUI.getState().startRest(1)
+
+    vi.advanceTimersByTime(1000)
+
+    expect(useUI.getState().timer).toBeNull()
+    expect(beep).toHaveBeenCalledTimes(3)
+    expect(vibrate).toHaveBeenCalledWith([200, 100, 200])
+    expect(api).toHaveBeenCalledWith('/api/push/rest-timer', expect.objectContaining({ method: 'POST' }))
+    expect(api).toHaveBeenCalledWith('/api/push/rest-timer/cancel', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('cancels an enabled timer safely and removes its interval', () => {
+    useUI.getState().startRest(90)
+    useUI.getState().stopRest()
+    vi.advanceTimersByTime(2000)
+    expect(useUI.getState().timer).toBeNull()
   })
 })
