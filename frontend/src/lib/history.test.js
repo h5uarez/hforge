@@ -1115,7 +1115,7 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legs')
   })
 
-  // Plan-resolution contract (issue: block-lifecycle-playwright-audit, Plan.jsx fix).
+  // Plan-resolution contract (Plan.jsx fix).
   // Plan.jsx renders the current local-calendar week's seven weekdays and must show the
   // active block's resolved routine / rest for each one. This test exercises the resolver
   // Plan relies on, for every weekday of the current week — so a regression in either the
@@ -1139,7 +1139,7 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     })
   })
 
-  // Legacy-fallback contract (issue: block-lifecycle-playwright-audit, Plan.jsx fix).
+  // Legacy-fallback contract (Plan.jsx fix).
   // With no active block, Plan.jsx must keep its existing dayPlan-then-week legacy behavior
   // — every weekday reads from S.week (or S.dayPlan). A regression that accidentally makes
   // Plan use the block resolver when no block is active would surface here.
@@ -1164,8 +1164,8 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     })
   })
 
-  // Mid-week activation contract (issue: block-lifecycle-playwright-audit, WU2
-  // remediation, verify-report #1256 critical finding #1). When a block is
+  // Mid-week activation contract (WU2 remediation, verify-report #1256 critical
+  // finding #1). When a block is
   // activated mid-week, the current local-calendar week must show the block's
   // day map for ALL seven weekdays — not just from the activation day onward.
   // Otherwise Plan/Home would silently mix the block's day map (Thu+) with
@@ -1435,12 +1435,12 @@ describe('buildWorkoutBlockSnapshot', () => {
     expect(day1.week).toBe(1)
   })
 
-  // Finished-workout attribution contract (issue: block-lifecycle-playwright-audit,
-  // verify-report #1256 critical finding "Workout context survives completion").
+  // Finished-workout attribution contract (verify-report #1256 critical finding
+  // "Workout context survives completion").
   // A workout record's `block` field is the same value the snapshot returned at
   // workout start; nothing the store does after the start can rewrite the frozen
-  // id/name/week on that record. This is the unit-level back-stop for the smoke
-  // assertion that the finished record retains `block.id`, `block.name`, `block.week`.
+  // id/name/week on that record. This is the unit-level guard that the finished
+  // record retains `block.id`, `block.name`, `block.week`.
   it('the snapshot is what rides into the finished workout record; endBlock + a rename after start cannot rewrite it', () => {
     // Use a fresh state shape so earlier `captures the block name as it exists right now`
     // does not pollute the assertion with its in-place rename. ACTIVE_DAY1 is shared
