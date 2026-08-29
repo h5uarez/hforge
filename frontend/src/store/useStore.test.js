@@ -182,3 +182,63 @@ describe('restTimerEnabled compatibility', () => {
     expect(restored.getState().S.restSec).toBe(90)
   })
 })
+
+describe('bodyweightCheckEnabled compatibility', () => {
+  it('defaults missing and malformed values to enabled, while preserving explicit false', () => {
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: null })
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(true)
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: 'false' })
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(true)
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: false })
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(false)
+    expect(JSON.parse(storage.get(KEY)).bodyweightCheckEnabled).toBe(false)
+  })
+
+  it('restores the persisted disabled choice and resets it to enabled', async () => {
+    useStore.getState().replaceState({ bodyweightCheckEnabled: false, routines: [], workouts: [] })
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+    expect(restored.getState().S.bodyweightCheckEnabled).toBe(false)
+    restored.getState().replaceState({ routines: [], workouts: [] })
+    expect(restored.getState().S.bodyweightCheckEnabled).toBe(true)
+  })
+
+  it('preserves the disabled preference through backup replacement and server sync', async () => {
+    const remote = { _ts: Date.now() + 1, routines: [], workouts: [], bodyweightCheckEnabled: false }
+    globalThis.fetch = vi.fn(async (_path, options = {}) => {
+      if (options.method === 'PUT') return { ok: true, json: async () => ({}) }
+      return { ok: true, json: async () => ({ state: remote }) }
+    })
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: false })
+    useStore.getState().setUser({ id: 'server-user' })
+    await useStore.getState().pushState()
+    const pushed = JSON.parse(globalThis.fetch.mock.calls[0][1].body)
+    expect(pushed.state.bodyweightCheckEnabled).toBe(false)
+
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: true })
+    await useStore.getState().pullState()
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(false)
+  })
+
+  it('clears the preference to the enabled default on sign-out and demo reset', async () => {
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: false })
+    useStore.getState().setUser({ id: 'signout-user' })
+    await useStore.getState().signOut()
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(true)
+
+    useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: false })
+    await useStore.getState().resetDemo()
+    expect(useStore.getState().S.bodyweightCheckEnabled).toBe(true)
+  })
+
+  it('normalizes a disabled preference restored from the mobile native mirror', async () => {
+    vi.resetModules()
+    const nativeLoad = vi.fn(async () => ({ _ts: Date.now() + 1, routines: [], workouts: [], bodyweightCheckEnabled: false }))
+    vi.doMock('../lib/mobile.js', () => ({ MOBILE: true, nativeLoad, nativeSave: vi.fn(), syncReminder: vi.fn() }))
+    const { useStore: mobileStore } = await import('./useStore.js')
+    await mobileStore.getState().boot()
+    expect(nativeLoad).toHaveBeenCalledTimes(1)
+    expect(mobileStore.getState().S.bodyweightCheckEnabled).toBe(false)
+  })
+})

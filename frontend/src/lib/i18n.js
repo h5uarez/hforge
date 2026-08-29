@@ -96,6 +96,7 @@ export const dateLocale = () => DATE_LOCALES[lang] || 'en-GB'
 
 // Translate a source string; {0},{1}… are replaced with args (also on the English fallback).
 export function t(s, ...args) {
+  // English source strings remain usable when a locale pack omits a key or fails to load.
   let v = dict[s] || s
   for (let i = 0; i < args.length; i++) v = v.replaceAll('{' + i + '}', args[i])
   return v

@@ -70,29 +70,34 @@ export function loadStarterPlan() {
 // attempt) makes the thumb's position unpredictable: every time it grows, everything already
 // placed on it shifts toward one side. A static range never has that problem, at the cost of
 // coarser precision per pixel — the +/- buttons cover exact values.
-// The ceiling follows the profile's unit: 300 covers a body weight or a working weight in
-// kg, but as pounds it cut off at 136 kg — below plenty of people's body weight, and well
-// below an everyday squat.
+// The ceiling follows the profile's unit while keeping kg and lb equivalent for bodyweight
+// entry: 180 kg is approximately 396 lb.
 const W_LO = 1
-const wHi = unit => (unit === 'lb' ? 660 : 300)
+export const weightBounds = unit => ({ min: W_LO, max: unit === 'lb' ? 396 : 180, step: 1 })
+export const clampWeight = (value, unit) => {
+  const { min, max } = weightBounds(unit)
+  const n = Number(value)
+  return Math.max(min, Math.min(max, Math.round(Number.isFinite(n) ? n : 0)))
+}
+export const savedWeight = (value, unit) => {
+  const raw = Number(value)
+  return Number.isFinite(raw) && raw > 0 ? clampWeight(raw, unit) : null
+}
 function WeightInput({ value, setValue, unit }) {
-  const W_HI = wHi(unit)
-  const clamp = x => Math.max(W_LO, Math.min(W_HI, Math.round((x || 0) * 10) / 10))
-  const sv = Math.max(W_LO, Math.min(W_HI, value))
-  const onSlide = v => setValue(clamp(v))
+  const { min, max, step } = weightBounds(unit)
+  const sv = clampWeight(value, unit)
+  const onSlide = v => setValue(clampWeight(v, unit))
   return <>
     <div className="bwstep">
-      <button className="bw-pm" onClick={() => onSlide(value - 0.1)} aria-label={t('minus 0.1')}><Icon name="minus" /></button>
-      <div className="bw-read">{fmtNum(value)}<span className="u"> {unit}</span></div>
-      <button className="bw-pm" onClick={() => onSlide(value + 0.1)} aria-label={t('plus 0.1')}><Icon name="plus" /></button>
+      <button className="bw-pm" onClick={() => onSlide(sv - 1)} aria-label={t('Decrease')}><Icon name="minus" /></button>
+      <div className="bw-read">{fmtNum(sv)}<span className="u"> {unit}</span></div>
+      <button className="bw-pm" onClick={() => onSlide(sv + 1)} aria-label={t('Increase')}><Icon name="plus" /></button>
     </div>
     <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
-      <button className="chip" onClick={() => onSlide(value - 1)}>−1</button>
-      <button className="chip" onClick={() => onSlide(value - 0.5)}>−0.5</button>
-      <button className="chip" onClick={() => onSlide(value + 0.5)}>+0.5</button>
-      <button className="chip" onClick={() => onSlide(value + 1)}>+1</button>
+      <button className="chip" onClick={() => onSlide(sv - 1)}>−1</button>
+      <button className="chip" onClick={() => onSlide(sv + 1)}>+1</button>
     </div>
-    <Slider value={sv} min={W_LO} max={W_HI} step={0.5} onChange={onSlide} />
+      <Slider value={sv} min={min} max={max} step={step} onChange={onSlide} />
   </>
 }
 
@@ -103,8 +108,8 @@ function BwSheet({ required, onDone, close }) {
   const bw = lastBW(st)
   const [v, setV] = useState(bw ? bw.w : 70)
   const save = () => {
-    const n = Math.round((v || 0) * 10) / 10
-    if (!n || n <= 0) { toast(t('Enter a valid weight')); return }
+    const n = savedWeight(v, unit)
+    if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       const iso = todayISO()
       const ex = s.bodyweight.find(b => b.d === iso)
@@ -254,8 +259,8 @@ function GoalSheet({ close }) {
     <WeightInput value={v} setValue={setV} unit={st.unit} />
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={() => {
-      const n = Math.round((v || 0) * 10) / 10
-      if (!n || n <= 0) { toast(t('Enter a valid weight')); return }
+      const n = savedWeight(v, st.unit)
+      if (n === null) { toast(t('Enter a valid weight')); return }
       update(s => { s.targetW = n }); close()
       const b = lastBW(S()); toast(t('Goal set: {0}', fmtNum(n) + ' ' + st.unit) + (b ? ' (' + t('{0} to go', fmtNum(Math.abs(n - b.w))) + ')' : ''))
     }}>{t('Save goal')}</Button>
@@ -1203,7 +1208,8 @@ export const blockManagerSheet = () => ui().openSheet(close => <BlockList close=
 
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
-  bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+  if (S().bodyweightCheckEnabled === false) beginWorkout(routineId, null)
+  else bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
 }
 export function beginWorkout(routineId, bw) {
   const st = S()
@@ -1249,8 +1255,8 @@ function TopWeight({ entryIdx, close }) {
   if (!entry || !ex) return null
 
   const commit = advance => {
-    const n = Math.round((v || 0) * 10) / 10
-    if (!isFinite(n) || n < 0) { toast(t('Enter a valid weight')); return }
+    const n = savedWeight(v, st.unit)
+    if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       s.active.entries[entryIdx].topW = n
       const cur = s.exWeights[entry.id]
