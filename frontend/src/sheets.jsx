@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -11,7 +11,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, TextArea } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
@@ -141,6 +141,72 @@ function BwSheet({ required, onDone, close }) {
 export function bwSheet(opts = {}) {
   const h = ui().openSheet(close => <BwSheet {...opts} close={close} />, { locked: !!opts.required })
   return h
+}
+
+/* ============================ session exercise notes ============================ */
+export const validExerciseNote = raw => {
+  const note = normalizeExerciseNote(raw)
+  return note === undefined || note.length <= NOTE_MAX
+}
+
+function NoteEditor({ title, entries, initialIndex = 0, onSave, onCancel, close }) {
+  const [drafts, setDrafts] = useState(() => entries.map(e => e?.note || ''))
+  const [error, setError] = useState('')
+  const save = () => {
+    if (drafts.some(v => !validExerciseNote(v))) {
+      setError(t('Note must be 280 characters or fewer.'))
+      return
+    }
+    onSave(drafts.map(normalizeExerciseNote))
+    close()
+  }
+  const updateDraft = (i, value) => { setError(''); setDrafts(xs => xs.map((x, n) => n === i ? value : x)) }
+  return <>
+    <h3>{title}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>{t('Optional note for this workout. You can add context to each exercise.')}</div>
+    <div className="list">
+      {entries.map((e, i) => {
+        const ex = EXIDX[e.id]
+        const noteId = `exercise-note-${i}`
+        return <label className="item" key={i} style={{ display: 'block' }}>
+          <span className="tt capitalize">{ex ? ex.n : (e.n || e.id)}</span>
+          <span className="sr-only" id={`${noteId}-hint`}>{t('Optional note for this workout. You can add context to each exercise.')}</span>
+          <TextArea id={noteId} aria-label={t('Note for {0}', ex ? ex.n : (e.n || e.id))} aria-describedby={`${noteId}-hint${error ? ' note-error' : ''}`} aria-invalid={!!error} value={drafts[i]} onChange={event => updateDraft(i, event.target.value)} />
+        </label>
+      })}
+    </div>
+    {error && <div id="note-error" className="note-error" role="alert" aria-live="polite">{error}</div>}
+    <Button variant="primary" onClick={save}>{t('Save & start workout')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={() => { onCancel(); close() }}>{t('Skip')}</Button>
+    <div style={{ height: 2 }} />
+    <Button variant="ghost" className="dim" onClick={() => { onCancel(); close() }}>{t('Cancel')}</Button>
+  </>
+}
+
+export function exerciseNotesSheet({ entries, title = t('Add exercise notes'), onSave, onCancel = () => {}, onDismiss }) {
+  return ui().openSheet(close => <NoteEditor title={title} entries={entries} onSave={onSave} onCancel={onCancel} close={close} />, { onDismiss })
+}
+
+export function editActiveNoteSheet(entryIdx) {
+  const entry = S().active?.entries?.[entryIdx]
+  if (!entry) return
+  return ui().openSheet(close => <NoteEditor title={t('Edit exercise note')} entries={[entry]} onSave={([note]) => update(s => {
+    const e = s.active?.entries?.[entryIdx]
+    if (!e) return
+    if (note === undefined) delete e.note; else e.note = note
+  })} onCancel={() => {}} close={close} />)
+}
+
+export function editHistoryNoteSheet(workoutId, entryIdx) {
+  const workout = S().workouts.find(w => w.id === workoutId)
+  const entry = workout?.entries?.[entryIdx]
+  if (!workout || !entry) return
+  return ui().openSheet(close => <NoteEditor title={t('Edit exercise note')} entries={[entry]} onSave={([note]) => update(s => {
+    const w = s.workouts.find(x => x.id === workoutId), e = w?.entries?.[entryIdx]
+    if (!e) return
+    if (note === undefined) delete e.note; else e.note = note
+  })} onCancel={() => {}} close={close} />)
 }
 
 /* ============================ import from another app ============================ */
@@ -864,7 +930,13 @@ function WorkoutDetail({ w, close }) {
       return <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
         {ex && <Thumb ex={ex} />}
         <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? ex.n : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-          <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div></div>
+          <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
+          {e.note && <div className="exnote" role="note">{e.note}</div>}
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          {e.note && <span className="note-indicator" role="img" aria-label={t('Has note')}><Icon name="clipboard" />{t('Note')}</span>}
+          <button className="iconbtn" aria-label={t('Edit exercise note')} onClick={() => editHistoryNoteSheet(w.id, i)}><Icon name="pencil" /></button>
+        </div>
       </div>
     })}
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
@@ -1203,17 +1275,23 @@ export const blockManagerSheet = () => ui().openSheet(close => <BlockList close=
 
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
-  bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+  bwSheet({ required: true, onDone: bw => {
+    if (!routineId) { beginWorkout(routineId, bw); return }
+    const routine = S().routines.find(x => x.id === routineId)
+    if (!routine?.ex?.length) { beginWorkout(routineId, bw); return }
+    exerciseNotesSheet({ entries: routine.ex, onSave: notes => beginWorkout(routineId, bw, notes), onCancel: () => beginWorkout(routineId, bw), onDismiss: () => beginWorkout(routineId, bw) })
+  }} )
 }
-export function beginWorkout(routineId, bw) {
+export function beginWorkout(routineId, bw, notes = []) {
   const st = S()
   const r = routineId ? st.routines.find(x => x.id === routineId) : null
   // The prescription is applied as the session is built, so you walk up to the bar with the
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
-  const entries = (r ? r.ex : []).map(cfg => {
+  const entries = (r ? r.ex : []).map((cfg, i) => {
     const plan = nextPrescription(st, cfg, r)
-    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
+    const note = normalizeExerciseNote(notes[i])
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan), ...(note ? { note } : {}) }
   })
   // Block context snapshot (issue: block-management, spec #907 / design #908). When a workout
   // starts while a block is active, freeze { id, name, week } onto the workout so later block
@@ -1338,7 +1416,10 @@ function doFinishWorkout() {
     // `target` (what the session prescribed) is kept alongside the sets: without it a
     // finished workout cannot say whether it hit its reps, and a timed session reads back
     // as "0 reps". It is what the progression engine works from.
-    entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(setIsDone)),
+    entries: A.entries.map(e => {
+      const copy = copyHistoryEntry({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null, note: e.note })
+      return copy
+    }).filter(keepHistoryEntry),
     // Block context snapshot, frozen at workout start (issue: block-management). Copied by
     // value so the finished record does not share a reference with `active.block`; later block
     // edits / lifecycle changes cannot rewrite history.

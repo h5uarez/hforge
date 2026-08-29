@@ -1,5 +1,6 @@
 // Russian UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
+  'Add exercise notes': 'Добавить заметки к упражнениям', 'Edit exercise note': 'Изменить заметку упражнения', 'Optional note for this workout. You can add context to each exercise.': 'Необязательная заметка к тренировке. Добавьте контекст к каждому упражнению.', 'Note for {0}': 'Заметка для {0}', 'Note must be 280 characters or fewer.': 'Заметка должна содержать не более 280 символов.', 'Has note': 'Есть заметка', 'Note': 'Заметка',
   'Confirm': 'Подтвердить', 'Close': 'Закрыть',
   'Cancel': 'Отмена',
   'Delete': 'Удалить',

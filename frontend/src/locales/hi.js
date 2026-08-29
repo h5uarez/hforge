@@ -1,5 +1,6 @@
 // Hindi UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
+  'Add exercise notes': 'व्यायाम नोट जोड़ें', 'Edit exercise note': 'व्यायाम नोट संपादित करें', 'Optional note for this workout. You can add context to each exercise.': 'इस वर्कआउट के लिए वैकल्पिक नोट। हर व्यायाम में संदर्भ जोड़ें।', 'Note for {0}': '{0} के लिए नोट', 'Note must be 280 characters or fewer.': 'नोट 280 वर्णों या कम का होना चाहिए।', 'Has note': 'नोट है', 'Note': 'नोट',
   'Confirm': 'पुष्टि करें', 'Close': 'बंद करें',
   'Cancel': 'रद्द करें',
   'Delete': 'हटाएँ',

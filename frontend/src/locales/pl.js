@@ -1,5 +1,6 @@
 // Polish UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
+  'Add exercise notes': 'Dodaj notatki do ćwiczeń', 'Edit exercise note': 'Edytuj notatkę ćwiczenia', 'Optional note for this workout. You can add context to each exercise.': 'Opcjonalna notatka do tego treningu. Dodaj kontekst do każdego ćwiczenia.', 'Note for {0}': 'Notatka dla {0}', 'Note must be 280 characters or fewer.': 'Notatka może mieć najwyżej 280 znaków.', 'Has note': 'Ma notatkę', 'Note': 'Notatka',
   'Confirm': 'Potwierdź', 'Close': 'Zamknij',
   'Cancel': 'Anuluj',
   'Delete': 'Usuń',

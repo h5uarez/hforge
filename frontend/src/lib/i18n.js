@@ -18,6 +18,10 @@ const DATE_LOCALES = {
 }
 
 export const LANG_PREF_KEY = 'gym_lang_v1'
+export const NOTE_KEYS = [
+  'Add exercise notes', 'Edit exercise note', 'Optional note for this workout. You can add context to each exercise.',
+  'Note for {0}', 'Note must be 280 characters or fewer.', 'Has note', 'Note'
+]
 const STATE_KEY = 'gym_state_v1'
 const localePacks = import.meta.glob('../locales/*.js')
 const instrPacks = import.meta.glob('../instr/*.js')
