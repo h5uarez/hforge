@@ -384,10 +384,6 @@ h4.sec{
 .field::placeholder,.input::placeholder{color:var(--label-3)}
 .field:focus,.input:focus{box-shadow:inset 0 0 0 2px var(--acc)}
 .field.area,textarea.input{min-height:92px;resize:vertical;line-height:1.42}
-.field.area[aria-invalid="true"]{box-shadow:inset 0 0 0 2px var(--red)}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.note-error{color:var(--red);margin:8px 0;font-size:15px;line-height:1.4}
-.note-indicator{display:inline-flex;align-items:center;gap:3px;background:var(--surface-2);color:var(--label-2);border-radius:6px;padding:3px 7px;font-size:12px;font-weight:500}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);

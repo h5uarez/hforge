@@ -1,6 +1,5 @@
 // Turkish UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Add exercise notes': 'Egzersiz notları ekle', 'Edit exercise note': 'Egzersiz notunu düzenle', 'Optional note for this workout. You can add context to each exercise.': 'Bu antrenman için isteğe bağlı not. Her egzersize bağlam ekleyin.', 'Note for {0}': '{0} için not', 'Note must be 280 characters or fewer.': 'Not en fazla 280 karakter olabilir.', 'Has note': 'Notu var', 'Note': 'Not',
   'Confirm': 'Onayla', 'Close': 'Kapat',
   'Cancel': 'İptal',
   'Delete': 'Sil',

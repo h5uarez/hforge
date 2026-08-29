@@ -1,6 +1,5 @@
 // French UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Add exercise notes': 'Ajouter des notes d’exercices', 'Edit exercise note': 'Modifier la note de l’exercice', 'Optional note for this workout. You can add context to each exercise.': 'Note facultative pour cette séance. Ajoute du contexte à chaque exercice.', 'Note for {0}': 'Note pour {0}', 'Note must be 280 characters or fewer.': 'La note doit contenir 280 caractères ou moins.', 'Has note': 'Contient une note', 'Note': 'Note',
   'Confirm': 'Confirmer', 'Close': 'Fermer',
   'Cancel': 'Annuler',
   'Delete': 'Supprimer',

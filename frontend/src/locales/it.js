@@ -1,6 +1,5 @@
 // Italian UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Add exercise notes': 'Aggiungi note esercizio', 'Edit exercise note': 'Modifica nota esercizio', 'Optional note for this workout. You can add context to each exercise.': 'Nota facoltativa per questo allenamento. Aggiungi contesto a ogni esercizio.', 'Note for {0}': 'Nota per {0}', 'Note must be 280 characters or fewer.': 'La nota deve contenere al massimo 280 caratteri.', 'Has note': 'Ha una nota', 'Note': 'Nota',
   'Confirm': 'Conferma', 'Close': 'Chiudi',
   'Cancel': 'Annulla',
   'Delete': 'Elimina',
