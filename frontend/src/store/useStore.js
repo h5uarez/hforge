@@ -9,7 +9,7 @@ import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/
 const KEY = 'gym_state_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'lime', body: 'male', targetW: null,
+  theme: 'dark', accent: 'lime', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
@@ -32,6 +32,7 @@ const clone = o => JSON.parse(JSON.stringify(o))
 const normalizeState = state => {
   const next = Object.assign(clone(DEF), state || {})
   next.restTimerEnabled = state?.restTimerEnabled !== false
+  next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   return next
 }
 

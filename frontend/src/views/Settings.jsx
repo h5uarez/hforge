@@ -122,6 +122,11 @@ export default function Settings() {
         <Switch aria-label={t('Enable rest timer')} checked={S.restTimerEnabled !== false}
           onChange={v => { update(s => { s.restTimerEnabled = !!v }); if (!v) useUI.getState().stopRest() }} />
       </Row>
+      <Row icon="scale" iconTint="var(--teal)" title={t('Bodyweight check before workouts')}
+        subtitle={t('Ask for your bodyweight before every workout.') }>
+        <Switch aria-label={t('Bodyweight check before workouts')} checked={S.bodyweightCheckEnabled !== false}
+          onChange={v => update(s => { s.bodyweightCheckEnabled = !!v })} />
+      </Row>
       {S.restTimerEnabled !== false && <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
         value={S.restSec} onChange={v => update(s => { s.restSec = v })}
         options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />}
