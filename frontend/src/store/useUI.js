@@ -18,15 +18,15 @@ let workTick = null
 let workDone = null
 
 export const useUI = create((set, get) => ({
-  sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked, tall }
+  sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked, tall, onDismiss? }
   toastMsg: '',
   timer: null,         // rest countdown between sets — { left, total, endsAt }
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
 
-  openSheet(render, { kind = 'sheet', locked = false, tall = false } = {}) {
+  openSheet(render, { kind = 'sheet', locked = false, tall = false, onDismiss } = {}) {
     const id = uid()
     const opener = typeof document !== 'undefined' ? document.activeElement : null
-    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked, tall, opener }] }))
+    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked, tall, onDismiss, opener }] }))
     const close = () => get().closeSheet(id)
     return { id, close, lock: v => set(s => ({ sheets: s.sheets.map(x => x.id === id ? { ...x, locked: v } : x) })) }
   },

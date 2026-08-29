@@ -58,9 +58,9 @@ export const TextField = forwardRef(function TextField({ className = '', ...rest
   return <input ref={ref} className={'field ' + className} {...rest} />
 })
 
-export function TextArea({ className = '', ...rest }) {
-  return <textarea className={'field area ' + className} {...rest} />
-}
+export const TextArea = forwardRef(function TextArea({ className = '', ...rest }, ref) {
+  return <textarea ref={ref} className={'field area ' + className} {...rest} />
+})
 
 export function SearchField({ value, onChange, onClear, ...rest }) {
   return (

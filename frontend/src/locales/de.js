@@ -1,5 +1,6 @@
 // German UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
+  'Add exercise notes': 'Übungsnotizen hinzufügen', 'Edit exercise note': 'Übungsnotiz bearbeiten', 'Optional note for this workout. You can add context to each exercise.': 'Optionale Notiz für dieses Training. Ergänze Kontext zu jeder Übung.', 'Note for {0}': 'Notiz für {0}', 'Note must be 280 characters or fewer.': 'Die Notiz darf höchstens 280 Zeichen enthalten.', 'Has note': 'Hat eine Notiz', 'Note': 'Notiz',
   // --- generic ---
   'Confirm': 'Bestätigen', 'Close': 'Schließen',
   'Cancel': 'Abbrechen',

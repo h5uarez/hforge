@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, copyHistoryEntry, keepHistoryEntry, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -8,6 +8,33 @@ const CARDIO = EXDB.find(e => e.bp === 'cardio').id
 // defaults to bodyweight and would quietly send every label test down the other path.
 const LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
 const BW = EXDB.find(e => e.eq === 'body weight').id
+
+describe('exercise notes', () => {
+  it('normalizes committed notes without truncating drafts', () => {
+    expect(NOTE_MAX).toBe(280)
+    expect(normalizeExerciseNote('  remember the bench change  ')).toBe('remember the bench change')
+    expect(normalizeExerciseNote(' \n\t ')).toBeUndefined()
+    const draft = 'x'.repeat(NOTE_MAX + 1)
+    expect(normalizeExerciseNote(draft)).toBe(draft)
+  })
+
+  it('copies notes before filtering and retains noted zero-set entries', () => {
+    const noted = { id: LIFT, sets: [{ done: false, w: 60, r: 10 }], note: '  zero-set context  ' }
+    const copied = copyHistoryEntry(noted)
+    expect(copied).not.toBe(noted)
+    expect(copied.note).toBe('zero-set context')
+    expect(keepHistoryEntry(copied)).toBe(true)
+    expect(keepHistoryEntry({ id: LIFT, sets: [{ done: false }] })).toBe(false)
+    expect(noted.note).toBe('  zero-set context  ')
+  })
+
+  it('keeps calculations identical when only a note differs', () => {
+    const base = { entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }
+    const noted = { ...base, entries: [{ ...base.entries[0], note: 'bench changed' }] }
+    expect(workoutVolume(noted)).toBe(workoutVolume(base))
+    expect(setsDone(noted)).toBe(setsDone(base))
+  })
+})
 
 describe('canonical exercise data', () => {
   it('ships the corrected 0739 title directly from the catalog source', () => {
