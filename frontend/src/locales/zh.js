@@ -1,6 +1,5 @@
 // Simplified Chinese UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Add exercise notes': '添加训练备注', 'Edit exercise note': '编辑训练备注', 'Optional note for this workout. You can add context to each exercise.': '本次训练的可选备注。为每个动作添加相关信息。', 'Note for {0}': '{0}的备注', 'Note must be 280 characters or fewer.': '备注不能超过280个字符。', 'Has note': '有备注', 'Note': '备注',
   'Confirm': '确认', 'Close': '关闭',
   'Cancel': '取消',
   'Delete': '删除',

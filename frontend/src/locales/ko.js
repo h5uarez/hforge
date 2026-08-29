@@ -1,6 +1,5 @@
 // Korean UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
-  'Add exercise notes': '운동 메모 추가', 'Edit exercise note': '운동 메모 편집', 'Optional note for this workout. You can add context to each exercise.': '이 운동을 위한 선택 메모입니다. 각 운동에 맥락을 추가하세요.', 'Note for {0}': '{0} 메모', 'Note must be 280 characters or fewer.': '메모는 280자 이하여야 합니다.', 'Has note': '메모 있음', 'Note': '메모',
   'Confirm': '확인', 'Close': '닫기',
   'Cancel': '취소',
   'Delete': '삭제',

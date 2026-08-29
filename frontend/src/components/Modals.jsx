@@ -2,10 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
 
-// Some supported mobile/browser automation surfaces report the legacy `Esc` key value.
-// Keep the standards-compliant `Escape` value first while accepting that compatibility alias.
-export const isDismissKey = key => key === 'Escape' || key === 'Esc'
-
 // One bottom sheet (or centered dialog) with swipe-to-dismiss.
 function Sheet({ sheet }) {
   const { closeSheet } = useUI()
@@ -23,29 +19,15 @@ function Sheet({ sheet }) {
     closeSheet(sheet.id)
     restoreFocus()
   }
-  const dismiss = () => {
-    if (sheet.locked) return
-    sheet.onDismiss?.()
-    close()
-  }
 
   // Put keyboard users on the shared close action, then return them to the control that opened
   // the sheet. Locked surfaces intentionally have no shared close action or Escape listener.
   useEffect(() => {
     if (!sheet.locked) closeRef.current?.focus()
     const onKeyDown = e => {
-      if (isDismissKey(e.key) && !sheet.locked && useUI.getState().sheets.at(-1)?.id === sheet.id) {
+      if (e.key === 'Escape' && !sheet.locked && useUI.getState().sheets.at(-1)?.id === sheet.id) {
         e.preventDefault()
-        dismiss()
-        return
-      }
-      if (e.key === 'Tab' && useUI.getState().sheets.at(-1)?.id === sheet.id) {
-        const root = ref.current || document.querySelector('.center')
-        const focusable = root ? [...root.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')] : []
-        if (!focusable.length) return
-        const first = focusable[0], last = focusable[focusable.length - 1]
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+        close()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -79,7 +61,7 @@ function Sheet({ sheet }) {
     const el = ref.current, d = drag.current
     if (d.startY === null) return
     el.style.transition = 'transform .2s'
-    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => dismiss(), 180) }
+    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => close(), 180) }
     else el.style.transform = ''
     d.startY = null
   }
@@ -95,9 +77,9 @@ function Sheet({ sheet }) {
   if (sheet.kind === 'center') {
     return (
       <div>
-        <div className="mback" onClick={dismiss} />
+        <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
         <div className="center" role="dialog" aria-modal="true">
-          {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={dismiss} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+          {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
           {sheet.render(close)}
         </div>
       </div>
@@ -105,10 +87,10 @@ function Sheet({ sheet }) {
   }
   return (
     <div>
-      <div className="mback" onClick={dismiss} />
+      <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
       <div className={'sheet' + (sheet.tall ? ' sheet-tall' : '')} ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" />
-        {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={dismiss} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+        {!sheet.locked && <button className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
         {sheet.render(close)}
       </div>
     </div>

@@ -3,30 +3,6 @@ import { todayISO, isoOf, weekKey, fmtNum } from './format.js'
 import { isCardio, isBodyweightEq } from './exercises.js'
 import { t } from './i18n.js'
 
-// Notes are optional session context. Keep the limit at the domain boundary, but do not
-// truncate here: editors need to retain an over-limit draft so the user can correct it.
-export const NOTE_MAX = 280
-export function normalizeExerciseNote(raw) {
-  if (typeof raw !== 'string') return undefined
-  const note = raw.trim()
-  return note || undefined
-}
-
-// Build the history representation before applying the completed-set filter. This ordering is
-// important: an entry with a note and no completed sets is still useful history and must survive.
-export function copyHistoryEntry(entry) {
-  if (!entry || typeof entry !== 'object') return entry
-  const copy = { ...entry, sets: Array.isArray(entry.sets) ? entry.sets : [] }
-  const note = normalizeExerciseNote(entry.note)
-  if (note === undefined) delete copy.note
-  else copy.note = note
-  return copy
-}
-
-export function keepHistoryEntry(entry) {
-  return !!entry && ((Array.isArray(entry.sets) && entry.sets.some(setIsDone)) || normalizeExerciseNote(entry.note) !== undefined)
-}
-
 // How an exercise is logged (issue #16). This used to be derived from the body part alone,
 // which meant a plank or a farmer's carry could only be timed by filing it under cardio.
 // A routine entry can now say so explicitly:
