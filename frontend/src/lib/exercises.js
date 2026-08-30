@@ -1,5 +1,9 @@
 import { EXDB } from './exercises-data.js'
-import { t } from './i18n.js'
+import { getLang, t } from './i18n.js'
+import {
+  EXERCISE_NAMES_ES, EXERCISE_ALIASES_ES, EXERCISE_NAME_ANGLICISMS_ES,
+  EXERCISE_NAME_COLLISIONS_ES,
+} from './exercise-names.es.js'
 
 export { EXDB }
 export const EXIDX = {}
@@ -25,6 +29,69 @@ export function registerCustom(list) {
 }
 // Full searchable catalogue — customs first so your own exercises are easy to find.
 export const allExercises = st => [...(st.customEx || []), ...EXDB]
+
+const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+const isSpanish = lang => String(lang || '').toLowerCase().startsWith('es')
+
+/** User-facing exercise name. Custom names always remain exactly as the user wrote them. */
+export function exerciseName(ex, lang = getLang()) {
+  if (!ex) return t('Unknown exercise')
+  if (ex.custom || !isSpanish(lang)) return ex.n
+  return EXERCISE_NAMES_ES[ex.id] || ex.n
+}
+
+/** Canonical, localized and curated alternative names used by search and import. */
+export function exerciseMatchNames(ex) {
+  if (!ex) return []
+  if (ex.custom) return [ex.n]
+  return [...new Set([ex.n, EXERCISE_NAMES_ES[ex.id], ...(EXERCISE_ALIASES_ES[ex.id] || [])].filter(Boolean))]
+}
+
+export function exerciseMatches(ex, query) {
+  const q = fold(query)
+  if (!q) return true
+  return fold([
+    ...exerciseMatchNames(ex), ex.tg, ex.eq, ex.desc,
+  ].filter(Boolean).join(' ')).includes(q)
+}
+
+/** Auditable catalog coverage; duplicate localized labels are surfaced, never hidden. */
+export function exerciseNameAudit(catalog = EXDB) {
+  const catalogIds = new Set(catalog.map(ex => ex.id))
+  const translatedIds = Object.keys(EXERCISE_NAMES_ES)
+  const translatedSet = new Set(translatedIds)
+  const missingIds = catalog.map(ex => ex.id).filter(id => !translatedSet.has(id))
+  const unknownIds = translatedIds.filter(id => !catalogIds.has(id))
+  const emptyIds = translatedIds.filter(id => !String(EXERCISE_NAMES_ES[id] || '').trim())
+  const byName = new Map()
+  translatedIds.forEach(id => {
+    const key = fold(EXERCISE_NAMES_ES[id])
+    if (!byName.has(key)) byName.set(key, [])
+    byName.get(key).push(id)
+  })
+  const groupKey = ids => [...ids].sort().join('|')
+  const allowed = new Set(EXERCISE_NAME_COLLISIONS_ES.map(entry => groupKey(entry.ids)))
+  const allCollisions = [...byName.entries()].filter(([, ids]) => ids.length > 1)
+    .map(([name, ids]) => ({ name, ids: [...ids].sort() }))
+  const collisions = allCollisions.filter(entry => !allowed.has(groupKey(entry.ids)))
+  const identicalToEnglish = catalog.filter(ex => fold(ex.n) === fold(EXERCISE_NAMES_ES[ex.id])).map(ex => ex.id)
+  const approvedEnglish = new Set(Object.keys(EXERCISE_NAME_ANGLICISMS_ES))
+  return {
+    total: catalog.length,
+    translated: translatedIds.length,
+    fallback: missingIds.length,
+    coverage: catalog.length ? translatedIds.length / catalog.length : 0,
+    missingIds,
+    unknownIds,
+    emptyIds,
+    collisions,
+    allowedCollisions: allCollisions.filter(entry => allowed.has(groupKey(entry.ids))),
+    identicalToEnglish,
+    anglicismsAllowed: approvedEnglish.size,
+    unapprovedEnglish: identicalToEnglish.filter(id => !approvedEnglish.has(id)),
+  }
+}
 
 // Media normally sits next to the app (img/ and gif/, mounted into the web container).
 // A build can point them somewhere else — the demo build pulls them off a CDN instead of

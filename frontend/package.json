@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "audit:exercise-names": "node scripts/audit-exercise-names.mjs",
+    "review:exercise-names": "node scripts/review-exercise-names.mjs",
     "build:mobile": "VITE_MOBILE=1 vite build && cap sync",
     "preview": "vite preview",
     "test": "vitest run",
