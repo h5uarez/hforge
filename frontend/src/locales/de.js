@@ -218,6 +218,7 @@ export default {
   // --- library / history ---
   '{0} exercises with animations': '{0} Übungen mit Animationen',
   'Search…': 'Suchen…',
+  'Filters': 'Filter',
   'No workouts yet.': 'Noch keine Trainings.',
   'Starter plan loaded — Mon Push · Wed Pull · Fri Legs': 'Starterplan geladen — Mo Push · Mi Pull · Fr Beine',
   // --- login / account ---

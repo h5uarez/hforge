@@ -206,6 +206,7 @@ export default {
   'Delete routine': '루틴 삭제',
   '{0} exercises with animations': '애니메이션이 있는 운동 {0}개',
   'Search…': '검색…',
+  'Filters': '필터',
   'No workouts yet.': '아직 운동 기록이 없어요.',
   'Starter plan loaded — Mon Push · Wed Pull · Fri Legs': '스타터 계획 불러옴 — 월 푸시 · 수 풀 · 금 레그',
   'Enter a name': '이름을 입력하세요',

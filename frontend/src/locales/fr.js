@@ -206,6 +206,7 @@ export default {
   'Delete routine': 'Supprimer la routine',
   '{0} exercises with animations': '{0} exercices avec animations',
   'Search…': 'Rechercher…',
+  'Filters': 'Filtres',
   'No workouts yet.': 'Aucune séance pour l’instant.',
   'Starter plan loaded — Mon Push · Wed Pull · Fri Legs': 'Plan de départ chargé — Lun Push · Mer Pull · Ven Jambes',
   'Enter a name': 'Entre un nom',
