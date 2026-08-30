@@ -184,6 +184,7 @@ export default {
   'Activity — last 12 months': '활동 — 최근 12개월',
   'by time trained': '운동 시간 기준',
   'Exercise progress': '운동별 진행 상황',
+  'Exercise': '운동',
   'Top speed per workout': '운동별 최고 속도',
   'Best set weight per workout': '운동별 최고 세트 무게',
   'Finish your first workout to see progress curves here.': '첫 운동을 마치면 여기에 진행 그래프가 표시됩니다.',

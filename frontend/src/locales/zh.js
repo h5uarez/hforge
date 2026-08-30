@@ -184,6 +184,7 @@ export default {
   'Activity — last 12 months': '活动——近 12 个月',
   'by time trained': '按训练时间',
   'Exercise progress': '动作进度',
+  'Exercise': '动作',
   'Top speed per workout': '每次训练最高速度',
   'Best set weight per workout': '每次训练最佳组重量',
   'Finish your first workout to see progress curves here.': '完成第一次训练后，这里会显示进度曲线。',

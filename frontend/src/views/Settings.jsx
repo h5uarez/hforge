@@ -50,7 +50,12 @@ export default function Settings() {
   }
   const signInHere = async () => {
     try { const u = await passkeyLogin(); setUser(u); await pullState(); toast(t('Welcome back, {0}', u.name)) }
-    catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Sign-in failed')) }
+    catch (e) {
+      if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
+        console.error('Passkey sign-in failed:', e)
+        toast(t('Sign-in failed'))
+      }
+    }
   }
   const registerHere = () => useUI.getState().openSheet(close => <RegisterInline close={close} setUser={setUser} pushState={pushState} pullState={pullState} toast={toast} />)
   // Ends the profile's sessions on every device — this one included, so on success it lands in
@@ -361,7 +366,12 @@ function RegisterInline({ close, setUser, pushState, pullState, toast }) {
       const u = await passkeyRegister(n, code.trim()); setUser(u); close()
       if (hasData(useStore.getState().S)) { await pushState(); toast(t('Profile created — data moved into it')) }
       else { await pullState(); toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Registration failed')) }
+    } catch (e) {
+      if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
+        console.error('Passkey registration failed:', e)
+        toast(t('Registration failed'))
+      }
+    }
   }
   return <>
     <h3>{t('Create your profile')}</h3>

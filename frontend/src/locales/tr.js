@@ -184,6 +184,7 @@ export default {
   'Activity — last 12 months': 'Aktivite — son 12 ay',
   'by time trained': 'antrenman süresine göre',
   'Exercise progress': 'Egzersiz ilerlemesi',
+  'Exercise': 'Egzersiz',
   'Top speed per workout': 'Antrenman başına en yüksek hız',
   'Best set weight per workout': 'Antrenman başına en iyi set ağırlığı',
   'Finish your first workout to see progress curves here.': 'İlerleme eğrilerini görmek için ilk antrenmanını bitir.',
