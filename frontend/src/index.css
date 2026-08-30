@@ -203,6 +203,7 @@ h4.sec{
   background:var(--surface);border-radius:var(--r-card);
   padding:16px;margin-bottom:12px;
 }
+.interactive-card{display:block;width:100%;text-align:left}
 .card .big{font-size:30px;font-weight:600;letter-spacing:-.026em;line-height:1.1}
 
 /* ------------------------------------------------------ inset group list -- */
@@ -320,9 +321,10 @@ h4.sec{
 /* ------------------------------------------------------------ week strip -- */
 .week{display:flex;justify-content:space-between;gap:4px}
 .wday{
-  flex:1;text-align:center;padding:8px 2px 9px;border-radius:10px;
+  flex:1;text-align:center;padding:8px 2px 9px;border-radius:10px;min-height:58px;
   background:none;border:none;transition:background var(--fast);
 }
+.wday .lbl,.wday .num,.wday .dot{display:block}
 .wday .lbl{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.03em}
 .wday .num{font-size:17px;font-weight:400;margin:4px 0;letter-spacing:-.012em}
 .wday .dot{width:5px;height:5px;border-radius:50%;background:transparent;margin:0 auto}
@@ -687,6 +689,7 @@ h4.sec{
 .modal-close:active{background:var(--surface-2);color:var(--label)}
 .sheet>.modal-close{top:12px;right:14px}
 .center .modal-close{top:8px;right:8px}
+.calendar-nav{padding-inline:44px}
 @keyframes pop{from{transform:translate(-50%,-50%) scale(.94);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
 /* --- RIR/RPE conversion table (effort help sheet) ---
@@ -841,10 +844,10 @@ h4.sec{
   bottom:calc(96px + var(--sab));z-index:200;
   background:color-mix(in srgb,var(--surface-2) 88%,transparent);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-radius:99px;padding:11px 20px;font-size:15px;font-weight:500;
+  border-radius:var(--r-lg);padding:11px 20px;font-size:15px;font-weight:500;
   box-shadow:0 10px 30px -6px rgba(0,0,0,.5);
   opacity:0;pointer-events:none;transition:opacity var(--med),transform var(--med) var(--ease);
-  max-width:88vw;text-align:center;
+  width:max-content;max-width:calc(100vw - 2 * var(--pad));text-align:center;overflow-wrap:anywhere;
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 

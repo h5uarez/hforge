@@ -184,6 +184,7 @@ export default {
   'Activity — last 12 months': 'Aktywność — ostatnie 12 miesięcy',
   'by time trained': 'wg czasu treningu',
   'Exercise progress': 'Postępy w ćwiczeniach',
+  'Exercise': 'Ćwiczenie',
   'Top speed per workout': 'Najwyższa prędkość na trening',
   'Best set weight per workout': 'Najlepszy ciężar na trening',
   'Finish your first workout to see progress curves here.': 'Ukończ pierwszy trening, aby zobaczyć tu krzywe postępów.',

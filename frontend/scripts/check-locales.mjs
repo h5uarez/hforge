@@ -12,7 +12,7 @@ const frontendDir = dirname(scriptDir)
 const localesDir = join(frontendDir, 'src', 'locales')
 const sourceFiles = [
   'src/views/Login.jsx', 'src/views/Settings.jsx', 'src/views/Home.jsx',
-  'src/views/RoutineEdit.jsx', 'src/views/Workout.jsx', 'src/views/Admin.jsx',
+  'src/views/RoutineEdit.jsx', 'src/views/Workout.jsx', 'src/views/Stats.jsx', 'src/views/Admin.jsx',
   'src/components/ui.jsx', 'src/sheets.jsx'
 ]
 

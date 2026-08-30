@@ -184,6 +184,7 @@ export default {
   'Activity — last 12 months': 'गतिविधि — पिछले 12 महीने',
   'by time trained': 'ट्रेनिंग समय के अनुसार',
   'Exercise progress': 'व्यायाम की प्रगति',
+  'Exercise': 'व्यायाम',
   'Top speed per workout': 'हर वर्कआउट की अधिकतम गति',
   'Best set weight per workout': 'हर वर्कआउट का सर्वश्रेष्ठ सेट वज़न',
   'Finish your first workout to see progress curves here.': 'प्रगति ग्राफ़ देखने के लिए पहला वर्कआउट पूरा करें।',

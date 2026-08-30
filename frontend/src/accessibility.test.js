@@ -19,16 +19,44 @@ describe('mobile accessibility and layout contracts', () => {
 
   it('keeps narrow controls and fixed navigation clear of content', () => {
     const css = source('index.css')
+    const home = source('views/Home.jsx')
     expect(css).toContain('flex-wrap:wrap')
     expect(css).toContain('min-height:44px')
     expect(css).toContain('calc(180px + var(--sab))')
     expect(css).toContain('bottom:calc(96px + var(--sab))')
+    expect(css).toContain('.calendar-nav{padding-inline:44px}')
+    expect(home).toContain('style={{ width: 44, height: 44, fontSize: 15 }}')
   })
 
   it('guards unlocked dismissal while preserving locked dialogs', () => {
     const modal = source('components/Modals.jsx')
     expect(modal).toContain("e.key === 'Escape' && !sheet.locked")
-    expect(modal).toContain("!sheet.locked && <button className=\"iconbtn modal-close\"")
+    expect(modal).toContain("!sheet.locked && <button type=\"button\" className=\"iconbtn modal-close\"")
     expect(modal).toContain('returnFocus.current.focus()')
+  })
+
+  it('uses native buttons for the audited Home and scheduling actions', () => {
+    const home = source('views/Home.jsx')
+    const sheets = source('sheets.jsx')
+    expect(home).toContain('<button type="button" key={i} className={\'wday\'')
+    expect(home).toContain('<button type="button" className="today-row"')
+    expect(home).toContain('className="card tappable interactive-card"')
+    expect(sheets).toContain('<button type="button" key={r.id} className="item"')
+    expect(sheets).toContain("className=\"item\" onClick={() => set('rest')}")
+  })
+
+  it('announces the single mobile toast without changing its store behavior', () => {
+    const toast = source('components/Toast.jsx')
+    const css = source('index.css')
+    expect(toast).toContain('role="status" aria-live="polite"')
+    expect(css).toContain('max-width:calc(100vw - 2 * var(--pad))')
+    expect(css).toContain('overflow-wrap:anywhere')
+  })
+
+  it('keeps passkey diagnostics in the console and localizes user-facing failures', () => {
+    const settings = source('views/Settings.jsx')
+    expect(settings).toContain("console.error('Passkey sign-in failed:', e)")
+    expect(settings).toContain("toast(t('Sign-in failed'))")
+    expect(settings).not.toContain("toast(e.message || t('Sign-in failed'))")
   })
 })

@@ -56,12 +56,12 @@ function MuscleBalance({ S }) {
       <BodyMapLegend />
       {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>
         <span className="nm"><b>{t(MUSCLE_NAME[sel])}</b></span>
-        <span className="v">{sets(sel) ? t('{0} sets', sets(sel)) : on ? t('no hard sets') : t('not trained')}</span>
+        <span className="v">{sets(sel) ? t('{0} sets', fmtNum(sets(sel))) : on ? t('no hard sets') : t('not trained')}</span>
       </div>}
       {!sel && top.map(m => <div key={m} className="mrow">
         <span className="nm">{t(MUSCLE_NAME[m])}</span>
         <span className="bar"><i style={{ width: Math.round(load[m] / max * 100) + '%', background: on ? 'var(--yellow)' : undefined }} /></span>
-        <span className="v">{t('{0} sets', sets(m))}</span>
+        <span className="v">{t('{0} sets', fmtNum(sets(m)))}</span>
       </div>)}
       {missed.length > 0 && <>
         <h4 className="sec" style={{ marginTop: 12 }}>{on ? t('No hard sets in this period') : t('Not trained in this period')}</h4>

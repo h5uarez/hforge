@@ -74,7 +74,15 @@ describe('Spanish translation and instruction contracts', () => {
     const { setLang, t } = await import('./i18n.js')
     await setLang('es')
     expect(t('Start {0}', 'Push Day')).toBe('Empezar Push Day')
+    expect(t('Exercise')).toBe('Ejercicio')
     expect(t('a key absent from every locale')).toBe('a key absent from every locale')
+  })
+
+  it('formats decimal set counts with the active locale', async () => {
+    const { setLang, t } = await import('./i18n.js')
+    const { fmtNum } = await import('./format.js')
+    await setLang('es')
+    expect(t('{0} sets', fmtNum(49.8))).toBe('49,8 series')
   })
 
   it('keeps generated Spanish instructions and intentional English fallback behavior', async () => {
