@@ -18,12 +18,17 @@ docs/      self-hosting guide.
 
 ```bash
 cp .env.example .env
+# Set EXERCISE_MEDIA_SOURCE to a local directory with images/ and videos/.
 docker compose up -d --build      # api + web + media on :8080
 # frontend hot reload:
 cd frontend && npm install && npm run dev
 # training logic (progression rules, 1RM, how a session is read back):
 cd frontend && npm test
 ```
+
+`EXERCISE_MEDIA_SOURCE` is required by Compose for the one-time media import. The safe operator
+settings and their defaults are documented in [`.env.example`](.env.example) and
+[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md); do not add generated credentials to `.env`.
 
 ## Guidelines
 
