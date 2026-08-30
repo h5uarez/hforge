@@ -18,7 +18,7 @@
 // body-weight records are interesting here. parseBodyweight() scans for those without
 // building a DOM.
 
-import { EXDB, EXIDX } from './exercises.js'
+import { EXDB, EXIDX, exerciseMatchNames } from './exercises.js'
 import { uid } from './format.js'
 
 /* ----------------------------------------------------------------- CSV ---- */
@@ -122,7 +122,7 @@ const FILLER = new Set(['the', 'a', 'with', 'and', 'v', 'variation', 'version', 
 function wordsOf(name) {
   // Parentheses are unwrapped rather than dropped: "Bench Press (Barbell)" carries its
   // equipment in there, and the exercise catalog writes that as "barbell bench press".
-  let k = String(name || '').toLowerCase()
+  let k = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[()[\]]/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
@@ -135,11 +135,22 @@ let INDEX = null
 function buildIndex() {
   if (INDEX) return INDEX
   INDEX = { exact: new Map(), all: [] }
+  // Canonical English keeps its historical first-match behavior. Localized additions
+  // may fill new keys, but never replace or invalidate a canonical import match.
   EXDB.forEach(e => {
-    const w = wordsOf(e.n)
-    const k = w.slice().sort().join(' ')
-    if (!INDEX.exact.has(k)) INDEX.exact.set(k, e.id)
-    INDEX.all.push({ id: e.id, set: new Set(w), n: w.length })
+    const canonical = wordsOf(e.n)
+    const canonicalKey = canonical.slice().sort().join(' ')
+    if (!INDEX.exact.has(canonicalKey)) INDEX.exact.set(canonicalKey, e.id)
+    INDEX.all.push({ id: e.id, set: new Set(canonical), n: canonical.length })
+  })
+  const localizedKeys = new Set()
+  EXDB.forEach(e => {
+    exerciseMatchNames(e).slice(1).forEach(name => {
+      const k = keyOf(name)
+      if (!k) return
+      if (!INDEX.exact.has(k)) { INDEX.exact.set(k, e.id); localizedKeys.add(k) }
+      else if (localizedKeys.has(k) && INDEX.exact.get(k) !== e.id) INDEX.exact.set(k, null)
+    })
   })
   return INDEX
 }
