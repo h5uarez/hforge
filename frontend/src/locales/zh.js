@@ -206,6 +206,7 @@ export default {
   'Delete routine': '删除训练日',
   '{0} exercises with animations': '{0} 个带动画的动作',
   'Search…': '搜索…',
+  'Filters': '筛选',
   'No workouts yet.': '还没有训练。',
   'Starter plan loaded — Mon Push · Wed Pull · Fri Legs': '入门计划已加载——周一推 · 周三拉 · 周五腿',
   'Enter a name': '请输入名字',

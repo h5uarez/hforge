@@ -14,25 +14,38 @@ export default function Library() {
   const [q, setQ] = useState('')
   const [bp, setBp] = useState('')
   const [eq, setEq] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [shown, setShown] = useState(40)
   const base = allExercises(S).filter(e => (!bp || e.bp === bp) && exerciseMatches(e, q))
   const eqOpts = equipmentOf(base)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? base.filter(e => e.eq === eqOn) : base
+  const activeFilterCount = (bp ? 1 : 0) + (eqOn ? 1 : 0)
 
   return <>
     <div className="hdr"><div><h1>{t('Exercises')}</h1><div className="sub">{t('{0} exercises with animations', EXDB.length)}</div></div></div>
-    <div className="search" style={{ marginBottom: 10 }}><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
-    <div className="chips" style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
+    <div className="library-search">
+      <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
+      <Button type="button" size="sm" variant="tinted" className="filter-toggle"
+        trailingIcon={filtersOpen ? 'chevronUp' : 'chevronDown'}
+        aria-label={t('Filters') + (activeFilterCount ? ` (${activeFilterCount})` : '')}
+        aria-expanded={filtersOpen} aria-controls="library-filters"
+        onClick={() => setFiltersOpen(open => !open)}>
+        {t('Filters')}{activeFilterCount > 0 && <span className="filter-count" aria-hidden="true">{activeFilterCount}</span>}
+      </Button>
     </div>
-    {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 12 }}>
-      <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
-      {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
-    </div>}
+    <div id="library-filters" role="group" aria-label={t('Filters')} hidden={!filtersOpen}>
+      <div className="chips" style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
+        <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
+        {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
+      </div>
+      {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 12 }}>
+        <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
+        {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
+      </div>}
+    </div>
     <div className="list">
       <div className="item" onClick={() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim())}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>

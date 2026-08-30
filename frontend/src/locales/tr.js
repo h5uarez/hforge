@@ -206,6 +206,7 @@ export default {
   'Delete routine': 'Rutini sil',
   '{0} exercises with animations': 'animasyonlu {0} egzersiz',
   'Search…': 'Ara…',
+  'Filters': 'Filtreler',
   'No workouts yet.': 'Henüz antrenman yok.',
   'Starter plan loaded — Mon Push · Wed Pull · Fri Legs': 'Başlangıç planı yüklendi — Pzt Push · Çar Pull · Cum Bacak',
   'Enter a name': 'Bir isim gir',

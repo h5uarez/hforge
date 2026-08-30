@@ -363,6 +363,11 @@ h4.sec{
 .tag.acc{background:var(--acc-soft);color:var(--acc)}
 
 /* ---------------------------------------------------------------- chips -- */
+.library-search{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.library-search .search{flex:1;min-width:0}
+.filter-toggle{min-height:44px;padding:8px 10px;flex:none}
+.filter-toggle .icn{font-size:15px}
+.filter-count{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--acc);color:var(--on-acc);font-size:12px;line-height:18px;text-align:center}
 .chips{
   display:flex;flex-wrap:wrap;gap:7px;max-width:100%;overflow:visible;padding-bottom:2px;min-width:0;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
