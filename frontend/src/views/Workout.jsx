@@ -210,8 +210,8 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
           </div>
           {isOpen && target && <div className="setrow-info" role="region" aria-label={t('Programmed target')}>
             <span className="lbl">{t('Target')}</span>
-            <span className="val">{fmtNum(target.value)} {EFFORT[target.metric].hd}</span>
-            <span className="dim small">· {t('read-only')}</span>
+            <span className="target"><span className="num">{fmtNum(target.value)}</span><span className="metric">{t(EFFORT[target.metric].hd)}</span></span>
+            <span className="dim small note">{t('read-only')}</span>
           </div>}
         </Fragment>
       })}
