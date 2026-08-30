@@ -602,24 +602,29 @@ h4.sec{
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 .setrow.done{opacity:.45}
 /* programmed target disclosure: keep the prescription prominent while the label and note
-   remain compact. Wrapping keeps translated text inside narrow workout cards. */
+   remain compact. The fixed numeric track keeps 6 and 6,5 centred in the same place. */
 .setrow-info{
-  display:flex;align-items:baseline;gap:6px 8px;flex-wrap:wrap;min-width:0;
+  display:grid;grid-template-columns:max-content 4ch max-content minmax(0,1fr);
+  align-items:baseline;column-gap:8px;row-gap:4px;min-width:0;
   margin:0 0 4px 32px;padding:9px 10px;background:var(--surface-2);border-radius:var(--r-sm);
 }
 .setrow-info .lbl{
-  color:var(--label-2);font-size:11px;font-weight:500;letter-spacing:.045em;text-transform:uppercase;flex:none;
+  grid-column:1;color:var(--label-2);font-size:11px;font-weight:500;letter-spacing:.045em;text-transform:uppercase;
 }
-.setrow-info .target{display:inline-flex;align-items:baseline;gap:5px;min-width:0}
+.setrow-info .target{display:contents}
 .setrow-info .num{
-  color:var(--label);font-size:18px;font-weight:600;line-height:1.1;letter-spacing:-.02em;
+  grid-column:2;min-width:4ch;text-align:center;color:var(--label);font-size:18px;font-weight:600;line-height:1.1;letter-spacing:-.02em;
 }
 .setrow-info .metric{
-  color:var(--acc);font-size:12px;font-weight:600;letter-spacing:.035em;text-transform:uppercase;
+  grid-column:3;color:var(--acc);font-size:12px;font-weight:600;letter-spacing:.035em;text-transform:uppercase;
 }
 .setrow-info .note{
-  display:inline-flex;align-items:baseline;margin-left:auto;padding-left:8px;border-left:var(--hair) solid var(--sep);
-  color:var(--label-3);font-size:12px;line-height:1.3;white-space:nowrap;
+  grid-column:4;min-width:0;padding-left:8px;border-left:var(--hair) solid var(--sep);
+  color:var(--label-3);font-size:12px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;
+}
+@media (max-width:360px){
+  .setrow-info{grid-template-columns:max-content 4ch max-content}
+  .setrow-info .note{grid-column:1 / -1;justify-self:stretch;margin-top:1px}
 }
 /* why the next target is what it is (issue #17) */
 .progline{
