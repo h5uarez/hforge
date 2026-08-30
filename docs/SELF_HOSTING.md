@@ -11,14 +11,13 @@ Requirements: [Docker](https://docs.docker.com/get-docker/) with the Compose plu
 git clone https://github.com/h5uarez/hforge hforge
 cd hforge
 cp .env.example .env
-docker compose pull   # prebuilt images from ghcr.io (amd64 + arm64) — or skip and build from source
-docker compose up -d
+# Set EXERCISE_MEDIA_SOURCE to a local directory with images/ and videos/.
+docker compose up -d --build
 ```
 
 - First start downloads the exercise images/GIFs (~140 MB) once into `app/img` and `app/gif`.
 - Open **http://localhost:8080** and create a profile with a passkey.
-- Rather build from source than pull prebuilt images? Skip `docker compose pull` and run
-  `docker compose up -d --build` instead — no Node needed locally either way.
+- The default Compose file builds from source; no local Node setup is needed.
 
 Check it's healthy:
 
@@ -29,7 +28,28 @@ curl http://localhost:8080/api/health      # {"ok":true,...}
 
 Logs: `docker compose logs -f`. Stop: `docker compose down`.
 
-## 2. Understand the passkey requirement (important)
+## 2. Configure the instance
+
+`.env.example` is the complete safe operator contract. Set the required media source before the
+first start; the remaining values have source-backed defaults.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `EXERCISE_MEDIA_SOURCE` | Required local directory containing `images/` and `videos/` for the media import | *(set this)* |
+| `RP_ID` | Hostname bound to passkeys | `localhost` |
+| `ORIGIN` | Full browser-facing URL | `http://localhost:8080` |
+| `WEB_PORT` | Host port for the web UI | `8080` |
+| `RP_NAME` | Name shown in passkey prompts | `Hforge` |
+| `ADMIN_UIDS` | Optional comma-separated admin user IDs | *(none)* |
+| `INVITE_ONLY` | Optional invite-code requirement for new profiles | *(off)* |
+| `IMAGE_TAG` | Optional image tag when using `docker-compose.prod.yml` | `latest` |
+| `SESSION_DAYS` | Optional lifetime for newly minted sessions | `90` |
+
+The default Compose file builds from source. `IMAGE_TAG` applies only to the production Compose
+file; generated notification credentials are created and stored with the instance data rather
+than copied into `.env`.
+
+## 3. Understand the passkey requirement (important)
 
 Hforge signs you in with **passkeys** (WebAuthn). Browsers enforce two rules:
 
@@ -42,7 +62,7 @@ passkey prompt won't appear. To use Hforge from your phone you need a real HTTPS
 
 (You can still open it over LAN in **guest mode**, which stores data only in that browser.)
 
-## 3. Expose it over HTTPS on your own domain
+## 4. Expose it over HTTPS on your own domain
 
 Put Hforge behind something that terminates TLS for a hostname you control, then point it at
 the `web` container. Pick whichever you already run:
@@ -85,7 +105,7 @@ Visit `https://gym.example.com`, create your profile, and add it to your home sc
 > Changing `RP_ID` later invalidates existing passkeys (they were bound to the old hostname).
 > Pick your domain before people register.
 
-## 4. Multiple users
+## 5. Multiple users
 
 Anyone who can reach the URL can create their own profile — each gets isolated data. That's the
 default: open signup, no admin.
@@ -107,7 +127,7 @@ is gated by your passkey and enforced server-side, so it needs no separate login
 Prefer to keep the whole thing off the open internet? A VPN or an auth proxy (Authelia, Cloudflare
 Access…) in front still works, and composes with the above.
 
-## 5. Backups
+## 6. Backups
 
 Everything is in `./data`:
 
@@ -118,7 +138,7 @@ tar czf hforge-backup-$(date +%F).tar.gz data/
 That archive contains all profiles, passkeys and workout history. Restore by unpacking it back
 into the project folder. (Individual users can also export their own data as JSON from Settings.)
 
-## 6. Notifications
+## 7. Notifications
 
 Hforge can push two kinds of alert to your phone/desktop, even when the app isn't open:
 rest-timer-over, and a reminder on days you have a workout planned but haven't logged one yet.
@@ -135,21 +155,20 @@ Wake Lock API is only available over HTTPS or on `http://localhost`, so on a pla
 instance the switch shows as unsupported. Nothing to configure server-side either way, and iOS
 refuses the lock while the phone is in Low Power Mode.
 
-## 7. Updating
+## 8. Updating
 
-Running prebuilt images:
+Running the default source-built Compose file:
 
 ```bash
 git pull                    # picks up compose/config changes
-docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
 
-Building from source instead:
+Using the production image Compose file:
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 The app shell is versioned (`?v=N`) so clients pick up changes on next load. Your `./data` and the
@@ -166,4 +185,4 @@ downloaded media are untouched.
 | No "Notifications" option in Settings | Requires a signed-in profile and HTTPS (or `localhost`) — guest mode and plain HTTP over LAN can't subscribe. |
 | Day reminder fires at the wrong time | Toggle it off and on in Settings so it re-detects your browser's timezone (also happens automatically on every app load — see section 6). |
 | Want to reset a stuck login | Delete the cookie in your browser; sessions are just signed cookies. |
-| `docker compose pull` fails with "denied" / "unauthorized" | The prebuilt images aren't published yet, or need to be, or the GHCR package is still private — build from source instead (`docker compose up -d --build`). |
+| Production image pull fails with "denied" / "unauthorized" | Use the default source-built Compose file instead (`docker compose up -d --build`). |

@@ -36,16 +36,6 @@ No account on someone else's server, no subscription, no ads. Just `docker compo
 </table>
 </div>
 
-<div align="center">
-
-### [🌐 opengym.duarte-santos.ch](https://opengym.duarte-santos.ch) · [▶ Try the live demo](https://duartesantos8.github.io/openGym/)
-
-No signup, nothing to install — it runs entirely in your browser on example data.<br>
-<sub>There's no server behind the demo, so passkey sign-in, sync across devices and the
-admin dashboard only exist in a self-hosted instance.</sub>
-
-</div>
-
 ## Why
 
 Most workout apps lock your data behind a login on their servers, nag you to upgrade, or
@@ -90,14 +80,13 @@ You need [Docker](https://docs.docker.com/get-docker/) with Compose.
 git clone https://github.com/h5uarez/hforge
 cd hforge
 cp .env.example .env
-docker compose pull   # grab prebuilt images (amd64 + arm64) — skip to build from source instead
-docker compose up -d
+# Set EXERCISE_MEDIA_SOURCE to a local directory with images/ and videos/.
+docker compose up -d --build
 ```
 
 Open **http://localhost:8080**, tap **Create profile**, and you're in. First launch downloads
-the exercise media (~140 MB) once. Prefer building the images yourself instead of pulling from
-`ghcr.io`? Drop the `pull` step and run `docker compose up -d --build` — you don't need Node or
-a build step locally either way.
+the exercise media (~140 MB) once. The default Compose file builds the images from source; you
+don't need Node or a separate build step locally.
 
 > Want it reachable from your phone over the internet with passkeys? You'll need an HTTPS
 > domain — a two-line change in `.env`. See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
@@ -157,14 +146,17 @@ server — they stay in your phone's secure hardware / your password manager.
 
 All via `.env` (see `.env.example`):
 
-| Variable      | What it is                                           | Default                 |
-|---------------|------------------------------------------------------|-------------------------|
-| `RP_ID`       | Hostname passkeys are bound to                       | `localhost`             |
-| `ORIGIN`      | Full URL the app is served from                      | `http://localhost:8080` |
-| `WEB_PORT`    | Host port for the web UI                             | `8080`                  |
-| `RP_NAME`     | Name shown in the passkey prompt                     | `Hforge`                |
-| `ADMIN_UIDS`  | User ids that get the admin dashboard (comma-separated) | *(none)*             |
-| `INVITE_ONLY` | Require an invite code to create a profile           | *(off)*                 |
+| Variable | What it is | Default |
+|---|---|---|
+| `EXERCISE_MEDIA_SOURCE` | Required local directory containing `images/` and `videos/` for the one-time media import | *(set this)* |
+| `RP_ID` | Hostname passkeys are bound to | `localhost` |
+| `ORIGIN` | Full URL the app is served from | `http://localhost:8080` |
+| `WEB_PORT` | Host port for the web UI | `8080` |
+| `RP_NAME` | Name shown in the passkey prompt | `Hforge` |
+| `ADMIN_UIDS` | Optional comma-separated user IDs with the admin dashboard | *(none)* |
+| `INVITE_ONLY` | Optional: require an invite code to create a profile | *(off)* |
+| `IMAGE_TAG` | Optional image tag when using `docker-compose.prod.yml` | `latest` |
+| `SESSION_DAYS` | Optional lifetime for newly minted sessions | `90` |
 
 Push notification keys are generated on first run and saved to `./data/vapid.json` — nothing to set.
 
