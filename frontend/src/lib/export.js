@@ -2,6 +2,26 @@ import { MOBILE, shareExport } from './mobile.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
 
+const withoutLegacySnapshot = workout => {
+  if (!workout || typeof workout !== 'object' || Array.isArray(workout)) return workout
+  const clean = { ...workout }
+  delete clean.block
+  return clean
+}
+
+// Full backups may come from an older in-memory profile, so sanitize them at the export boundary
+// as well as at state persistence boundaries.
+const cleanBackupState = state => {
+  const clean = clone(state || {})
+  delete clean.blocks
+  delete clean.activeBlock
+  if (Array.isArray(clean.workouts)) clean.workouts = clean.workouts.map(withoutLegacySnapshot)
+  if (clean.active && typeof clean.active === 'object' && !Array.isArray(clean.active)) {
+    clean.active = withoutLegacySnapshot(clean.active)
+  }
+  return clean
+}
+
 // Build the minimal importable Hforge payload for the chosen workout dates.
 // Clone each exported collection so callers can never mutate the live store through the payload.
 export function createWorkoutBackup(state, selectedDates) {
@@ -9,11 +29,7 @@ export function createWorkoutBackup(state, selectedDates) {
   const dates = new Set(selectedDates || [])
   const workouts = clone(source.workouts || [])
     .filter(workout => dates.has(workout.d))
-    .map(workout => {
-      const exportedWorkout = { ...workout }
-      delete exportedWorkout.block
-      return exportedWorkout
-    })
+    .map(withoutLegacySnapshot)
   const routineIds = new Set(workouts.map(workout => workout.routineId).filter(id => id !== undefined && id !== null))
   const routines = clone(source.routines || []).filter(routine => routineIds.has(routine.id))
   const customIds = new Set([
@@ -25,7 +41,7 @@ export function createWorkoutBackup(state, selectedDates) {
   return { unit: source.unit, routines, workouts, customEx }
 }
 
-export const serializeBackup = state => JSON.stringify(state, null, 2)
+export const serializeBackup = state => JSON.stringify(cleanBackupState(state), null, 2)
 export const backupFilename = date => 'hforge-backup-' + date + '.json'
 
 // WKWebView cannot download blob URLs, so native builds use the existing OS share sheet.

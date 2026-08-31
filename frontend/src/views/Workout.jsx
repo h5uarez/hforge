@@ -57,7 +57,7 @@ function Elapsed({ start }) {
   return <span>{t}</span>
 }
 
-/* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
+/* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
 function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
@@ -396,18 +396,6 @@ function ActiveWorkout() {
       <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
     </div>
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
-
-    {/* TEMPORARILY DISABLED: retained block snapshot context is not rendered while training
-        blocks are paused. Do not confuse this with ExerciseBlock above, which is the active
-        exercise-row component and remains enabled.
-    {A.block && (
-      <div className="small row" style={{ gap: 6, color: 'var(--acc)', marginTop: 10, marginBottom: 2, alignItems: 'baseline' }}>
-        <Icon name="clipboard" style={{ fontSize: 13 }} />
-        <span style={{ fontWeight: 500 }}>{A.block.name}</span>
-        <span className="dim" style={{ fontWeight: 400 }}>· {t('Week {0}', A.block.week)}</span>
-      </div>
-    )}
-    */}
 
     {A.entries.length ? <>
       <div className="muted small" style={{ marginBottom: 6 }}>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</div>

@@ -1,6 +1,3 @@
-// Generic store compatibility tests stay active while training blocks are temporarily disabled.
-// The block lifecycle integration coverage below is retained in comments for later reactivation.
-
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // Node 24 exposes a read-only navigator getter; defineProperty makes the assignment safe across
@@ -37,15 +34,6 @@ function fakeBrowser() {
 // Dynamic import inside beforeEach (paired with vi.resetModules via top-level await) guarantees
 // the module sees the stub globals.
 const KEY = 'gym_state_v1'
-/* TEMPORARILY DISABLED: block-only fixtures retained for later lifecycle test reactivation.
-const FULL_WEEK = { days: { 0: 'r-push', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
-const BLOCK_ROUTINES = [
-  { id: 'r-push', name: 'Push' },
-  { id: 'r-pull', name: 'Pull' },
-  { id: 'r-legs', name: 'Legs' },
-]
-const GOOD_BLOCK = { id: 'b1', name: 'Hypertrophy Block', weeks: [FULL_WEEK, FULL_WEEK, FULL_WEEK] }
-*/
 
 let storage, useStore
 
@@ -65,81 +53,44 @@ afterEach(() => {
   delete globalThis.navigator
 })
 
-/* TEMPORARILY DISABLED: block lifecycle persistence tests retained for later reactivation.
-describe('useStore.update × activateBlock — persistence integration', () => {
-  it('persists activeBlock in S and in gym_state_v1 after activate', () => {
-    const { update } = useStore.getState()
+describe('legacy state normalization', () => {
+  it('migrates legacy fields from local storage during load', async () => {
+    storage.set(KEY, JSON.stringify({
+      routines: [],
+      workouts: [{ d: '2026-08-31', entries: [], block: { id: 'legacy' } }],
+      blocks: [{ id: 'legacy' }],
+      activeBlock: { blockId: 'legacy' },
+    }))
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
 
-    update(s => { Object.assign(s, activateBlock(s, 'b1', '2026-08-26')) })
+    expect(restored.getState().S).not.toHaveProperty('blocks')
+    expect(restored.getState().S).not.toHaveProperty('activeBlock')
+    expect(restored.getState().S.workouts[0]).not.toHaveProperty('block')
+    expect(JSON.parse(storage.get(KEY))).not.toHaveProperty('blocks')
+  })
 
-    const S = useStore.getState().S
-    expect(S.activeBlock).toEqual({
-      blockId: 'b1', startedOn: '2026-08-26', status: 'active', pausedRanges: [],
+  it('removes legacy schedule fields and workout snapshots on replacement', () => {
+    useStore.getState().replaceState({
+      routines: [],
+      workouts: [{ d: '2026-08-31', entries: [], block: { id: 'legacy' } }],
+      blocks: [{ id: 'legacy' }],
+      activeBlock: { blockId: 'legacy' },
+      active: { id: 'current', block: { id: 'legacy' } },
     })
+
+    const { S } = useStore.getState()
+    expect(S).not.toHaveProperty('blocks')
+    expect(S).not.toHaveProperty('activeBlock')
+    expect(S.workouts[0]).not.toHaveProperty('block')
+    expect(S.active).toEqual({ id: 'current' })
+
     const persisted = JSON.parse(storage.get(KEY))
-    expect(persisted.activeBlock).toEqual({
-      blockId: 'b1', startedOn: '2026-08-26', status: 'active', pausedRanges: [],
-    })
-  })
-
-  it('lets the helper throw (unknown blockId) without leaving partial state', () => {
-    const { update } = useStore.getState()
-
-    expect(() => update(s => { Object.assign(s, activateBlock(s, 'no-such', '2026-08-26')) })).toThrow()
-    expect(useStore.getState().S.activeBlock).toBeNull()
-    expect(JSON.parse(storage.get(KEY)).activeBlock).toBeNull()
+    expect(persisted).not.toHaveProperty('blocks')
+    expect(persisted).not.toHaveProperty('activeBlock')
+    expect(persisted.workouts[0]).not.toHaveProperty('block')
   })
 })
-
-describe('useStore.update × pauseBlock — persistence integration', () => {
-  it('flips status to paused and stamps pausedOn in S and in gym_state_v1', () => {
-    const { update } = useStore.getState()
-    update(s => { Object.assign(s, activateBlock(s, 'b1', '2026-08-25')) })
-
-    update(s => { Object.assign(s, pauseBlock(s, '2026-08-26')) })
-
-    const S = useStore.getState().S
-    expect(S.activeBlock.status).toBe('paused')
-    expect(S.activeBlock.pausedOn).toBe('2026-08-26')
-    expect(S.activeBlock.blockId).toBe('b1')
-    const persisted = JSON.parse(storage.get(KEY))
-    expect(persisted.activeBlock.status).toBe('paused')
-    expect(persisted.activeBlock.pausedOn).toBe('2026-08-26')
-  })
-})
-
-describe('useStore.update × resumeBlock — persistence integration', () => {
-  it('closes the open pause range, appends to pausedRanges, flips status back to active', () => {
-    const { update } = useStore.getState()
-    update(s => { Object.assign(s, activateBlock(s, 'b1', '2026-08-25')) })
-    update(s => { Object.assign(s, pauseBlock(s, '2026-08-26')) })
-
-    update(s => { Object.assign(s, resumeBlock(s, '2026-08-28')) })
-
-    const S = useStore.getState().S
-    expect(S.activeBlock.status).toBe('active')
-    expect(S.activeBlock.pausedRanges).toEqual([{ from: '2026-08-26', through: '2026-08-27' }])
-    expect(S.activeBlock.pausedOn).toBeUndefined()
-    const persisted = JSON.parse(storage.get(KEY))
-    expect(persisted.activeBlock.status).toBe('active')
-    expect(persisted.activeBlock.pausedRanges).toEqual([{ from: '2026-08-26', through: '2026-08-27' }])
-  })
-})
-
-describe('useStore.update × endBlock — persistence integration', () => {
-  it('clears activeBlock back to null in both S and gym_state_v1', () => {
-    const { update } = useStore.getState()
-    update(s => { Object.assign(s, activateBlock(s, 'b1', '2026-08-25')) })
-
-    update(s => { Object.assign(s, endBlock(s)) })
-
-    const S = useStore.getState().S
-    expect(S.activeBlock).toBeNull()
-    const persisted = JSON.parse(storage.get(KEY))
-    expect(persisted.activeBlock).toBeNull()
-  })
-})
-*/
 
 describe('restTimerEnabled compatibility', () => {
   it('defaults old profiles to enabled and persists a disabled choice', () => {

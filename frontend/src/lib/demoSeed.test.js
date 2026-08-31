@@ -77,7 +77,7 @@ describe('demo seed — effort', () => {
     const rest = wks.filter(w => w !== easiest)
     const restAvg = rest.reduce((a, w) => a + w.rir, 0) / rest.length
     expect(easiest.rir - restAvg).toBeGreaterThan(1)      // a step, not noise
-    // and the blocks around it grind toward failure rather than sitting flat
+    // and the surrounding training cycles grind toward failure rather than sitting flat
     const hardest = wks.reduce((a, b) => (b.rir < a.rir ? b : a))
     expect(easiest.rir - hardest.rir).toBeGreaterThan(1.5)
     expect(hardest.t).toBeGreaterThan(easiest.t)          // the deepest week comes after it

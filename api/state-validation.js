@@ -53,7 +53,7 @@ const nonnegative = value => typeof value === 'number' && Number.isFinite(value)
 function validateSemantic(state) {
   const check = (condition, code, path) => condition ? null : fail(code, path);
   const collection = (key, arrays) => !Object.hasOwn(state, key) || (arrays ? Array.isArray(state[key]) : plainObject(state[key]));
-  for (const key of ['bodyweight', 'routines', 'workouts', 'customEx', 'blocks']) {
+  for (const key of ['bodyweight', 'routines', 'workouts', 'customEx']) {
     const result = check(collection(key, true), 'invalid_collection', `$.${key}`); if (result) return result;
   }
   for (const key of ['week', 'dayPlan', 'exWeights']) {
@@ -100,23 +100,25 @@ function validateSemantic(state) {
   for (const [key, map] of [['week', state.week], ['dayPlan', state.dayPlan]]) {
     if (map && Object.values(map).some(value => value !== 'rest' && !validId(value))) return fail('invalid_day_map', `$.${key}`);
   }
-  for (let index = 0; index < (state.blocks || []).length; index++) {
-    const block = state.blocks[index], base = `$.blocks[${index}]`;
-    if (!plainObject(block) || !validId(block.id) || !Array.isArray(block.weeks)) return fail('invalid_block', base);
-    for (let week = 0; week < block.weeks.length; week++) if (!plainObject(block.weeks[week]) || !plainObject(block.weeks[week].days)) return fail('invalid_block', `${base}.weeks[${week}]`);
-  }
-  if (state.activeBlock !== undefined && state.activeBlock !== null) {
-    const block = state.activeBlock;
-    if (!plainObject(block) || !validId(block.blockId)) return fail('invalid_active_block', '$.activeBlock');
-    if (!isoDate(block.startedOn)) return fail('invalid_date', '$.activeBlock.startedOn');
-    if (!['active', 'paused'].includes(block.status)) return fail('invalid_block_status', '$.activeBlock.status');
-  }
   return null;
+}
+
+const withoutWorkoutSnapshot = workout => {
+  if (!plainObject(workout)) return workout;
+  const clean = { ...workout };
+  delete clean.block;
+  return clean;
+};
+
+function cleanPersistedState(value) {
+  const state = Object.fromEntries(Object.entries(value).filter(([key]) => !['active', 'blocks', 'activeBlock'].includes(key)));
+  if (Array.isArray(state.workouts)) state.workouts = state.workouts.map(withoutWorkoutSnapshot);
+  return state;
 }
 
 export function preparePersistedState(value) {
   const structuralFailure = validateStructure(value);
   if (structuralFailure) return structuralFailure;
-  const state = Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'active'));
+  const state = cleanPersistedState(value);
   return validateSemantic(state) || { ok: true, state };
 }

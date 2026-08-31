@@ -17,13 +17,6 @@ export const DEF = {
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
   // keeps the column it had. See effortOf.
   reminder: { on: false, time: '08:00', tz: null }, effort: null,
-  // Block management (Phase 1, additive): optional training blocks layered on top of the
-  // legacy week / dayPlan resolution. `blocks` holds named definitions, each with ordered
-  // weeks of seven routine-or-rest day mappings; `activeBlock` carries the lifecycle pointer
-  // (or null when none is active). Existing load paths — local storage, server pull, full
-  // JSON backup restore, mobile file mirror, demo reset — overlay these defaults the same
-  // way every other field is overlaid, so a pre-block profile sees an inert no-op state.
-  blocks: [], activeBlock: null
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
@@ -33,6 +26,21 @@ const normalizeState = state => {
   const next = Object.assign(clone(DEF), state || {})
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
+  delete next.blocks
+  delete next.activeBlock
+  if (Array.isArray(next.workouts)) {
+    next.workouts = next.workouts.map(workout => {
+      if (!workout || typeof workout !== 'object' || Array.isArray(workout)) return workout
+      const clean = { ...workout }
+      delete clean.block
+      return clean
+    })
+  }
+  if (next.active && typeof next.active === 'object' && !Array.isArray(next.active)) {
+    const clean = { ...next.active }
+    delete clean.block
+    next.active = clean
+  }
   return next
 }
 
@@ -42,6 +50,7 @@ function loadState() {
     if (raw) {
       const state = normalizeState(JSON.parse(raw))
       state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
+      localStorage.setItem(KEY, JSON.stringify(state))
       return state
     }
   } catch (e) { /* ignore */ }
