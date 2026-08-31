@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { DAYN, uid, exCount, /* todayISO, */ isoOf } from '../lib/format.js'
+import { DAYN, uid, exCount, isoOf } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { /* blockManagerSheet, */ dayAssignSheet, loadStarterPlan, planToolsSheet } from '../sheets.jsx'
-import { /* blockStatus, */ effectiveRoutineId } from '../lib/history.js'
-// TEMPORARILY DISABLED: the commented block-only imports above remain for later reactivation.
+import { dayAssignSheet, loadStarterPlan, planToolsSheet } from '../sheets.jsx'
+import { effectiveRoutineId } from '../lib/history.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -19,16 +18,6 @@ export default function Plan() {
     update(s => { s.routines.push(r) })
     nav('/plan/r/' + r.id)
   }
-
-  /* TEMPORARILY DISABLED: block context calculations are retained for later reactivation.
-  // Block context for the small card below the header. Compact display only — the editor,
-  // lifecycle controls, and the full block list live in the manager sheet so the legacy week
-  // editor and dayPlan flows below stay primary for non-block users.
-  const ab = S.activeBlock
-  const blocks = S.blocks || []
-  const activeBlockDef = ab ? blocks.find(b => b.id === ab.blockId) : null
-  const currentWeek = ab ? blockStatus(S, todayISO()) : null
-  */
 
   // Current local-calendar week's Monday and the per-display-day ISO helper. Each weekday
   // row in the schedule below is rendered with `effectiveRoutineId(S, isoFor(d))`, which
@@ -47,32 +36,11 @@ export default function Plan() {
       <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
     </div>
 
-    {/* TEMPORARILY DISABLED: training-block management card retained for later reactivation.
-    <div className="card" style={{ marginBottom: 14, cursor: 'pointer' }} onClick={blockManagerSheet}>
-      <div className="row between" style={{ alignItems: 'center' }}>
-        <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
-          <span className="lrow-i"><Icon name="clipboard" /></span>
-          <div style={{ minWidth: 0 }}>
-            <div className="tt">{ab ? (activeBlockDef ? activeBlockDef.name : t('(deleted block)')) : t('Training blocks')}</div>
-            <div className="ss dim small">
-              {ab
-                ? (ab.status === 'paused' ? t('Paused') : t('Active')) + (currentWeek ? ' · ' + t('Week {0}', currentWeek) : '')
-                : t(blocks.length === 1 ? '{0} block · tap to manage' : '{0} blocks · tap to manage', blocks.length)}
-            </div>
-          </div>
-        </div>
-        <Icon name="chevronRight" className="chev" />
-      </div>
-    </div>
-    */}
-
     <div className="cols"><div>
       <h4 className="sec">{t('Week schedule')}</h4>
       <div className="list" style={{ display: 'flex', flexDirection: 'column' }}>
-        {[1, 2, 3, 4, 5, 6, 0].map(d => {
-          // Resolve through the canonical block-aware resolver so an active block's resolved
-          // current week is what the row shows, including explicit rest. With no active
-          // block, the resolver preserves the existing dayPlan-then-week precedence.
+          {[1, 2, 3, 4, 5, 6, 0].map(d => {
+           // Explicit date overrides win over the recurring weekly assignment.
           const routineId = effectiveRoutineId(S, isoFor(d))
           const r = routineId ? S.routines.find(x => x.id === routineId) : null
           return <div key={d} className="item" onClick={() => dayAssignSheet(d)}>

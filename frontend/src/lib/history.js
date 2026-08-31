@@ -30,7 +30,6 @@ export function copyNoteFields(source) {
   }
   return copy
 }
-
 // Build the history representation before applying the completed-set filter. This ordering is
 // important: an entry with a note or coach note and no completed sets is still useful history.
 export function copyHistoryEntry(entry) {
@@ -306,30 +305,6 @@ export function normalizeTargets(targets, setCount) {
   return out
 }
 
-// Look up the latest completed set for `exId` whose workout belonged to
-// the same `blockId`. Returns the same { d, sets, target } shape as
-// `lastEntryFor` so a future call site can swap one helper for the
-// other without restructuring. Cross-block sessions are ignored — a
-// load from a different block would silently cross schedule boundaries.
-// Phase 2 will wire this into `buildSets`; Phase 1 only proves the helper.
-/*
- * TEMPORARILY DISABLED: training-block weight history is retained for later reactivation.
- * The legacy workout-history path below remains active while block scheduling is paused.
-export function sameBlockWeight(S, exId, blockId) {
-  if (!S || !exId || !blockId) return null
-  const workouts = S.workouts || []
-  for (let i = workouts.length - 1; i >= 0; i--) {
-    const w = workouts[i]
-    if (!w || !w.block || w.block.id !== blockId) continue
-    const en = (w.entries || []).find(e => e && e.id === exId)
-    if (en && (en.sets || []).some(s => projectSideSet(s)?.done)) {
-      return { d: w.d, sets: en.sets.map(projectSideSet).filter(setIsDone), target: en.target || null }
-    }
-  }
-  return null
-}
-*/
-
 // Resolve the planned-effort target for the set at `idx` on `cfg`,
 // given the current Settings `metric`. Returns `{ metric, value }` or
 // `undefined`. Pure: no mutation of cfg. Extracted from `buildSets`
@@ -364,72 +339,14 @@ export function bestWeightFor(S, exId) {
   }))
   return best
 }
-// Monday of the local-calendar week containing `iso`, returned as an ISO date
-// (YYYY-MM-DD). Used by the block resolver to detect "this day is in the same
-// local-calendar week as the block's start" — activating a block on a Thursday
-// must show the block's day map for Mon-Sun of that week, not just Thu-Sun.
-/*
- * TEMPORARILY DISABLED: block calendar resolution is retained for later reactivation.
-const mondayOfISO = iso => {
-  const d = localNoon(iso)
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return isoOf(d)
-}
-
-// Block week index for a day that lives in the same local-calendar week as the
-// block's start. All seven days of the start's week resolve to week 1 — days
-// before the start use the start's resolved week (1) instead of falling through
-// to legacy `S.week`. This matches user expectation: activating a block changes
-// the weekly schedule for the entire current week, not only the days from
-// activation onward. For days outside the start's week, returns the canonical
-// `blockStatus` value (credited-days math).
-const currentWeekBlockIndex = (S, iso) => {
-  const ab = S && S.activeBlock
-  if (!ab || !iso) return blockStatus(S, iso)
-  const start = ab.startedOn
-  if (!start) return blockStatus(S, iso)
-  if (iso < start && mondayOfISO(iso) === mondayOfISO(start)) return 1
-  return blockStatus(S, iso)
-}
-*/
-
 export function effectiveRoutineId(S, iso) {
-  // Explicit date override always wins. A 'rest' marker is rest, even with an
-  // active block: the user explicitly turned today off and the block must not
-  // turn it back on.
+  // Explicit date override always wins. A 'rest' marker is an explicit rest day.
   const ov = S && S.dayPlan ? S.dayPlan[iso] : undefined
   if (ov === 'rest') return null
   if (ov && S.routines && S.routines.some(r => r.id === ov)) return ov
 
   const wd = new Date(iso + 'T12:00:00').getDay()
-
-  /*
-   * TEMPORARILY DISABLED: active training-block schedule resolution is retained here for
-   * later reactivation. Legacy dayPlan -> week resolution is active below.
-  // Active block: derive the current local-calendar week and resolve that
-  // weekday. A missing, empty, or stale (unknown routine id) day value
-  // resolves to rest — it must NEVER fall through to legacy `week`, or a
-  // partial block would silently mix schedules (spec #907 / design #908).
-  // Mirrored in api/server.js blockWeek + effectiveRoutineId — keep in lockstep.
-  const week = currentWeekBlockIndex(S, iso)
-  if (week != null) {
-    const ab = S.activeBlock
-    const block = (S.blocks || []).find(b => b.id === ab.blockId)
-    const w = block && block.weeks ? block.weeks[week - 1] : null
-    if (w) {
-      const v = w.days ? w.days[wd] : undefined
-      if (v === 'rest') return null
-      if (v && S.routines && S.routines.some(r => r.id === v)) return v
-      // missing / empty / unknown → rest, never legacy
-      return null
-    }
-    // blockStatus returned a week but the underlying block has no usable
-    // week data — treat as rest, not legacy
-    return null
-  }
-  */
-
-  // Legacy resolution: an explicit day override wins, then the weekly plan.
+  // Manual resolution: explicit date overrides win, then the recurring weekly plan.
   return (S.week && S.week[wd]) || null
 }
 export function effectiveRoutine(S, iso) {
@@ -437,19 +354,7 @@ export function effectiveRoutine(S, iso) {
   return id ? S.routines.find(r => r.id === id) || null : null
 }
 export function buildSets(S, cfg) {
-  /*
-   * TEMPORARILY DISABLED: block-specific history selection is retained for later reactivation.
-  // Block workout: source kilograms from the previous same-block session ONLY.
-  // Other-block history is never consulted — a load from a different block
-  // would cross schedule boundaries, and the spec is explicit: same-block OR
-  // blank, never the general history. Legacy / freestyle / no-block workouts
-  // keep using `lastEntryFor` unchanged.
-  const blockId = S && S.active && S.active.block && S.active.block.id
-  const last = blockId
-    ? sameBlockWeight(S, cfg.id, blockId)
-    : lastEntryFor(S, cfg.id)
-  */
-  // Legacy workout setup: use the most recent completed entry regardless of block metadata.
+  // Use the most recent completed entry for the exercise.
   const last = lastEntryFor(S, cfg.id)
   const n = Math.max(1, cfg.sets || 1)
   const mode = modeOf(cfg)
@@ -470,11 +375,6 @@ export function buildSets(S, cfg) {
       // exercise from reps to time must not seed the duration from a rep count.
       const prev = prevAt(i)
       const carried = prev && prev.sec > 0 ? prev : null
-      /* TEMPORARILY DISABLED: the block-specific blank-load branch is retained for later.
-      const w = blockId
-        ? (carried ? (carried.w || 0) : 0)
-        : (carried ? (carried.w || 0) : (cfg.weight || 0))
-      */
       const w = carried ? (carried.w || 0) : (cfg.weight || 0)
       sets.push({ sec: carried ? carried.sec : cfg.sec, w, done: false })
     }
@@ -485,11 +385,6 @@ export function buildSets(S, cfg) {
   for (let i = 0; i < n; i++) {
     const prev = prevAt(i)
     const usable = prev && prev.r > 0 ? prev : null
-    /* TEMPORARILY DISABLED: the block-specific blank-load branch is retained for later.
-    const w = blockId
-      ? (usable ? usable.w : 0)
-      : (conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight))
-    */
     const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
     const set = isPerSide(cfg)
       ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.left.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.right.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, w, r: cfg.reps, done: false }
@@ -550,275 +445,3 @@ export function streakWeeks(S) {
   }
   return streak
 }
-
-/* ============================================================
-   Block management — Phase 1 foundation
-   ------------------------------------------------------------
-   Blocks are optional owned schedules layered on top of the
-   legacy dayPlan / week resolution. The data shape lives in
-   `useStore.js` (DEF) and the canonical resolver comes in
-   Phase 2; this file owns validation, lifecycle and the
-   calendar math that turns "started 23 days ago, paused
-   between 5 and 9" into "you are on week 4".
-
-   Every helper here is pure: it takes the full state object
-   and a today string, and returns a new state. The store
-   wraps them in `update()` for persistence.
-   ============================================================ */
-
-/*
- * TEMPORARILY DISABLED: training-block lifecycle, validation, calendar resolution, and
- * workout snapshot helpers are retained verbatim for later reactivation. Generic state
- * persistence and backward-compatible fields remain active in the store and API.
-
-// Local-noon date math, shared by every block helper so the
-// active block's clock cannot drift across a DST boundary the
-// way a midnight-based walk would. noon is far enough from the
-// 02:00 transitions that `getDate() +/- 1` lands on the right
-// calendar day in every timezone, and the resulting ISO string
-// is comparable with plain `<` / `>` (no time-of-day drift).
-const localNoon = iso => new Date(iso + 'T12:00:00')
-
-// Subtract `n` days from an ISO date and return the new ISO.
-function isoMinusDays(iso, n) {
-  const d = localNoon(iso)
-  d.setDate(d.getDate() - n)
-  return isoOf(d)
-}
-
-// Structural validation for a single block. Returns
-//   { valid: boolean, errors: string[] }
-// so callers can show every problem at once instead of one
-// rerender per fix. The routine list is passed in (rather than
-// read off S) so the same validator works for both the client
-// state and any plan-share or import path that already has the
-// routine list to hand.
-export function validateBlock(block, routines) {
-  const errors = []
-  if (!block || typeof block !== 'object') {
-    return { valid: false, errors: ['block is missing'] }
-  }
-  const routineList = routines || []
-  const name = (block.name == null ? '' : String(block.name)).trim()
-  if (!name) {
-    errors.push('block name is blank')
-  }
-  // Block names only need to be nonblank; uniqueness against the
-  // routine list is not in scope here (the routine list could be
-  // filtered by the caller, and a cross-block name check would
-  // belong at the store layer).
-  if (!Array.isArray(block.weeks) || block.weeks.length === 0) {
-    errors.push('block has no weeks')
-  } else {
-    block.weeks.forEach((week, wi) => {
-      const days = week && week.days
-      if (!days || typeof days !== 'object') {
-        errors.push(`week ${wi + 1} has no day map`)
-        return
-      }
-      for (let d = 0; d <= 6; d++) {
-        const v = days[d]
-        // `rest` is the explicit rest marker; anything else
-        // has to be a routine id that actually exists. An
-        // empty / null day is an error, not an implicit rest,
-        // because we never want a saved plan to silently fall
-        // through to the legacy week schedule.
-        if (v == null || v === '') {
-          errors.push(`week ${wi + 1} day ${d} is empty`)
-        } else if (v !== 'rest' && !routineList.some(r => r.id === v)) {
-          errors.push(`week ${wi + 1} day ${d} references an unknown routine`)
-        }
-      }
-    })
-  }
-  return { valid: errors.length === 0, errors }
-}
-
-// Single-active invariant: every lifecycle helper rejects
-// duplicate or out-of-order actions by throwing. The store
-// wraps each helper in try/catch and toasts the message —
-// there is never a partial mutation, the activeBlock pointer
-// is whole-state swapped on success.
-
-// Activate the named block at week 1. Throws when something is
-// already active or the blockId doesn't exist.
-export function activateBlock(S, blockId, today) {
-  if (!S) throw new Error('activateBlock: missing state')
-  if (!blockId) throw new Error('activateBlock: missing blockId')
-  if (!today) throw new Error('activateBlock: missing today')
-  if (S.activeBlock) throw new Error('a block is already active')
-  const block = (S.blocks || []).find(b => b.id === blockId)
-  if (!block) throw new Error('block not found')
-  return {
-    ...S,
-    activeBlock: {
-      blockId,
-      startedOn: today,
-      status: 'active',
-      pausedRanges: [],
-    },
-  }
-}
-
-// Pause the active block on `today`. Throws when there is no
-// active block, or when it is already paused (duplicate
-// action). The `pausedOn` field is the start of an open pause
-// range that `blockStatus` extends through `iso` until the
-// next `resumeBlock` closes it.
-export function pauseBlock(S, today) {
-  if (!S) throw new Error('pauseBlock: missing state')
-  if (!today) throw new Error('pauseBlock: missing today')
-  if (!S.activeBlock) throw new Error('no block is active')
-  if (S.activeBlock.status !== 'active') throw new Error('block is not active')
-  return {
-    ...S,
-    activeBlock: {
-      ...S.activeBlock,
-      status: 'paused',
-      pausedOn: today,
-    },
-  }
-}
-
-// Resume a paused block. Closes the open pause by appending
-// `{ from: pausedOn, through: yesterday }` to pausedRanges and
-// flipping status back to 'active'. Throws when there is no
-// active block, or when it isn't paused.
-export function resumeBlock(S, today) {
-  if (!S) throw new Error('resumeBlock: missing state')
-  if (!today) throw new Error('resumeBlock: missing today')
-  const ab = S.activeBlock
-  if (!ab) throw new Error('no block is active')
-  if (ab.status !== 'paused' || !ab.pausedOn) throw new Error('block is not paused')
-  const through = isoMinusDays(today, 1)
-  const prev = ab.pausedRanges || []
-  // A same-day pause/resume leaves `from > through`; we still
-  // record it because the user asked for the cycle, and the
-  // range matcher is a no-op on an empty span.
-  return {
-    ...S,
-    activeBlock: {
-      ...ab,
-      status: 'active',
-      pausedRanges: [...prev, { from: ab.pausedOn, through }],
-      pausedOn: undefined,
-    },
-  }
-}
-
-// End the active block. Throws when there is no active block
-// (a redundant End is a duplicate action).
-export function endBlock(S) {
-  if (!S) throw new Error('endBlock: missing state')
-  if (!S.activeBlock) throw new Error('no block is active')
-  return { ...S, activeBlock: null }
-}
-
-// Return the current local-calendar week of the active block
-// for the given iso date, or null when no block is active
-// or the block has been deleted out from under the pointer.
-// Days are credited when they fall between startedOn and iso
-// inclusive, EXCEPT for days inside any paused range (closed
-// or open). The activation day itself always counts — even if
-// the user paused on the same day, the block still started
-// there. The result is clamped at `block.weeks.length`; the
-// block does NOT auto-end at the boundary.
-export function blockStatus(S, iso) {
-  const ab = S && S.activeBlock
-  if (!ab || !iso) return null
-  const block = (S.blocks || []).find(b => b.id === ab.blockId)
-  if (!block || !Array.isArray(block.weeks) || block.weeks.length === 0) return null
-  const start = ab.startedOn
-  if (!start || iso < start) return null
-
-  // Build the set of paused local-calendar dates. The start
-  // day is intentionally excluded from the set — even when
-  // pausedOn equals startedOn, the activation day still counts.
-  const paused = new Set()
-  const collect = (from, through) => {
-    if (!from) return
-    const stop = through || iso
-    let cur = localNoon(from)
-    const end = localNoon(stop)
-    while (cur <= end) {
-      const isoCur = isoOf(cur)
-      if (isoCur !== start) paused.add(isoCur)
-      cur.setDate(cur.getDate() + 1)
-    }
-  }
-  ;(ab.pausedRanges || []).forEach(r => collect(r.from, r.through))
-  if (ab.status === 'paused' && ab.pausedOn) collect(ab.pausedOn, iso)
-
-  // Walk forward from start to iso and count credited days.
-  let credited = 0
-  let cur = localNoon(start)
-  const target = localNoon(iso)
-  while (cur <= target) {
-    if (!paused.has(isoOf(cur))) credited++
-    cur.setDate(cur.getDate() + 1)
-  }
-  if (credited <= 0) return null
-  // day 1 → week 1; day 7 → week 1; day 8 → week 2; clamp at the final week.
-  const week = 1 + Math.floor((credited - 1) / 7)
-  return Math.min(block.weeks.length, week)
-}
-
-// Day map for the active block's resolved current local-calendar week, or null when
-// no block is active / the block has been deleted / the resolved week has no usable
-// day map. Used by Plan.jsx and Home.jsx to surface the block-controlled schedule
-// instead of the legacy `S.week` map. The result is a fresh reference so callers
-// can iterate / count without aliasing the persisted state. Pure: never mutates S.
-export function blockWeekDays(S, iso) {
-  const ab = S && S.activeBlock
-  if (!ab || !iso) return null
-  const block = (S.blocks || []).find(b => b.id === ab.blockId)
-  if (!block || !Array.isArray(block.weeks) || block.weeks.length === 0) return null
-  // Resolve via currentWeekBlockIndex so days in the start's calendar week that
-  // sit before the start (e.g. a Thursday activation with Monday-Wednesday of
-  // the same week) still see the block's day map instead of falling through.
-  const week = currentWeekBlockIndex(S, iso)
-  if (week == null) return null
-  const w = block.weeks[week - 1]
-  if (!w || !w.days) return null
-  return { ...w.days }
-}
-
-// Count of training (non-rest) days in the active block's resolved current week, or
-// null when no block is active. Used by Home.jsx to compute the weekly denominator
-// ("X / Y this week"). Returns null — not a zero — when no block is active so the
-// View can fall back to its legacy `Object.keys(S.week).filter(...).length` count,
-// which is what a no-block user already sees. Pure: never mutates S.
-export function blockWeekTrainingDays(S, iso) {
-  const days = blockWeekDays(S, iso)
-  if (!days) return null
-  let n = 0
-  for (let d = 0; d <= 6; d++) {
-    const v = days[d]
-    if (v && v !== 'rest') n++
-  }
-  return n
-}
-
-// Snapshot the block context for a freshly-started workout. The result is what rides
-// into `active.block` and into the finished workout record, so the snapshot is frozen
-// at workout start — later block edits (rename, week re-mapping), pause/resume and
-// end cannot rewrite history (spec #907 / design #908).
-//
-// Returns `{ id, name, week }` where:
-//   id   — the block's id, copied so it stays valid even if the block is renamed
-//   name — the block's name at the moment of the call
-//   week — the resolved block week for `iso` (1-indexed)
-//
-// Returns null when no block is active, when the active blockId no longer resolves
-// to a defined block, or when `iso` falls before the block started (no usable week).
-// Pure: does not mutate `S`; the returned object is a fresh independent copy.
-export function buildWorkoutBlockSnapshot(S, iso) {
-  const ab = S && S.activeBlock
-  if (!ab) return null
-  const block = (S.blocks || []).find(b => b.id === ab.blockId)
-  if (!block) return null
-  const week = blockStatus(S, iso)
-  if (week == null) return null
-  return { id: block.id, name: block.name, week }
-}
-*/

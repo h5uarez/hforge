@@ -279,7 +279,7 @@ describe('centralized workout start flow', () => {
     S: {
       bodyweightCheckEnabled,
       routines: [{ id: 'today-routine', name: 'Today', ex: [] }, { id: 'other-routine', name: 'Other', ex: [] }],
-      exWeights: {}, workouts: [], bodyweight: [], activeBlock: null, blocks: [],
+      exWeights: {}, workouts: [], bodyweight: [],
     },
     update(mut) { mut(this.S) },
   })

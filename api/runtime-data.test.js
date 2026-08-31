@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 const apiDirectory = fileURLToPath(new URL('.', import.meta.url));
 const validState = () => ({
   unit: 'kg', _ts: 1, reminder: { on: false, time: '08:00', tz: null }, routines: [{ id: 'r1', name: 'One', ex: [] }],
-  week: { 1: 'r1' }, dayPlan: {}, exWeights: {}, bodyweight: [], workouts: [], customEx: [], blocks: [],
+  week: { 1: 'r1' }, dayPlan: {}, exWeights: {}, bodyweight: [], workouts: [{ d: '2025-01-02', entries: [], block: { id: 'legacy' } }], blocks: [],
+  activeBlock: { blockId: 'legacy', status: 'stopped' },
   active: { local: { extension: true } }, legacyExtension: { nested: ['retained'] }
 });
 
@@ -71,7 +72,8 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
   const cookie = `gymsid=${payload}.${crypto.createHmac('sha256', secret).update(payload).digest('base64url')}`;
   const submitted = validState();
   assert.deepEqual(await request(port, 'PUT', { state: submitted }, cookie), { status: 200, body: { ok: true, ts: 1 } });
-  const canonical = Object.fromEntries(Object.entries(submitted).filter(([key]) => key !== 'active'));
+  const canonical = Object.fromEntries(Object.entries(submitted).filter(([key]) => !['active', 'blocks', 'activeBlock'].includes(key)));
+  canonical.workouts = canonical.workouts.map(workout => Object.fromEntries(Object.entries(workout).filter(([key]) => key !== 'block')));
   assert.deepEqual(await request(port, 'GET', undefined, cookie), { status: 200, body: { state: canonical } });
   const saved = await readFile(path.join(data, `state-${uid}.json`));
   const invalid = [
@@ -83,7 +85,6 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
     (() => { const state = validState(); state.routines[0].id = ''; return state; })(),
     (() => { const state = validState(); state.workouts = [{ d: 'not-a-date' }]; return state; })(),
     (() => { const state = validState(); state.week = []; return state; })(),
-    (() => { const state = validState(); state.activeBlock = { blockId: 'r1', startedOn: '2025-01-02', status: 'stopped' }; return state; })(),
     (() => { const state = validState(); state.active.items = Array(100001).fill(null); return state; })()
   ];
   for (const state of invalid) {

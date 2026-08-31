@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW /*, setsDoneActive, blockStatus, blockWeekTrainingDays */ } from '../lib/history.js'
-// TEMPORARILY DISABLED: the commented block-only imports above remain for later reactivation.
+import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.js'
 import { t, dateLocale } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, workoutExportSheet, startFlow, loadStarterPlan, bwDeltaColor /*, blockManagerSheet */ } from '../sheets.jsx'
-// TEMPORARILY DISABLED: the commented block-only import above remains for later reactivation.
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, workoutExportSheet, startFlow, loadStarterPlan, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
@@ -41,30 +39,12 @@ export default function Home() {
   const wkLabel = weekOffset === 0 ? t('This week') : `${monday.getDate()} ${monday.toLocaleDateString(dateLocale(), { month: 'short' })} – ${sunday.getDate()} ${sunday.toLocaleDateString(dateLocale(), { month: 'short' })}`
 
   const wThisWeek = S.workouts.filter(w => weekKey(w.d) === weekKey(todayISO())).length
-  // Legacy weekly denominator: the number of weekdays with a routine assigned.
+  // Weekly denominator: the number of weekdays with a routine assigned.
   const plannedPerWeek = Object.keys(S.week).filter(k => S.week[k]).length
-  /* TEMPORARILY DISABLED: block-aware denominator retained for later reactivation.
-  const plannedPerWeek = (() => {
-    const fromBlock = blockWeekTrainingDays(S, todayISO())
-    if (fromBlock != null) return fromBlock
-    return Object.keys(S.week).filter(k => S.week[k]).length
-  })()
-  */
   const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
 
   // today's session shown right under the week strip
   const onToday = () => { if (S.active) nav('/workout'); else if (routine) startFlow(routine.id); else dayOverrideSheet(todayISO()) }
-
-  /* TEMPORARILY DISABLED: the active-block banner is retained for later reactivation.
-  // Block context for the compact banner below the today card. Stays invisible when no block
-  // is active — the legacy date-strip + today-row navigation above is unchanged for non-block
-  // users. Tap opens the manager where lifecycle controls live.
-  const ab = S.activeBlock
-  const activeBlockDef = ab ? (S.blocks || []).find(b => b.id === ab.blockId) : null
-  const blockWeek = ab ? blockStatus(S, todayISO()) : null
-  const blockFinalWeek = ab && activeBlockDef ? activeBlockDef.weeks.length : null
-  const atFinalBoundary = blockFinalWeek != null && blockWeek != null && blockWeek >= blockFinalWeek
-  */
 
   return <div className="narrow">
     <div className="hdr">
@@ -97,29 +77,6 @@ export default function Home() {
           : <Icon name="plus" className="chev" />}
       </button>
     </div>
-
-    {/* TEMPORARILY DISABLED: active training-block banner retained for later reactivation.
-        The legacy home view remains the only rendered schedule context.
-    {ab && (
-      <button type="button" className="card interactive-card" style={{ borderColor: 'var(--acc)' }} onClick={blockManagerSheet}>
-        <div className="row between" style={{ alignItems: 'center' }}>
-          <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
-            <span className="lrow-i"><Icon name={ab.status === 'paused' ? 'pauseCircle' : 'clipboard'} /></span>
-            <div style={{ minWidth: 0 }}>
-              <div className="tt">{activeBlockDef ? activeBlockDef.name : t('(deleted block)')}</div>
-              <div className="ss dim small">
-                {ab.status === 'paused' ? t('Paused') : t('Active')}
-                {blockWeek ? ' · ' + t('Week {0}', blockWeek) : ''}
-                {activeBlockDef ? ' / ' + activeBlockDef.weeks.length : ''}
-                {atFinalBoundary && ab.status === 'active' ? ' · ' + t('Final week') : ''}
-              </div>
-            </div>
-          </div>
-          <Icon name="chevronRight" className="chev" />
-        </div>
-      </button>
-    )}
-    */}
 
     {!S.routines.length && !S.active && (
       <div className="card">

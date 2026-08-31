@@ -7,7 +7,7 @@ const validState = () => ({
   bodyweight: [{ d: '2025-01-02', w: 72.5, t: 1 }],
   routines: [{ id: 'full-body', name: 'Full body', emoji: '🏋️', ex: [{ id: 'squat', sets: 3, reps: 5, showRir: true }] }],
   week: { 1: 'full-body' }, dayPlan: { '2025-01-02': 'full-body' }, exWeights: { squat: 100 },
-  workouts: [{ d: '2025-01-02', entries: [{ id: 'squat', sets: [{ r: 5, w: 100, rir: 2 }] }] }],
+  workouts: [{ d: '2025-01-02', entries: [{ id: 'squat', sets: [{ r: 5, w: 100, rir: 2 }] }], block: { id: 'legacy' } }],
   customEx: [], blocks: [{ id: 'base', weeks: [{ days: { 1: 'full-body' } }] }],
   activeBlock: { blockId: 'base', startedOn: '2025-01-02', status: 'active' },
   legacy: { showRir: true, nested: { retained: ['safe'] } }, active: { workout: { id: 'local-only' } }
@@ -20,11 +20,12 @@ const unsafe = (key, path = 'legacy.nested') => {
   return state;
 };
 
-test('prepares the lossless canonical projection after validating the full raw state', () => {
+test('prepares the canonical projection and removes legacy training-block state', () => {
   const input = validState();
   const before = structuredClone(input);
   const result = preparePersistedState(input);
-  const canonical = Object.fromEntries(Object.entries(before).filter(([key]) => key !== 'active'));
+  const canonical = Object.fromEntries(Object.entries(before).filter(([key]) => !['active', 'blocks', 'activeBlock'].includes(key)));
+  canonical.workouts = canonical.workouts.map(workout => Object.fromEntries(Object.entries(workout).filter(([key]) => key !== 'block')));
   assert.deepEqual(result, { ok: true, state: canonical });
   assert.deepEqual(input, before);
   assert.equal(Object.hasOwn(result.state, 'active'), false);
@@ -62,7 +63,6 @@ test('rejects invalid known collections and server-relied semantic ranges', () =
     ['invalid_date', state => { state.workouts[0].d = 'not-a-date'; }, '$.workouts[0].d'],
     ['invalid_id', state => { state.routines[0].id = ''; }, '$.routines[0].id'],
     ['invalid_day_map', state => { state.week = []; }, '$.week'],
-    ['invalid_block_status', state => { state.activeBlock.status = 'stopped'; }, '$.activeBlock.status']
   ];
   for (const [code, mutate, path] of cases) {
     const state = validState(); mutate(state);
