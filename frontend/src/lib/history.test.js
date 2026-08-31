@@ -41,11 +41,13 @@ describe('exercise notes', () => {
     expect(noted.note).toBe('  shoulder felt tight  ')
   })
 
-  it('updates a session note purely and omits an emptied value', () => {
+  it('preserves draft spacing while persistence still trims and omits empties', () => {
     const entry = { id: LIFT, note: 'old', target: { planNote: 'coach cue' } }
-    const changed = updateExerciseNote(entry, '  new context  ')
-    expect(changed).toEqual({ id: LIFT, note: 'new context', target: { planNote: 'coach cue' } })
+    const changed = updateExerciseNote(entry, '  new  context  ')
+    expect(changed).toEqual({ id: LIFT, note: '  new  context  ', target: { planNote: 'coach cue' } })
+    expect(copyNoteFields(changed).note).toBe('new  context')
     expect(updateExerciseNote(changed, '   ')).toEqual({ id: LIFT, target: { planNote: 'coach cue' } })
+    expect(updateExerciseNote(entry, 'x'.repeat(NOTE_MAX + 1)).note).toHaveLength(NOTE_MAX)
     expect(entry).toEqual({ id: LIFT, note: 'old', target: { planNote: 'coach cue' } })
   })
 

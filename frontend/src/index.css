@@ -759,7 +759,7 @@ h4.sec{
 .glyph-cell.on{background:var(--acc);color:var(--on-acc)}
 
 /* --- big weight readout --- */
-.bwstep{display:flex;align-items:center;justify-content:center;gap:18px;margin:14px 0 6px}
+.bwstep{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;min-width:0;margin:14px 0 6px}
 .bw-pm{
   width:46px;height:46px;border-radius:50%;background:var(--surface);flex:none;
   color:var(--label);display:flex;align-items:center;justify-content:center;font-size:19px;
@@ -767,7 +767,7 @@ h4.sec{
 }
 .bw-pm:active{background:var(--surface-2);transform:scale(.92)}
 .bw-read{
-  font-size:52px;font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
+  font-size:clamp(34px,13vw,52px);font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
   font-variant-numeric:tabular-nums;line-height:1;
 }
 .bw-read.editable{display:flex;align-items:baseline;justify-content:center;gap:7px;min-width:0;flex:1 1 auto}
@@ -777,13 +777,24 @@ h4.sec{
   font-variant-numeric:tabular-nums;
 }
 .bw-read-input:focus{box-shadow:0 2px 0 var(--acc)}
-.bw-read .u{font-size:19px;color:var(--label-2);font-weight:400;letter-spacing:-.01em}
+.bw-read .u{font-size:clamp(16px,5vw,19px);color:var(--label-2);font-weight:400;letter-spacing:-.01em;white-space:nowrap}
 .bwin{display:flex;align-items:baseline;justify-content:center;gap:7px;margin:16px 0}
 .bwin input{
   width:150px;background:none;border:none;outline:none;text-align:right;
   font-size:52px;font-weight:600;letter-spacing:-.035em;color:var(--label);
 }
 .bwin span{color:var(--label-2);font-size:19px}
+
+/* On very narrow phones the editable number, unit and two 44px controls must share one
+   row. Let the input take only the space left by the unit instead of preserving its desktop
+   150px basis; the responsive readout size keeps the complete decimal value visible. */
+@media (max-width:360px){
+  .bwstep{gap:6px}
+  .bw-pm{width:44px;height:44px}
+  .bw-read{min-width:0}
+  .bw-read.editable{gap:3px}
+  .bw-read-input{flex:1 1 0;width:0;max-width:none}
+}
 
 /* --------------------------------------------------------------- charts -- */
 .chart{width:100%;overflow:hidden}
