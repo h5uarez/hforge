@@ -20,7 +20,8 @@ import { parseImport, mergeImport } from './lib/import-csv.js'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
-import { MOBILE, shareExport } from './lib/mobile.js'
+import { MOBILE } from './lib/mobile.js'
+import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -852,9 +853,8 @@ function PlanTools({ close }) {
     const bundle = buildPlanBundle(st, user?.name ? t('{0}’s plan', user.name) : '')
     const json = JSON.stringify(bundle, null, 2)
     const name = 'hforge-plan-' + todayISO() + '.json'
-    if (MOBILE) { try { await shareExport(json, name) } catch (e) { /* dismissed */ } close(); return }
-    const blob = new Blob([json], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
+    if (MOBILE) { try { await deliverExport(json, name) } catch (e) { /* dismissed */ } close(); return }
+    await deliverExport(json, name)
     close(); toast(t('Plan file saved — send it to a friend'))
   }
   const pickFile = ev => {
@@ -1025,6 +1025,81 @@ function Calendar({ start, close }) {
   </>
 }
 export const calendarSheet = start => ui().openSheet(close => <Calendar start={start} close={close} />)
+
+/* ============================ selective workout export ============================ */
+function WorkoutExportCalendar({ start, close }) {
+  const st = useStore(s => s.S)
+  const [cur, setCur] = useState(() => {
+    const d = start ? new Date(start + 'T12:00:00') : new Date()
+    d.setDate(1)
+    return d
+  })
+  const [selected, setSelected] = useState(() => new Set())
+  const [busy, setBusy] = useState(false)
+  const y = cur.getFullYear(), mo = cur.getMonth()
+  const workoutDates = new Set(st.workouts.map(workout => workout.d))
+  const startOffset = (new Date(y, mo, 1).getDay() + 6) % 7
+  const daysIn = new Date(y, mo + 1, 0).getDate()
+  const monthWs = st.workouts.filter(workout => workout.d.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
+  const cells = []
+  for (let i = 0; i < startOffset; i++) cells.push(<div key={'e' + i} />)
+  for (let d = 1; d <= daysIn; d++) {
+    const iso = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0')
+    const available = workoutDates.has(iso)
+    const on = selected.has(iso)
+    cells.push(<button type="button" key={d} disabled={!available} aria-pressed={on}
+      aria-label={t(on ? 'Deselect {0}' : 'Select {0}', fmtDate(iso, true))}
+      className={'cal-d' + (available ? ' has' : '') + (on ? ' selected' : '') + (iso === todayISO() ? ' today' : '')}
+      onClick={() => setSelected(current => {
+        const next = new Set(current)
+        if (next.has(iso)) next.delete(iso); else next.add(iso)
+        return next
+      })}>
+      <span>{d}</span><i className={available ? 'done' : ''} />
+    </button>)
+  }
+
+  const doExport = async () => {
+    if (!selected.size || busy) return
+    setBusy(true)
+    try {
+      const backup = createWorkoutBackup(st, selected)
+      await deliverExport(serializeBackup(backup), backupFilename(todayISO()))
+      close()
+      toast(t('Backup exported'))
+    } catch (e) {
+      if (!MOBILE) toast(t('Export failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <>
+    <h3>{t('Export workouts')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>{t('Select workout days to export')}</div>
+    <div className="row between small muted" role="status" aria-live="polite">
+      <span>{selected.size === 0 ? t('No days selected') : t(selected.size === 1 ? '{0} day selected' : '{0} days selected', selected.size)}</span>
+      {selected.size > 0 && <button type="button" className="btn xs" onClick={() => setSelected(new Set())}>{t('Clear selection')}</button>}
+    </div>
+    <div className="row between calendar-nav" style={{ marginTop: 10, marginBottom: 2 }}>
+      <button type="button" className="iconbtn" onClick={() => setCur(new Date(y, mo - 1, 1))} aria-label={t('Previous month')}><Icon name="chevronLeft" /></button>
+      <h3 style={{ margin: 0 }}>{t(MONTHS_LONG[mo])} {y}</h3>
+      <button type="button" className="iconbtn" onClick={() => setCur(new Date(y, mo + 1, 1))} aria-label={t('Next month')}><Icon name="chevronRight" /></button>
+    </div>
+    <div className="small muted" style={{ textAlign: 'center', marginTop: 8 }}>
+      {monthWs.length ? `${t(monthWs.length === 1 ? '{0} workout' : '{0} workouts', monthWs.length)}` : t('No workouts this month')}
+    </div>
+    <div className="cal-grid">{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(l => <div key={l} className="cal-h">{t(l)}</div>)}{cells}</div>
+    <div className="small dim" style={{ textAlign: 'center', marginTop: 10 }}>{t('Only days with workouts can be selected.')}</div>
+    <div className="export-calendar-actions">
+      <Button type="button" variant="primary" icon="download" onClick={doExport} disabled={!selected.size || busy}>
+        {busy ? t('Exporting…') : t('Export JSON')}
+      </Button>
+      {!selected.size && <div className="small dim" style={{ textAlign: 'center' }}>{t('Select at least one workout day to export.')}</div>}
+    </div>
+  </>
+}
+export const workoutExportSheet = start => ui().openSheet(close => <WorkoutExportCalendar start={start} close={close} />)
 
 /* shared small workout row (used in lists) */
 export function WorkoutRow({ w, onClick }) {

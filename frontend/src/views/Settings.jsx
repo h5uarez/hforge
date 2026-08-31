@@ -9,7 +9,8 @@ import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/pus
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { getLang, setLangPreference, t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
-import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
+import { MOBILE, syncReminder } from '../lib/mobile.js'
+import { backupFilename, deliverExport, serializeBackup } from '../lib/export.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
@@ -25,16 +26,10 @@ export default function Settings() {
   const wakeOK = wakeLockSupported()
 
   const doExport = async () => {
-    const json = JSON.stringify(S, null, 2)
-    const name = 'hforge-backup-' + todayISO() + '.json'
-    // WKWebView can't download blob URLs — the native build hands the file to the share sheet.
-    if (MOBILE) {
-      try { await shareExport(json, name); toast(t('Backup exported')) } catch (e) { /* share sheet dismissed */ }
-      return
-    }
-    const blob = new Blob([json], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
-    toast(t('Backup exported'))
+    const json = serializeBackup(S)
+    const name = backupFilename(todayISO())
+    try { await deliverExport(json, name); toast(t('Backup exported')) }
+    catch (e) { if (!MOBILE) throw e /* native share sheet dismissed */ }
   }
   const doImport = ev => {
     const f = ev.target.files[0]; if (!f) return

@@ -5,7 +5,7 @@ import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW /*, setsDoneA
 // TEMPORARILY DISABLED: the commented block-only imports above remain for later reactivation.
 import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.js'
 import { t, dateLocale } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, loadStarterPlan, bwDeltaColor /*, blockManagerSheet */ } from '../sheets.jsx'
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, workoutExportSheet, startFlow, loadStarterPlan, bwDeltaColor /*, blockManagerSheet */ } from '../sheets.jsx'
 // TEMPORARILY DISABLED: the commented block-only import above remains for later reactivation.
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
@@ -69,7 +69,10 @@ export default function Home() {
   return <div className="narrow">
     <div className="hdr">
       <div><h1>{user ? t('Hi {0}', user.name) : 'Hforge'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
-      <button className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="iconbtn" onClick={() => workoutExportSheet()} aria-label={t('Export')}><Icon name="download" /></button>
+        <button type="button" className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
+      </div>
     </div>
 
     <div className="card">
