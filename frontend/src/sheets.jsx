@@ -145,9 +145,11 @@ export const clampWeight = (value, unit, allowDecimals = false) => {
 }
 export const adjustWeight = (value, delta, unit, allowDecimals = false) =>
   clampWeight(weightNumber(value) + weightNumber(delta), unit, allowDecimals)
-export const weightControlSteps = allowDecimals => allowDecimals
-  ? { primary: 1, chips: [-0.25, 0.25] }
-  : { primary: 1, chips: [-1, 1] }
+export const weightControlSteps = (allowDecimals, bodyweight = false) => bodyweight
+  ? { primary: 0.5, chips: [] }
+  : allowDecimals
+    ? { primary: 1, chips: [-0.25, 0.25] }
+    : { primary: 1, chips: [-1, 1] }
 export const savedWeight = (value, unit, allowDecimals = false) => {
   const raw = weightNumber(value)
   return Number.isFinite(raw) && raw > 0 ? clampWeight(raw, unit, allowDecimals) : null
@@ -157,15 +159,18 @@ export const fmtWeight = (value, allowDecimals = false) => {
   const rounded = roundWeight(Number.isFinite(n) ? n : 0, allowDecimals)
   return rounded.toLocaleString(dateLocale(), { maximumFractionDigits: allowDecimals ? 2 : 0 })
 }
-function WeightInput({ value, setValue, unit, allowDecimals = false }) {
+function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight = false }) {
   const { min, max, step } = weightBounds(unit)
-  const { primary, chips } = weightControlSteps(allowDecimals)
+  const { primary, chips } = weightControlSteps(allowDecimals, bodyweight)
   const sv = clampWeight(value, unit, allowDecimals)
   const onSlide = v => setValue(clampWeight(v, unit, allowDecimals))
   const onAdjust = delta => setValue(adjustWeight(sv, delta, unit, allowDecimals))
+  const quickAmount = fmtWeight(primary, allowDecimals)
   return <>
     <div className="bwstep">
-      <button className="bw-pm" onClick={() => onAdjust(-primary)} aria-label={t('Decrease')}><Icon name="minus" /></button>
+      <button className="bw-pm" onClick={() => onAdjust(-primary)} aria-label={bodyweight ? t('Decrease {0}', quickAmount + ' ' + unit) : t('Decrease')}>
+        {bodyweight ? '−' + quickAmount : <Icon name="minus" />}
+      </button>
       <div className={'bw-read' + (allowDecimals ? ' editable' : '')}>
         {allowDecimals
           ? <NumberField value={sv} displayValue={fmtWeight(sv, true)} decimal={true}
@@ -174,7 +179,9 @@ function WeightInput({ value, setValue, unit, allowDecimals = false }) {
           : fmtWeight(sv)}
         <span className="u"> {unit}</span>
       </div>
-      <button className="bw-pm" onClick={() => onAdjust(primary)} aria-label={t('Increase')}><Icon name="plus" /></button>
+      <button className="bw-pm" onClick={() => onAdjust(primary)} aria-label={bodyweight ? t('Increase {0}', quickAmount + ' ' + unit) : t('Increase')}>
+        {bodyweight ? '+' + quickAmount : <Icon name="plus" />}
+      </button>
     </div>
     <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
       {chips.map(delta => <button key={delta} className="chip" onClick={() => onAdjust(delta)} aria-label={t(delta < 0 ? 'Decrease {0}' : 'Increase {0}', fmtWeight(Math.abs(delta), allowDecimals) + ' ' + unit)}>{delta < 0 ? '−' : '+'}{fmtWeight(Math.abs(delta), allowDecimals)}</button>)}
@@ -190,7 +197,7 @@ function BwSheet({ required, onDone, close }) {
   const bw = lastBW(st)
   const [v, setV] = useState(bw ? bw.w : 70)
   const save = () => {
-    const n = savedWeight(v, unit)
+    const n = savedWeight(v, unit, true)
     if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       const iso = todayISO()
@@ -206,7 +213,7 @@ function BwSheet({ required, onDone, close }) {
   return <>
     <h3>{required ? t('Quick check-in') : t('Log body weight')}</h3>
     <div className="muted small">{required ? t('Slide or tap to set your weight — tracked before every workout so your curve stays honest.') : t('Today') + ', ' + fmtDate(todayISO(), true)}</div>
-    <WeightInput value={v} setValue={setV} unit={unit} />
+    <WeightInput value={v} setValue={setV} unit={unit} allowDecimals bodyweight />
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save}>{required ? t('Save & start workout') : t('Save')}</Button>
     {required && <>
