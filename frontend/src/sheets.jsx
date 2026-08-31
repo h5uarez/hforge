@@ -5,7 +5,7 @@ import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipme
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
-import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
+import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
@@ -65,7 +65,7 @@ export function loadStarterPlan() {
   toast(t('Starter plan loaded — Mon Push · Wed Pull · Fri Legs'))
 }
 
-/* ============================ weight picker (shared: body weight + goal) ============================ */
+/* ============================ weight picker (body weight + goal; top weight can be decimal) ============================ */
 // Fixed range, not a moving window — a window that resizes itself mid-drag (the previous
 // attempt) makes the thumb's position unpredictable: every time it grows, everything already
 // placed on it shifts toward one side. A static range never has that problem, at the cost of
@@ -74,28 +74,52 @@ export function loadStarterPlan() {
 // entry: 180 kg is approximately 396 lb.
 const W_LO = 1
 export const weightBounds = unit => ({ min: W_LO, max: unit === 'lb' ? 396 : 180, step: 1 })
-export const clampWeight = (value, unit) => {
+const weightNumber = value => typeof value === 'string' ? Number(value.trim().replace(',', '.')) : Number(value)
+const roundWeight = (value, allowDecimals) => {
+  const scale = allowDecimals ? 100 : 1
+  return Math.round((value + Number.EPSILON) * scale) / scale
+}
+export const clampWeight = (value, unit, allowDecimals = false) => {
   const { min, max } = weightBounds(unit)
-  const n = Number(value)
-  return Math.max(min, Math.min(max, Math.round(Number.isFinite(n) ? n : 0)))
+  const n = weightNumber(value)
+  const rounded = roundWeight(Number.isFinite(n) ? n : 0, allowDecimals)
+  return Math.max(min, Math.min(max, rounded))
 }
-export const savedWeight = (value, unit) => {
-  const raw = Number(value)
-  return Number.isFinite(raw) && raw > 0 ? clampWeight(raw, unit) : null
+export const adjustWeight = (value, delta, unit, allowDecimals = false) =>
+  clampWeight(weightNumber(value) + weightNumber(delta), unit, allowDecimals)
+export const weightControlSteps = allowDecimals => allowDecimals
+  ? { primary: 1, chips: [-0.25, 0.25] }
+  : { primary: 1, chips: [-1, 1] }
+export const savedWeight = (value, unit, allowDecimals = false) => {
+  const raw = weightNumber(value)
+  return Number.isFinite(raw) && raw > 0 ? clampWeight(raw, unit, allowDecimals) : null
 }
-function WeightInput({ value, setValue, unit }) {
+export const fmtWeight = (value, allowDecimals = false) => {
+  const n = weightNumber(value)
+  const rounded = roundWeight(Number.isFinite(n) ? n : 0, allowDecimals)
+  return rounded.toLocaleString(dateLocale(), { maximumFractionDigits: allowDecimals ? 2 : 0 })
+}
+function WeightInput({ value, setValue, unit, allowDecimals = false }) {
   const { min, max, step } = weightBounds(unit)
-  const sv = clampWeight(value, unit)
-  const onSlide = v => setValue(clampWeight(v, unit))
+  const { primary, chips } = weightControlSteps(allowDecimals)
+  const sv = clampWeight(value, unit, allowDecimals)
+  const onSlide = v => setValue(clampWeight(v, unit, allowDecimals))
+  const onAdjust = delta => setValue(adjustWeight(sv, delta, unit, allowDecimals))
   return <>
     <div className="bwstep">
-      <button className="bw-pm" onClick={() => onSlide(sv - 1)} aria-label={t('Decrease')}><Icon name="minus" /></button>
-      <div className="bw-read">{fmtNum(sv)}<span className="u"> {unit}</span></div>
-      <button className="bw-pm" onClick={() => onSlide(sv + 1)} aria-label={t('Increase')}><Icon name="plus" /></button>
+      <button className="bw-pm" onClick={() => onAdjust(-primary)} aria-label={t('Decrease')}><Icon name="minus" /></button>
+      <div className={'bw-read' + (allowDecimals ? ' editable' : '')}>
+        {allowDecimals
+          ? <NumberField value={sv} displayValue={fmtWeight(sv, true)} decimal={true}
+              aria-label={t('Confirm the weight you worked with — your highest becomes the default next time.')}
+              className="bw-read-input" onChange={v => setValue(clampWeight(v, unit, true))} />
+          : fmtWeight(sv)}
+        <span className="u"> {unit}</span>
+      </div>
+      <button className="bw-pm" onClick={() => onAdjust(primary)} aria-label={t('Increase')}><Icon name="plus" /></button>
     </div>
     <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
-      <button className="chip" onClick={() => onSlide(sv - 1)}>−1</button>
-      <button className="chip" onClick={() => onSlide(sv + 1)}>+1</button>
+      {chips.map(delta => <button key={delta} className="chip" onClick={() => onAdjust(delta)} aria-label={t(delta < 0 ? 'Decrease {0}' : 'Increase {0}', fmtWeight(Math.abs(delta), allowDecimals) + ' ' + unit)}>{delta < 0 ? '−' : '+'}{fmtWeight(Math.abs(delta), allowDecimals)}</button>)}
     </div>
       <Slider value={sv} min={min} max={max} step={step} onChange={onSlide} />
   </>
@@ -1255,7 +1279,7 @@ function TopWeight({ entryIdx, close }) {
   if (!entry || !ex) return null
 
   const commit = advance => {
-    const n = savedWeight(v, st.unit)
+    const n = savedWeight(v, st.unit, true)
     if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       s.active.entries[entryIdx].topW = n
@@ -1266,14 +1290,14 @@ function TopWeight({ entryIdx, close }) {
     if (advance && unitDone) {
       if (isLastUnit) workoutCompleteSheet()               // whole workout done → finish/continue prompt
       else update(s => { s.active.cur = units[unitIdx + 1][0] })
-    } else toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
+    } else toast(t('Tracked — next time starts at {0}', fmtWeight(S().exWeights[entry.id].w, true) + ' ' + st.unit))
   }
   return <>
     <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', exerciseName(ex))}</h3>
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
-    <WeightInput value={v} setValue={setV} unit={st.unit} />
+    <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals />
     <div style={{ height: 10 }} />
-    {prevBest > 0 ? <div className="small dim" style={{ textAlign: 'center', marginBottom: 12 }}>{t('Previous best:')} {fmtNum(prevBest)} {st.unit}{maxSet > prevBest && <span style={{ color: 'var(--yellow)' }}> — {t('new record!')}</span>}</div> : <div style={{ height: 4 }} />}
+    {prevBest > 0 ? <div className="small dim" style={{ textAlign: 'center', marginBottom: 12 }}>{t('Previous best:')} {fmtWeight(prevBest, true)} {st.unit}{maxSet > prevBest && <span style={{ color: 'var(--yellow)' }}> — {t('new record!')}</span>}</div> : <div style={{ height: 4 }} />}
     {unitDone ? <>
       <Button variant="primary" trailingIcon={isLastUnit ? null : 'chevronRight'} onClick={() => commit(true)}>{isLastUnit ? t('Save') : t('Save & next exercise')}</Button>
       <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={() => commit(false)}>{t('Just close')}</Button>

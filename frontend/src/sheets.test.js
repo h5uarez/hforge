@@ -19,7 +19,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, savedWeight, startFlow } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 
 describe('commitPickerSelection', () => {
@@ -101,7 +101,7 @@ describe('timed prescription validation', () => {
   })
 })
 
-describe('shared weight bounds', () => {
+describe('weight bounds and precision modes', () => {
   it('uses equivalent 1–180 kg and 1–396 lb limits', () => {
     expect(weightBounds('kg')).toEqual({ min: 1, max: 180, step: 1 })
     expect(weightBounds('lb')).toEqual({ min: 1, max: 396, step: 1 })
@@ -110,12 +110,29 @@ describe('shared weight bounds', () => {
     expect(clampWeight(396, 'lb')).toBe(396)
   })
 
-  it('canonicalizes decimal values to integers and clamps over-limit input', () => {
+  it('keeps the slider and primary controls on whole-kilogram values by default', () => {
     expect(clampWeight(181.27, 'kg')).toBe(180)
     expect(clampWeight(397, 'lb')).toBe(396)
     expect(clampWeight(72.34, 'kg')).toBe(72)
     expect(clampWeight(72.5, 'kg')).toBe(73)
     expect(clampWeight(72.5, 'lb')).toBe(73)
+    expect(adjustWeight(72, -1, 'kg')).toBe(71)
+    expect(adjustWeight(72, 1, 'kg')).toBe(73)
+  })
+
+  it('keeps the top-weight slider and primary controls at one kilogram', () => {
+    expect(weightBounds('kg').step).toBe(1)
+    expect(weightControlSteps(true)).toEqual({ primary: 1, chips: [-0.25, 0.25] })
+    expect(adjustWeight(122.5, -weightControlSteps(true).primary, 'kg', true)).toBe(121.5)
+    expect(adjustWeight(122.5, weightControlSteps(true).primary, 'kg', true)).toBe(123.5)
+    expect(adjustWeight(7.25, -0.25, 'kg', true)).toBe(7)
+    expect(adjustWeight(7.25, 0.25, 'kg', true)).toBe(7.5)
+  })
+
+  it('keeps whole-unit defaults for primary and chip controls', () => {
+    expect(weightControlSteps(false)).toEqual({ primary: 1, chips: [-1, 1] })
+    expect(adjustWeight(72, -weightControlSteps(false).primary, 'kg')).toBe(71)
+    expect(adjustWeight(72, weightControlSteps(false).primary, 'kg')).toBe(73)
   })
 
   it.each([
@@ -126,16 +143,48 @@ describe('shared weight bounds', () => {
     expect(savedWeight(value, unit)).toBe(expected)
   })
 
-  it('rejects invalid save values without changing the shared bounds contract', () => {
+  it('rejects invalid save values without changing the whole-kilogram default', () => {
     expect(savedWeight('', 'kg')).toBeNull()
     expect(savedWeight('not-a-weight', 'lb')).toBeNull()
     expect(savedWeight(72.34, 'kg')).toBe(72)
   })
 
-  it('does not allow half-kilogram values through any shared save consumer', () => {
+  it('keeps bodyweight and goal persistence whole-kilogram only', () => {
     expect(savedWeight(72.5, 'kg')).toBe(73)
     expect(savedWeight('72.5', 'kg')).toBe(73)
     expect(savedWeight(0.5, 'kg')).toBe(1)
+  })
+
+  it('preserves two decimals for the explicit top-weight save mode', () => {
+    expect(clampWeight(122.544, 'kg', true)).toBe(122.54)
+    expect(clampWeight(122.545, 'kg', true)).toBe(122.55)
+    expect(clampWeight(122.556, 'kg', true)).toBe(122.56)
+    expect(savedWeight('122.55', 'kg', true)).toBe(122.55)
+    expect(savedWeight(122.556, 'kg', true)).toBe(122.56)
+    expect(fmtWeight(7.25, true)).toBe('7.25')
+  })
+
+  it('accepts comma decimal input for explicit top-weight saves', () => {
+    expect(clampWeight('7,25', 'kg', true)).toBe(7.25)
+    expect(savedWeight('7,25', 'kg', true)).toBe(7.25)
+  })
+
+  it('applies fine top-weight adjustments without floating-point artifacts', () => {
+    expect(adjustWeight(122.55, -0.5, 'kg', true)).toBe(122.05)
+    expect(adjustWeight(122.55, 0.5, 'kg', true)).toBe(123.05)
+    expect(adjustWeight(122.55, -0.1, 'kg', true)).toBe(122.45)
+    expect(adjustWeight(122.55, 0.1, 'kg', true)).toBe(122.65)
+    expect(adjustWeight(122.5, -0.5, 'kg', true)).toBe(122)
+    expect(adjustWeight(122.5, 0.5, 'kg', true)).toBe(123)
+    expect(adjustWeight(122.5, -0.1, 'kg', true)).toBe(122.4)
+    expect(adjustWeight(122.5, 0.1, 'kg', true)).toBe(122.6)
+    expect(adjustWeight(122.6, -0.1, 'kg', true)).toBe(122.5)
+  })
+
+  it('clamps fine top-weight adjustments to the same valid bounds', () => {
+    expect(adjustWeight(1, -0.5, 'kg', true)).toBe(1)
+    expect(adjustWeight(180, 0.1, 'kg', true)).toBe(180)
+    expect(savedWeight(0.5, 'kg', true)).toBe(1)
   })
 })
 
