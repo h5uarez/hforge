@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, normalizeTargets, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, normalizeTargets, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -8,6 +8,54 @@ const CARDIO = EXDB.find(e => e.bp === 'cardio').id
 // defaults to bodyweight and would quietly send every label test down the other path.
 const LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
 const BW = EXDB.find(e => e.eq === 'body weight').id
+
+describe('exercise notes', () => {
+  it('trims persisted notes, omits empties, and keeps the 280-character limit', () => {
+    expect(NOTE_MAX).toBe(280)
+    expect(normalizeExerciseNote('  remember the bench change  ')).toBe('remember the bench change')
+    expect(normalizeExerciseNote(' \n\t ')).toBeUndefined()
+    expect(normalizeExerciseNote('x'.repeat(NOTE_MAX + 1))).toHaveLength(NOTE_MAX + 1)
+    expect(normalizeNote('  ' + 'x'.repeat(NOTE_MAX + 1) + '  ')).toBe('x'.repeat(NOTE_MAX))
+  })
+
+  it('copies both note concepts without mutating the source', () => {
+    const source = { note: '  athlete context  ', planNote: '  coach cue  ' }
+    const copy = copyNoteFields(source)
+    expect(copy).toEqual({ note: 'athlete context', planNote: 'coach cue' })
+    expect(source).toEqual({ note: '  athlete context  ', planNote: '  coach cue  ' })
+    expect(copyNoteFields({ note: ' ', planNote: null })).toEqual({})
+  })
+
+  it('retains noted zero-set history entries and preserves nested coach notes', () => {
+    const noted = {
+      id: LIFT,
+      sets: [{ done: false, w: 60, r: 10 }],
+      target: { mode: 'reps', planNote: '  keep the shoulder down  ' },
+      note: '  shoulder felt tight  ',
+    }
+    const copied = copyHistoryEntry(noted)
+    expect(copied).not.toBe(noted)
+    expect(copied).toMatchObject({ note: 'shoulder felt tight', target: { planNote: 'keep the shoulder down' } })
+    expect(keepHistoryEntry(copied)).toBe(true)
+    expect(keepHistoryEntry({ id: LIFT, sets: [{ done: false }] })).toBe(false)
+    expect(noted.note).toBe('  shoulder felt tight  ')
+  })
+
+  it('updates a session note purely and omits an emptied value', () => {
+    const entry = { id: LIFT, note: 'old', target: { planNote: 'coach cue' } }
+    const changed = updateExerciseNote(entry, '  new context  ')
+    expect(changed).toEqual({ id: LIFT, note: 'new context', target: { planNote: 'coach cue' } })
+    expect(updateExerciseNote(changed, '   ')).toEqual({ id: LIFT, target: { planNote: 'coach cue' } })
+    expect(entry).toEqual({ id: LIFT, note: 'old', target: { planNote: 'coach cue' } })
+  })
+
+  it('keeps calculations identical when only a note differs', () => {
+    const base = { entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }
+    const noted = { ...base, entries: [{ ...base.entries[0], note: 'bench changed' }] }
+    expect(workoutVolume(noted)).toBe(workoutVolume(base))
+    expect(setsDone(noted)).toBe(setsDone(base))
+  })
+})
 
 describe('canonical exercise data', () => {
   it('ships the corrected 0739 title directly from the catalog source', () => {

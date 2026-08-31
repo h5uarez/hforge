@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, parseTimedSeconds } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -11,7 +11,7 @@ import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField } from '../components/ui.jsx'
+import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 
 // Long-press threshold in milliseconds. Long enough to be a deliberate gesture, short
@@ -58,11 +58,13 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
   const ex = exOr(entry.id)
+  const workoutNoteId = 'workout-note-' + entryIdx
+  const workoutNoteContentId = workoutNoteId + '-content'
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
   const cardio = mode === 'cardio'
   const timed = mode === 'time'
@@ -139,6 +141,9 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onAddSet,
   // timer is cancelled on any pointer move or release so a quick tap never opens a target,
   // and a swipe through the row never opens one either.
   const lpTimer = useRef(null)
+  // Keep the note visible by default so athletes see the existing input without opting in; this
+  // is local disclosure state and does not affect the note stored in the active workout.
+  const [workoutNoteOpen, setWorkoutNoteOpen] = useState(true)
   const startLongPress = i => {
     cancelLongPress()
     lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
@@ -153,6 +158,23 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onAddSet,
       <div className="row" style={{ gap: 4 }}>
         <button className="iconbtn" aria-label={t('Edit')} onClick={onEdit}><Icon name="pencil" /></button>
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
+      </div>
+    </div>
+    {entry.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{entry.target.planNote}</div>}
+    <div style={{ marginBottom: 10 }}>
+      <div className="row between" style={{ margin: '0 2px 6px' }}>
+        <label className="small dim" htmlFor={workoutNoteId} style={{ margin: 0 }}>{t('Workout note')}</label>
+        <button type="button" className="iconbtn" aria-label={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
+          title={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
+          aria-expanded={workoutNoteOpen} aria-controls={workoutNoteContentId}
+          onClick={() => setWorkoutNoteOpen(open => !open)}>
+          <Icon name={workoutNoteOpen ? 'chevronUp' : 'chevronDown'} />
+        </button>
+      </div>
+      <div id={workoutNoteContentId} hidden={!workoutNoteOpen}>
+        <TextArea id={workoutNoteId} rows={3} maxLength={NOTE_MAX} value={typeof entry.note === 'string' ? entry.note : ''}
+          placeholder={t('Add a comment about this exercise')} aria-label={t('Workout note')}
+          onChange={e => onNoteChange(e.target.value)} />
       </div>
     </div>
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -181,7 +203,7 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onAddSet,
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
               // only fires when the touch starts on a non-interactive area.
-              if (e.target.closest('button, input')) return
+              if (e.target.closest('button, input, textarea')) return
               startLongPress(i)
             }}
             onPointerUp={cancelLongPress}
@@ -243,6 +265,10 @@ function ActiveWorkout() {
   const done = setsDoneActive(A)
 
   const mutEntry = (idx, fn) => update(s => { fn(s.active.entries[idx]) }, true)
+  const setNote = (idx, raw) => update(s => {
+    const entry = s.active?.entries?.[idx]
+    if (entry) s.active.entries[idx] = updateExerciseNote(entry, raw)
+  }, true)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
   const setField = (idx, i, field, v, side) => mutEntry(idx, e => {
@@ -391,11 +417,11 @@ function ActiveWorkout() {
           {unit.map((idx, k) => <div key={idx} className="ss-ex">
             {k > 0 && <div className="ss-amp">+</div>}
             <ExerciseBlock entryIdx={idx} compact
-              onEdit={() => editExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+              onEdit={() => editExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
           </div>)}
         </div>
       ) : (
-        <ExerciseBlock entryIdx={cur} onEdit={() => editExercise(cur)} onToggle={(i, side) => toggle(cur, i, side)} onField={(i, f, v, side) => setField(cur, i, f, v, side)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
+        <ExerciseBlock entryIdx={cur} onEdit={() => editExercise(cur)} onToggle={(i, side) => toggle(cur, i, side)} onField={(i, f, v, side) => setField(cur, i, f, v, side)} onNoteChange={value => setNote(cur, value)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
       )}
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 

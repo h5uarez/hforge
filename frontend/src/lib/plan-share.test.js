@@ -8,6 +8,9 @@
 // the friend and break the import (their store overlays a fresh default).
 import { describe, it, expect } from 'vitest'
 import { buildPlanBundle, parsePlan, mergePlan } from './plan-share.js'
+import { EXDB } from './exercises.js'
+
+const KNOWN_EXERCISE = EXDB[0].id
 
 const ROUTINES = [
   { id: 'r-push', name: 'Push', ex: [{ id: 'e-bench', sets: 3, reps: 8 }] },
@@ -170,5 +173,50 @@ describe('per-side plan compatibility', () => {
     expect(bundle.routines[0].ex[0]).toMatchObject({ id: 'e-bench', reps: 16, side: true })
     const legacy = buildPlanBundle({ routines: [{ id: 'r', name: 'Legs', ex: [{ id: 'e-bench', sets: 3, reps: 10 }] }], customEx: [], week: {} }, 'legacy')
     expect(legacy.routines[0].ex[0]).not.toHaveProperty('side')
+  })
+})
+
+describe('coach note round-trip', () => {
+  it('exports a normalized planNote but never exports a session note', () => {
+    const bundle = buildPlanBundle({
+      routines: [{ id: 'r', name: 'Push', ex: [{ id: 'e-bench', sets: 3, reps: 8, planNote: '  Keep the elbows tucked  ', note: 'session-only' }] }],
+      customEx: [], week: {},
+    }, 'notes')
+    expect(bundle.routines[0].ex[0]).toMatchObject({ planNote: 'Keep the elbows tucked' })
+    expect(bundle.routines[0].ex[0]).not.toHaveProperty('note')
+  })
+
+  it('normalizes imported plan notes and discards an imported session note', () => {
+    const parsed = parsePlan({
+      opengym_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
+        { id: KNOWN_EXERCISE, sets: 1, reps: 8, planNote: '  Use a lighter load  ', note: 'do not import this' },
+      ] }],
+    })
+    expect(parsed.routines[0].ex[0]).toMatchObject({ planNote: 'Use a lighter load' })
+    expect(parsed.routines[0].ex[0]).not.toHaveProperty('note')
+  })
+
+  it('retains planNote through mergePlan and omits empty notes', () => {
+    const bundle = {
+      opengym_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
+        { id: 'e-bench', sets: 1, reps: 8, planNote: '  Use a pause  ' },
+        { id: 'e-row', sets: 1, reps: 10, planNote: '   ' },
+      ] }],
+    }
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, bundle)
+    expect(target.routines[0].ex[0].planNote).toBe('Use a pause')
+    expect(target.routines[0].ex[1]).not.toHaveProperty('planNote')
+  })
+
+  it('round-trips planNote from export through parse into a new routine', () => {
+    const source = {
+      routines: [{ id: 'r', name: 'Push', ex: [{ id: KNOWN_EXERCISE, sets: 2, reps: 8, planNote: '  Pause at the bottom  ' }] }],
+      customEx: [], week: {},
+    }
+    const parsed = parsePlan(JSON.stringify(buildPlanBundle(source, 'round-trip')))
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, parsed)
+    expect(target.routines[0].ex[0].planNote).toBe('Pause at the bottom')
   })
 })
