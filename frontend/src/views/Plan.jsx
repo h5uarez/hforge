@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { DAYN, uid, exCount, todayISO, isoOf } from '../lib/format.js'
+import { DAYN, uid, exCount, /* todayISO, */ isoOf } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { blockManagerSheet, dayAssignSheet, loadStarterPlan, planToolsSheet } from '../sheets.jsx'
-import { blockStatus, effectiveRoutineId } from '../lib/history.js'
+import { /* blockManagerSheet, */ dayAssignSheet, loadStarterPlan, planToolsSheet } from '../sheets.jsx'
+import { /* blockStatus, */ effectiveRoutineId } from '../lib/history.js'
+// TEMPORARILY DISABLED: the commented block-only imports above remain for later reactivation.
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -19,6 +20,7 @@ export default function Plan() {
     nav('/plan/r/' + r.id)
   }
 
+  /* TEMPORARILY DISABLED: block context calculations are retained for later reactivation.
   // Block context for the small card below the header. Compact display only — the editor,
   // lifecycle controls, and the full block list live in the manager sheet so the legacy week
   // editor and dayPlan flows below stay primary for non-block users.
@@ -26,12 +28,11 @@ export default function Plan() {
   const blocks = S.blocks || []
   const activeBlockDef = ab ? blocks.find(b => b.id === ab.blockId) : null
   const currentWeek = ab ? blockStatus(S, todayISO()) : null
+  */
 
   // Current local-calendar week's Monday and the per-display-day ISO helper. Each weekday
-  // row in the schedule below is rendered with `effectiveRoutineId(S, isoFor(d))` so the
-  // schedule automatically reflects the active block's resolved current week when one is
-  // active. With no active block, `effectiveRoutineId` falls back to the existing
-  // `S.dayPlan[iso]` then `S.week[wd]` precedence — i.e. legacy behavior is unchanged.
+  // row in the schedule below is rendered with `effectiveRoutineId(S, isoFor(d))`, which
+  // keeps the legacy `S.dayPlan[iso]` then `S.week[wd]` precedence active.
   const today = new Date()
   const monday = new Date(today)
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
@@ -46,9 +47,7 @@ export default function Plan() {
       <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
     </div>
 
-    {/* Block management (issue: block-management). Unobtrusive card — only shows up when a
-        block is active, or stays collapsed behind a single button for non-block users. The
-        legacy week editor and dayPlan pickers below remain primary. */}
+    {/* TEMPORARILY DISABLED: training-block management card retained for later reactivation.
     <div className="card" style={{ marginBottom: 14, cursor: 'pointer' }} onClick={blockManagerSheet}>
       <div className="row between" style={{ alignItems: 'center' }}>
         <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
@@ -65,6 +64,7 @@ export default function Plan() {
         <Icon name="chevronRight" className="chev" />
       </div>
     </div>
+    */}
 
     <div className="cols"><div>
       <h4 className="sec">{t('Week schedule')}</h4>

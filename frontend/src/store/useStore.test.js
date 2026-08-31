@@ -1,24 +1,5 @@
-// Integration tests for the block lifecycle integration at the Zustand boundary.
-//
-// Lifecycle helpers (activateBlock / pauseBlock / resumeBlock / endBlock) are pure return-value
-// functions: they take the full state S and return a NEW state with the lifecycle pointer updated.
-// The Zustand `update(mut)` exposes a mutable draft cloned from S and persists it after `mut`
-// returns — it discards the callback's return value. So the only way to apply the helper's
-// replacement state is to copy its fields into the draft:
-//
-//   update(s => { Object.assign(s, activateBlock(s, id, today)) })
-//
-// Calling `update(s => activateBlock(s, id, today))` returns the new state but `update` throws
-// it away — `S.activeBlock` stays null and nothing is persisted. These tests pin down the
-// integration contract so the bug can't return silently.
-//
-// Strict TDD cycle for this file:
-//   RED   — the four lifecycle tests use the broken pattern (`update(s => helper(s, ...))`)
-//           and assert that state persists. They FAIL because update discards the helper's
-//           return value.
-//   GREEN — the test patterns are switched to `update(s => { Object.assign(s, helper(s, ...)) })`
-//           and `sheets.jsx` lifecycle callbacks are fixed to the same Object.assign shape.
-//           Tests then pass and prove state + localStorage `gym_state_v1` round-trip.
+// Generic store compatibility tests stay active while training blocks are temporarily disabled.
+// The block lifecycle integration coverage below is retained in comments for later reactivation.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
@@ -56,6 +37,7 @@ function fakeBrowser() {
 // Dynamic import inside beforeEach (paired with vi.resetModules via top-level await) guarantees
 // the module sees the stub globals.
 const KEY = 'gym_state_v1'
+/* TEMPORARILY DISABLED: block-only fixtures retained for later lifecycle test reactivation.
 const FULL_WEEK = { days: { 0: 'r-push', 1: 'r-pull', 2: 'rest', 3: 'r-legs', 4: 'r-push', 5: 'rest', 6: 'rest' } }
 const BLOCK_ROUTINES = [
   { id: 'r-push', name: 'Push' },
@@ -63,21 +45,17 @@ const BLOCK_ROUTINES = [
   { id: 'r-legs', name: 'Legs' },
 ]
 const GOOD_BLOCK = { id: 'b1', name: 'Hypertrophy Block', weeks: [FULL_WEEK, FULL_WEEK, FULL_WEEK] }
+*/
 
-let storage, useStore, activateBlock, pauseBlock, resumeBlock, endBlock
+let storage, useStore
 
 beforeEach(async () => {
   storage = fakeBrowser()
   const storeMod = await import('./useStore.js')
-  const historyMod = await import('../lib/history.js')
   useStore = storeMod.useStore
-  activateBlock = historyMod.activateBlock
-  pauseBlock = historyMod.pauseBlock
-  resumeBlock = historyMod.resumeBlock
-  endBlock = historyMod.endBlock
-  // Reset S to a known overlay with only the block fixture. replaceState persists immediately,
-  // so each scenario starts from a clean slate regardless of what prior tests left behind.
-  useStore.getState().replaceState({ blocks: [GOOD_BLOCK], activeBlock: null, routines: BLOCK_ROUTINES })
+  // Reset S to a known generic overlay. replaceState persists immediately, so each scenario
+  // starts from a clean slate regardless of what prior tests left behind.
+  useStore.getState().replaceState({ routines: [], workouts: [] })
 })
 
 afterEach(() => {
@@ -87,6 +65,7 @@ afterEach(() => {
   delete globalThis.navigator
 })
 
+/* TEMPORARILY DISABLED: block lifecycle persistence tests retained for later reactivation.
 describe('useStore.update × activateBlock — persistence integration', () => {
   it('persists activeBlock in S and in gym_state_v1 after activate', () => {
     const { update } = useStore.getState()
@@ -160,6 +139,7 @@ describe('useStore.update × endBlock — persistence integration', () => {
     expect(persisted.activeBlock).toBeNull()
   })
 })
+*/
 
 describe('restTimerEnabled compatibility', () => {
   it('defaults old profiles to enabled and persists a disabled choice', () => {

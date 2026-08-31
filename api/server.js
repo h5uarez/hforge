@@ -101,15 +101,8 @@ function cancelRestTimer(userId) {
 
 // "Workout planned today" reminder — one per user per day, at their chosen time.
 // Duplicated (not imported) from frontend/src/lib/history.js effectiveRoutineId — tiny pure
-// helper, not worth sharing across the two runtimes. The two implementations MUST stay in
-// lockstep so the client and the reminder never disagree about what today is.
-//
-// Precedence (spec #907 / design #908):
-//   1. Explicit `dayPlan[iso]` (a routine id or 'rest') always wins.
-//   2. With an active block, the current block week / weekday mapping is used. A missing,
-//      empty, or invalid block-day value resolves to `rest` — it MUST NOT fall through
-//      to legacy `week`.
-//   3. Without an active block, legacy `dayPlan` then `week` behavior is preserved.
+// helper, not worth sharing across the two runtimes. The legacy dayPlan -> week behavior stays
+// active while training blocks are temporarily disabled.
 function effectiveRoutineId(S, iso) {
   if (!S) return null;
   const ov = S.dayPlan?.[iso];
@@ -118,6 +111,9 @@ function effectiveRoutineId(S, iso) {
 
   const wd = new Date(iso + 'T12:00:00').getDay();
 
+  /*
+   * TEMPORARILY DISABLED: active training-block schedule resolution is retained for later
+   * reactivation. The legacy dayPlan -> week path below is active.
   const week = blockWeek(S, iso);
   if (week != null) {
     const ab = S.activeBlock;
@@ -133,10 +129,15 @@ function effectiveRoutineId(S, iso) {
     // blockWeek returned a week but the underlying block has no usable week data
     return null;
   }
+  */
 
-  // No active block (or stale active pointer whose block has been deleted): legacy.
+  // Legacy resolution: explicit dayPlan overrides win, then the weekly plan.
   return S.week?.[wd] || null;
 }
+
+/*
+ * TEMPORARILY DISABLED: block calendar helpers are retained for later reactivation. The API
+ * keeps generic state persistence and validation active regardless of block runtime behavior.
 // Local-noon date math, duplicated from frontend/src/lib/history.js so the server's
 // block clock never drifts across a DST boundary the way a midnight-based walk would.
 function localNoon(iso) { return new Date(iso + 'T12:00:00'); }
@@ -185,12 +186,10 @@ function blockWeek(S, iso) {
   const week = 1 + Math.floor((credited - 1) / 7);
   return Math.min(block.weeks.length, week);
 }
+*/
 
-// Parity reference: the canonical resolver and its blockStatus helper live in
-// frontend/src/lib/history.js. Every change to either side here MUST be mirrored
-// there (and vice versa) so the client and the reminder never disagree about
-// what today is. The history.test.js suite covers the client side; the server
-// has no test harness — review by diff.
+// The legacy resolver above intentionally matches frontend/src/lib/history.js. The disabled
+// block resolver and calendar helper remain commented here for later reactivation.
 // Computes "now" in an arbitrary IANA zone (e.g. "Europe/Lisbon") instead of the server's own —
 // each user's reminder fires by their own clock, wherever they and their phone actually are.
 function userNow(tz) {

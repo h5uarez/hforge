@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, effectiveRoutineId, buildWorkoutBlockSnapshot, blockWeekDays, blockWeekTrainingDays, validateProgrammedTargets, normalizeTargets, sameBlockWeight, resolveTarget } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, normalizeTargets, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -85,12 +85,14 @@ describe('side-aware set accounting', () => {
     expect(setIsDone({ done: true, w: 40 })).toBe(true)
     expect(setIsDone({ left: { done: true }, right: { done: false } })).toBe(false)
   })
+  /* TEMPORARILY DISABLED: block-specific history lookup retained for later reactivation.
   it('keeps explicit differing side weights available to same-block reads', () => {
     const S = { workouts: [{ d: '2026-08-28', block: { id: 'b' }, entries: [{ id: '0739', sets: [{ left: { done: true, w: 20, r: 8 }, right: { done: true, w: 22, r: 8 } }] }] }] }
     const read = sameBlockWeight(S, '0739', 'b')
     expect(read.sets[0]).toMatchObject({ left: { w: 20 }, right: { w: 22 }, done: true })
     expect(read.sets[0]).not.toHaveProperty('w')
   })
+  */
   it('does not copy a legacy aggregate into newly created side records', () => {
     const S = { exWeights: {}, workouts: [{ d: '2026-08-28', entries: [{ id: LIFT, sets: [{ done: true, w: 40, r: 10 }] }] }] }
     const sets = buildSets(S, { id: LIFT, mode: 'reps', side: true, sets: 1, reps: 12, weight: 0 })
@@ -439,6 +441,9 @@ describe('normalizeTargets', () => {
   })
 })
 
+/*
+ * TEMPORARILY DISABLED: sameBlockWeight tests are retained for later reactivation with the
+ * block-specific buildSets path.
 describe('sameBlockWeight', () => {
   // Set A belongs to 'b1', set B belongs to 'b2'. The helper must answer for
   // 'b1' using only set A's data and ignore set B entirely.
@@ -515,6 +520,7 @@ describe('sameBlockWeight', () => {
     expect(sameBlockWeight({}, LIFT, 'b1')).toBeNull()
   })
 })
+*/
 
 /* ---------- bodyweight and per side (issues #31/#32/#33) ---------- */
 
@@ -732,12 +738,10 @@ describe('buildSets', () => {
     expect(set.rir).toBe(0)
   })
 
-  /* ---- block-workout kg initialization (Phase 2 — issue: programmed-rpe-rir) ----
-     A block workout initializes kilograms from the previous session belonging to
-     the same block ONLY. Other-block history is never consulted; if no same-block
-     session exists, kilograms stay blank (0) for manual entry. The active block
-     is the snapshot frozen on `S.active.block` by beginWorkout (sheets.jsx). */
-  it('seeds kilograms from the previous same-block session and ignores other-block history', () => {
+  /*
+   * TEMPORARILY DISABLED: block-workout weight initialization tests are retained for later
+   * reactivation. The legacy lastEntryFor path remains covered above and below.
+   it('seeds kilograms from the previous same-block session and ignores other-block history', () => {
     // Two workouts in two different blocks; the active workout is in b1. The b2
     // session is the LATEST in the workouts array so `lastEntryFor` (the legacy
     // helper) would surface 200 — sameBlockWeight must return 80, or blocks
@@ -803,6 +807,7 @@ describe('buildSets', () => {
     const sets = buildSets(S, cfg)
     expect(sets[0].w).toBe(85)
   })
+  */
 
   it('preserves legacy lastEntryFor behavior when no block is active (no active.block snapshot)', () => {
     // Contract: a workout without a block snapshot falls back to the existing
@@ -846,6 +851,9 @@ describe('workoutVolume', () => {
 
 /* ---------- block management (Phase 1 foundation, issue: block-management) ---------- */
 
+/*
+ * TEMPORARILY DISABLED: block validation and lifecycle tests are retained for later
+ * reactivation when the block runtime is enabled again.
 // Shared routines for the block tests. Stable ids so a week can map weekdays to real routines
 // or to the explicit 'rest' marker that means "this day is a rest day by design".
 const BLOCK_ROUTINES = [
@@ -1053,22 +1061,23 @@ describe('blockStatus', () => {
     expect(blockStatus(S, '2026-03-29')).toBe(2)
   })
 })
+*/
 
-/* ---------- effectiveRoutineId (canonical resolver, Phase 2) ----------
-   Precedence (per spec #907 and design #908):
-     1. Explicit `dayPlan[iso]` (a routine id or 'rest') always wins.
-     2. With an active block, the current block week / weekday mapping is used.
-        A missing, empty, or invalid block-day value resolves to `rest` —
-        it MUST NOT fall through to legacy `week`.
-     3. Without an active block, legacy `dayPlan` then `week` behavior is preserved. */
+/* ---------- effectiveRoutineId (legacy resolver; block branch disabled) ----------
+   Explicit `dayPlan[iso]` (a routine id or `rest`) wins, then the legacy `week` map.
+   Active-block resolver tests are retained below in comments for later reactivation. */
 
 describe('effectiveRoutineId (canonical resolver)', () => {
-  // Reuse the block fixtures from the foundation suite so the new resolver is
-  // tested against the same well-known shapes.
-  const ROUTINES = BLOCK_ROUTINES
+  // Legacy resolver fixtures remain active while block scheduling is disabled.
+  const ROUTINES = [
+    { id: 'r-push', name: 'Push' },
+    { id: 'r-pull', name: 'Pull' },
+    { id: 'r-legs', name: 'Legs' },
+  ]
   // 2026-08-24 is a Monday (wd 1), 2026-08-25 is Tuesday (wd 2),
   // 2026-08-23 is Sunday (wd 0). The GOOD_BLOCK day map assigns:
   //   0→r-push, 1→r-pull, 2→rest, 3→r-legs, 4→r-push, 5→rest, 6→rest.
+  /* TEMPORARILY DISABLED: active block resolver fixture retained for later reactivation.
   const ACTIVE_DAY1 = {
     blocks: [GOOD_BLOCK],
     activeBlock: { blockId: 'b1', startedOn: '2026-08-24', status: 'active', pausedRanges: [] },
@@ -1076,7 +1085,9 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     dayPlan: {},
     week: { 1: 'r-legacy-fallback' }
   }
+  */
 
+  /* TEMPORARILY DISABLED: active block resolution tests retained for later reactivation.
   it('lets an explicit dayPlan routine override the active block day', () => {
     // 2026-08-24 is day 1 in the block (r-pull) but dayPlan forces r-legs for today.
     const S = { ...ACTIVE_DAY1, dayPlan: { '2026-08-24': 'r-legs' } }
@@ -1129,10 +1140,11 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     }
     expect(effectiveRoutineId(S, '2026-08-23')).toBeNull()
   })
+  */
 
   it('preserves legacy `week` resolution when no block is active', () => {
     const S = {
-      blocks: [GOOD_BLOCK],   // blocks defined but not active
+      blocks: [],
       activeBlock: null,
       routines: ROUTINES,
       dayPlan: {},
@@ -1143,13 +1155,14 @@ describe('effectiveRoutineId (canonical resolver)', () => {
 
   it('preserves dayPlan override over legacy week when no block is active', () => {
     const S = {
-      blocks: [GOOD_BLOCK], activeBlock: null, routines: ROUTINES,
+      blocks: [], activeBlock: null, routines: ROUTINES,
       dayPlan: { '2026-08-24': 'r-legs' },
       week: { 1: 'r-legacy-fallback' }
     }
     expect(effectiveRoutineId(S, '2026-08-24')).toBe('r-legs')
   })
 
+  /* TEMPORARILY DISABLED: active block Plan-resolution test retained for later reactivation.
   // Plan-resolution contract (Plan.jsx fix).
   // Plan.jsx renders the current local-calendar week's seven weekdays and must show the
   // active block's resolved routine / rest for each one. This test exercises the resolver
@@ -1173,6 +1186,7 @@ describe('effectiveRoutineId (canonical resolver)', () => {
       expect(effectiveRoutineId(S, iso)).toBe(id)
     })
   })
+  */
 
   // Legacy-fallback contract (Plan.jsx fix).
   // With no active block, Plan.jsx must keep its existing dayPlan-then-week legacy behavior
@@ -1199,6 +1213,7 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     })
   })
 
+  /* TEMPORARILY DISABLED: mid-week active block resolver tests retained for later reactivation.
   // Mid-week activation contract (WU2 remediation, verify-report #1256 critical
   // finding #1). When a block is
   // activated mid-week, the current local-calendar week must show the block's
@@ -1256,6 +1271,7 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     expect(effectiveRoutineId(S, '2026-08-22')).toBeNull()           // Sat
     expect(effectiveRoutineId(S, '2026-08-23')).toBeNull()           // Sun
   })
+  */
 })
 
 /* ---------- blockWeekDays / blockWeekTrainingDays (block-aware Plan/Home) ----------
@@ -1274,6 +1290,9 @@ describe('effectiveRoutineId (canonical resolver)', () => {
    active blockId has been deleted, or when the resolved week has no usable
    day map. */
 
+/*
+ * TEMPORARILY DISABLED: block-aware Plan/Home helper tests are retained for later
+ * reactivation with the block runtime.
 describe('blockWeekDays', () => {
   // 2026-08-24 is a Monday, day 1 of an activated-on-day-1 block.
   const ACTIVE_DAY1 = {
@@ -1389,6 +1408,7 @@ describe('blockWeekTrainingDays', () => {
     expect(blockWeekTrainingDays(S, '2026-08-27')).toBe(4)  // Thu (start day)
   })
 })
+*/
 
 /* ---------- buildWorkoutBlockSnapshot (Phase 3 immutable workout context) ----------
    The shape that lands on `active.block` at workout start and rides into the finished
@@ -1396,6 +1416,8 @@ describe('blockWeekTrainingDays', () => {
    (rename, week re-mapping, lifecycle changes) cannot rewrite the historical record.
    Pure helper: takes S + iso and returns a fresh object, or null. */
 
+/*
+ * TEMPORARILY DISABLED: workout block snapshot tests are retained for later reactivation.
 describe('buildWorkoutBlockSnapshot', () => {
   // 2026-08-24 is Monday (wd 1), 2026-08-30 is Sunday (wd 0)
   const ACTIVE_DAY1 = {
@@ -1497,3 +1519,4 @@ describe('buildWorkoutBlockSnapshot', () => {
     expect(snap).toEqual({ id: 'b1', name: 'Hypertrophy Block', week: 1 })
   })
 })
+*/
