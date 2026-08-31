@@ -75,6 +75,8 @@ describe('Spanish translation and instruction contracts', () => {
     await setLang('es')
     expect(t('Start {0}', 'Push Day')).toBe('Empezar Push Day')
     expect(t('Exercise')).toBe('Ejercicio')
+    expect(t('Exercise note')).toBe('Nota del ejercicio')
+    expect(t('Workout note')).toBe('Nota del entrenamiento')
     expect(t('a key absent from every locale')).toBe('a key absent from every locale')
   })
 

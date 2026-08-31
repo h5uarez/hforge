@@ -9,7 +9,7 @@
 //     a page break — each exercise, and each routine that fits, stays in one place.
 
 import { EXIDX, isBodyweightEq, exerciseName } from './exercises.js'
-import { modeOf, fmtSec, isBw, isPerSide, sideReps } from './history.js'
+import { modeOf, fmtSec, isBw, isPerSide, sideReps, normalizeNote } from './history.js'
 import { uid, todayISO, DAYN, fmtNum, exCount } from './format.js'
 import { t } from './i18n.js'
 
@@ -17,7 +17,7 @@ const PLAN_FMT = 1
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]   // Mon-first, matching the Plan screen
 
 // Keep only the meaningful config fields, so the file stays small and readable.
-function cleanEx(e) {
+export function cleanEx(e) {
   const o = { id: e.id, sets: e.sets }
   const mode = modeOf(e)
   if (mode === 'cardio') {
@@ -55,6 +55,10 @@ function cleanEx(e) {
   if (Array.isArray(e.programmedEffort) && e.programmedEffort.length > 0) {
     o.programmedEffort = e.programmedEffort
   }
+  // Routine coach instructions are shareable; session notes are deliberately not. Empty and
+  // overlong values are normalized at this export boundary rather than written to the file.
+  const planNote = normalizeNote(e.planNote)
+  if (planNote !== undefined) o.planNote = planNote
   return o
 }
 
@@ -92,11 +96,13 @@ export function parsePlan(raw) {
   let dropped = 0
   const routines = data.routines.filter(r => r && Array.isArray(r.ex)).map(r => ({
     ...r,
+    // Re-clean imported exercises so a hand-edited file cannot smuggle a session `note` into
+    // a routine or retain unrelated fields. Old files remain valid because cleanEx is additive.
     ex: r.ex.filter(e => {
       const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
       if (!ok) dropped++
       return ok
-    })
+    }).map(cleanEx)
   }))
   return {
     name: (data.name || '').trim(),
@@ -136,7 +142,7 @@ export function mergePlan(s, bundle, { schedule } = {}) {
       name: r.name || t('Shared routine'),
       emoji: r.emoji,
       ...(r.prog ? { prog: r.prog } : {}),
-      ex: (r.ex || []).map(e => ({ ...e, id: exIdMap[e.id] || e.id }))
+      ex: (r.ex || []).map(e => ({ ...cleanEx(e), id: exIdMap[e.id] || e.id }))
     })
   })
   if (schedule) {

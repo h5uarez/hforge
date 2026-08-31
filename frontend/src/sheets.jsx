@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 // TEMPORARILY DISABLED: block-specific history helpers are retained in comments for later use.
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
@@ -12,7 +12,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, TextArea } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
@@ -40,6 +40,10 @@ export function commitPickerSelection(commit, closePicker) {
 // Keep the editor-level predicate as a named boundary while the parser owns the exact rules.
 export const validTimedSeconds = raw => parseTimedSeconds(raw) !== null
 export const clampTimedSeconds = value => Math.max(1, Math.round(Number(value) || 0))
+export const validExerciseNote = raw => {
+  const note = normalizeExerciseNote(raw)
+  return note === undefined || note.length <= NOTE_MAX
+}
 
 // An active entry is a session snapshot, not a routine entry. Keep its construction in one
 // pure helper so starting a workout, adding an exercise, and editing an exercise all use the
@@ -49,7 +53,12 @@ export function buildWorkoutEntry(S, cfg, routine, previous) {
   const full = { ...cfg, id }
   const base = previous ? { ...previous } : { id, sg: cfg.sg }
   const plan = nextPrescription(S, full, routine)
-  return { ...base, id, target: { ...cfg }, plan, sets: applyPrescription(buildSets(S, full), plan) }
+  const target = { ...cfg }
+  delete target.note
+  const planNote = normalizeNote(target.planNote)
+  if (planNote === undefined) delete target.planNote
+  else target.planNote = planNote
+  return { ...base, id, target, plan, sets: applyPrescription(buildSets(S, full), plan) }
 }
 
 const cloneWorkoutSet = set => {
@@ -637,6 +646,9 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
   const [timedSecondsRaw, setTimedSecondsRaw] = useState(() => timedSecondsInput(existing, ex.id))
+  // Keep the note visible by default so the existing editor remains unsurprising; this is only
+  // local disclosure state and never changes the note saved with the exercise.
+  const [planNoteOpen, setPlanNoteOpen] = useState(true)
   // Cardio keeps its own duration+speed form; the reps/time choice (issue #16) is offered for
   // everything else, which is where the gap was — planks, hangs, wall sits, loaded carries.
   const mode = cardio ? 'cardio' : modeOf({ ...c, id: ex.id })
@@ -662,6 +674,8 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
     }
     close()
     const sets = Math.max(1, Math.round(c.sets) || (cardio ? 1 : 3))
+    const planNote = normalizeNote(c.planNote)
+    const planNoteField = planNote === undefined ? {} : { planNote }
     // Only carry progression settings that differ from the inherited default, so a plan file
     // stays readable and "follow the routine" keeps meaning exactly that.
     const prog = {}
@@ -674,8 +688,8 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
     // rather than carrying a flag nothing downstream can read.
     const flags = {}
     if (bw !== isBodyweightEq(ex.id)) flags.bodyweight = bw
-    if (cardio) onSave({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8) })
-    else if (mode === 'time') onSave({ sets, mode: 'time', sec: timedSeconds, weight: Math.max(0, c.weight || 0), ...flags, ...prog })
+    if (cardio) onSave({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8), ...planNoteField })
+    else if (mode === 'time') onSave({ sets, mode: 'time', sec: timedSeconds, weight: Math.max(0, c.weight || 0), ...flags, ...prog, ...planNoteField })
     else {
       // A unilateral target is stored even: the split has to divide, and a typed 15 would
       // otherwise plan seven reps on one side and eight on the other, every session.
@@ -697,7 +711,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
           if (norm.some(s => s != null)) out.programmedEffort = norm
         }
       }
-      onSave(out)
+      onSave({ ...out, ...planNoteField })
     }
   }
   return <>
@@ -769,6 +783,24 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         ? t('Reps climb to {0}, then a set is added and the reps start over. At {1} sets it asks you to add weight instead.', c.repsMax, MAX_BW_SETS)
         : t('Reps climb by one whenever every set was clean. Set a ceiling to add sets instead of reps forever.')}
     </div>}
+    <div style={{ marginBottom: 18 }}>
+      <div className="row between" style={{ margin: '0 2px 6px' }}>
+        <label className="small dim" htmlFor="exercise-plan-note" style={{ margin: 0 }}>{t('Exercise note')}</label>
+        <button type="button" className="iconbtn" aria-label={t(planNoteOpen ? 'Hide {0}' : 'Show {0}', t('Exercise note'))}
+          title={t(planNoteOpen ? 'Hide {0}' : 'Show {0}', t('Exercise note'))}
+          aria-expanded={planNoteOpen} aria-controls="exercise-plan-note-content"
+          onClick={() => setPlanNoteOpen(open => !open)}>
+          <Icon name={planNoteOpen ? 'chevronUp' : 'chevronDown'} />
+        </button>
+      </div>
+      <div id="exercise-plan-note-content" hidden={!planNoteOpen}>
+        <div className="small dim" style={{ margin: '0 2px 6px' }}>{t('Optional instructions or context for this exercise.')}</div>
+        <TextArea id="exercise-plan-note" maxLength={NOTE_MAX} value={typeof c.planNote === 'string' ? c.planNote : ''}
+          placeholder={t('Add a note for this exercise')}
+          aria-label={t('Exercise note')}
+          onChange={e => setC(x => ({ ...x, planNote: e.target.value }))} />
+      </div>
+    </div>
     {/* ---------- programmed effort target (issue `programmed-rpe-rir`) ----------
         A per-set target stepper for resistance exercises, only when the profile logs an
         effort scale and the user opted in via Settings. The helper owns its own
@@ -941,7 +973,10 @@ function WorkoutDetail({ w, close }) {
       return <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
         {ex && <Thumb ex={ex} />}
         <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseName(ex) : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-          <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div></div>
+          <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
+          {e.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{e.target.planNote}</div>}
+          {e.note && <div className="exnote" role="note"><div className="small dim">{t('Workout note')}</div>{e.note}</div>}
+        </div>
       </div>
     })}
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
@@ -1425,7 +1460,7 @@ function doFinishWorkout() {
     // `target` (what the session prescribed) is kept alongside the sets: without it a
     // finished workout cannot say whether it hit its reps, and a timed session reads back
     // as "0 reps". It is what the progression engine works from.
-    entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(setIsDone)),
+    entries: A.entries.map(e => copyHistoryEntry({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null, note: e.note })).filter(keepHistoryEntry),
     // TEMPORARILY DISABLED: new workouts do not receive block snapshots. Preserve a snapshot
     // already present on an in-progress workout created before this feature was disabled.
     // Previous behavior retained for reactivation: block: A.block || null,

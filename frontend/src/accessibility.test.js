@@ -28,6 +28,27 @@ describe('mobile accessibility and layout contracts', () => {
     expect(home).toContain('style={{ width: 44, height: 44, fontSize: 15 }}')
   })
 
+  it('keeps exercise and workout note boxes independently discoverable and collapsible', () => {
+    const sheets = source('sheets.jsx')
+    const workout = source('views/Workout.jsx')
+    expect(sheets).toContain("t('Exercise note')")
+    expect(sheets).not.toContain("t('Trainer note')")
+    expect(sheets).toContain('const [planNoteOpen, setPlanNoteOpen] = useState(true)')
+    expect(sheets).toContain('aria-expanded={planNoteOpen}')
+    expect(sheets).toContain('aria-controls="exercise-plan-note-content"')
+    expect(sheets).toContain('<div id="exercise-plan-note-content" hidden={!planNoteOpen}>')
+    expect(sheets).toContain("<Icon name={planNoteOpen ? 'chevronUp' : 'chevronDown'} />")
+    expect(sheets).toContain('id="exercise-plan-note"')
+    expect(workout).toContain("t('Exercise note')")
+    expect(workout).not.toContain("t('Trainer note')")
+    expect(workout).toContain('const [workoutNoteOpen, setWorkoutNoteOpen] = useState(true)')
+    expect(workout).toContain('aria-expanded={workoutNoteOpen}')
+    expect(workout).toContain('aria-controls={workoutNoteContentId}')
+    expect(workout).toContain('hidden={!workoutNoteOpen}')
+    expect(workout).toContain("<Icon name={workoutNoteOpen ? 'chevronUp' : 'chevronDown'} />")
+    expect(workout).toContain("const workoutNoteId = 'workout-note-' + entryIdx")
+  })
+
   it('guards unlocked dismissal while preserving locked dialogs', () => {
     const modal = source('components/Modals.jsx')
     expect(modal).toContain("e.key === 'Escape' && !sheet.locked")

@@ -3,6 +3,63 @@ import { todayISO, isoOf, weekKey, fmtNum } from './format.js'
 import { isCardio, isBodyweightEq } from './exercises.js'
 import { t } from './i18n.js'
 
+// Notes are optional context, not part of exercise calculations. Keep the unbounded helper
+// available to editors that need to retain a draft, and use normalizeNote at persistence
+// boundaries so stored values are trimmed, bounded, and absent when empty.
+export const NOTE_MAX = 280
+export function normalizeExerciseNote(raw) {
+  if (typeof raw !== 'string') return undefined
+  const note = raw.trim()
+  return note || undefined
+}
+export function normalizeNote(raw) {
+  const note = normalizeExerciseNote(raw)
+  return note === undefined ? undefined : note.slice(0, NOTE_MAX)
+}
+export const normalizeStoredNote = normalizeNote
+
+// Normalize the two note concepts without mutating the source. This is also used for nested
+// routine snapshots so a finished workout cannot retain an empty or overlong coach note.
+export function copyNoteFields(source) {
+  if (!source || typeof source !== 'object') return source
+  const copy = { ...source }
+  for (const field of ['note', 'planNote']) {
+    const note = normalizeNote(copy[field])
+    if (note === undefined) delete copy[field]
+    else copy[field] = note
+  }
+  return copy
+}
+
+// Build the history representation before applying the completed-set filter. This ordering is
+// important: an entry with a note or coach note and no completed sets is still useful history.
+export function copyHistoryEntry(entry) {
+  if (!entry || typeof entry !== 'object') return entry
+  const copy = copyNoteFields({ ...entry, sets: Array.isArray(entry.sets) ? entry.sets : [] })
+  if (copy.target && typeof copy.target === 'object') copy.target = copyNoteFields(copy.target)
+  return copy
+}
+
+export function keepHistoryEntry(entry) {
+  return !!entry && (
+    (Array.isArray(entry.sets) && entry.sets.some(setIsDone)) ||
+    normalizeNote(entry.note) !== undefined ||
+    normalizeNote(entry.planNote) !== undefined ||
+    normalizeNote(entry.target?.planNote) !== undefined
+  )
+}
+
+// Pure active-session update used by the visible workout textarea. Empty values are represented
+// by a missing key rather than null, and the input object is never mutated.
+export function updateExerciseNote(entry, raw) {
+  if (!entry || typeof entry !== 'object') return entry
+  const copy = { ...entry }
+  const note = normalizeNote(raw)
+  if (note === undefined) delete copy.note
+  else copy.note = note
+  return copy
+}
+
 // How an exercise is logged (issue #16). This used to be derived from the body part alone,
 // which meant a plank or a farmer's carry could only be timed by filing it under cardio.
 // A routine entry can now say so explicitly:

@@ -239,6 +239,22 @@ describe('active exercise configuration', () => {
     expect(entry).toEqual(before)
   })
 
+  it('preserves the session note while rebuilding and normalizes the coach note snapshot', () => {
+    const entry = {
+      id: ACTIVE_LIFT, note: 'athlete context',
+      target: { mode: 'reps', sets: 1, reps: 8, weight: 40, planNote: 'old coach cue' },
+      sets: [{ w: 40, r: 8, done: false }],
+    }
+
+    const result = rebuildActiveEntry(activeState(), entry, {
+      mode: 'reps', sets: 1, reps: 10, weight: 40, planNote: '  new coach cue  ',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.entry.note).toBe('athlete context')
+    expect(result.entry.target.planNote).toBe('new coach cue')
+  })
+
   it.each([
     ['mode', { mode: 'time', sets: 3, sec: 45, weight: 0 }],
     ['side setup', { mode: 'reps', sets: 3, reps: 10, weight: 40, side: true }],
