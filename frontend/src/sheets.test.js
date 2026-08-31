@@ -9,6 +9,7 @@
 // touches none of them, so the stub is just an import-time enabler.
 
 import { describe, it, expect, vi } from 'vitest'
+import { EXDB } from './lib/exercises.js'
 
 const mocks = vi.hoisted(() => ({
   getState: vi.fn(),
@@ -19,8 +20,12 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
+
+const ACTIVE_LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
+
+const activeState = () => ({ unit: 'kg', exWeights: {}, workouts: [], routines: [], active: null })
 
 describe('commitPickerSelection', () => {
   it('calls commit() before closePicker() when the commit succeeds', () => {
@@ -185,6 +190,71 @@ describe('weight bounds and precision modes', () => {
     expect(adjustWeight(1, -0.5, 'kg', true)).toBe(1)
     expect(adjustWeight(180, 0.1, 'kg', true)).toBe(180)
     expect(savedWeight(0.5, 'kg', true)).toBe(1)
+  })
+})
+
+describe('active exercise configuration', () => {
+  it('regenerates an unfinished entry from the new config, including bodyweight', () => {
+    const entry = {
+      id: ACTIVE_LIFT, sg: 'pair-1',
+      target: { mode: 'reps', sets: 2, reps: 8, weight: 0 },
+      plan: { kind: 'old' },
+      sets: [{ w: 0, r: 8, done: false }, { w: 0, r: 8, done: false }]
+    }
+    const before = JSON.parse(JSON.stringify(entry))
+
+    const result = rebuildActiveEntry(activeState(), entry, {
+      mode: 'reps', sets: 3, reps: 10, weight: 0, bodyweight: true
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.entry).toMatchObject({ id: ACTIVE_LIFT, sg: 'pair-1', target: { bodyweight: true, reps: 10, sets: 3 } })
+    expect(result.entry.sets).toEqual([
+      { w: 0, r: 10, done: false },
+      { w: 0, r: 10, done: false },
+      { w: 0, r: 10, done: false },
+    ])
+    expect(entry).toEqual(before)
+  })
+
+  it('preserves the superset id and completed sets while refreshing unfinished sets', () => {
+    const completed = { w: 40, r: 8, rir: 2, done: true }
+    const entry = {
+      id: ACTIVE_LIFT, sg: 'pair-2',
+      target: { mode: 'reps', sets: 2, reps: 8, weight: 40 },
+      sets: [completed, { w: 40, r: 8, done: false }]
+    }
+    const before = JSON.parse(JSON.stringify(entry))
+
+    const result = rebuildActiveEntry(activeState(), entry, {
+      mode: 'reps', sets: 2, reps: 12, weight: 50
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.entry.id).toBe(ACTIVE_LIFT)
+    expect(result.entry.sg).toBe('pair-2')
+    expect(result.entry.sets[0]).toEqual(completed)
+    expect(result.entry.sets[0]).not.toBe(completed)
+    expect(result.entry.sets[1]).toEqual({ w: 50, r: 12, done: false })
+    expect(entry).toEqual(before)
+  })
+
+  it.each([
+    ['mode', { mode: 'time', sets: 3, sec: 45, weight: 0 }],
+    ['side setup', { mode: 'reps', sets: 3, reps: 10, weight: 40, side: true }],
+    ['set count', { mode: 'reps', sets: 1, reps: 10, weight: 40 }],
+  ])('rejects an incompatible %s change after completed sets', (_kind, cfg) => {
+    const entry = {
+      id: ACTIVE_LIFT,
+      target: { mode: 'reps', sets: 3, reps: 8, weight: 40 },
+      sets: [{ w: 40, r: 8, done: true }, { w: 40, r: 8, done: true }, { w: 40, r: 8, done: false }]
+    }
+    const before = JSON.parse(JSON.stringify(entry))
+
+    const result = rebuildActiveEntry(activeState(), entry, cfg)
+
+    expect(result).toEqual({ ok: false, reason: ACTIVE_ENTRY_EDIT_REJECTED })
+    expect(entry).toEqual(before)
   })
 })
 

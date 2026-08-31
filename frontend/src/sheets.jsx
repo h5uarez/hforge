@@ -40,6 +40,54 @@ export function commitPickerSelection(commit, closePicker) {
 export const validTimedSeconds = raw => parseTimedSeconds(raw) !== null
 export const clampTimedSeconds = value => Math.max(1, Math.round(Number(value) || 0))
 
+// An active entry is a session snapshot, not a routine entry. Keep its construction in one
+// pure helper so starting a workout, adding an exercise, and editing an exercise all use the
+// same prescription + set generation path.
+export function buildWorkoutEntry(S, cfg, routine, previous) {
+  const id = previous?.id ?? cfg.id
+  const full = { ...cfg, id }
+  const base = previous ? { ...previous } : { id, sg: cfg.sg }
+  const plan = nextPrescription(S, full, routine)
+  return { ...base, id, target: { ...cfg }, plan, sets: applyPrescription(buildSets(S, full), plan) }
+}
+
+const cloneWorkoutSet = set => {
+  if (!set || typeof set !== 'object') return set
+  const out = { ...set }
+  for (const key of ['left', 'right', 'plannedEffort']) {
+    if (set[key] && typeof set[key] === 'object') out[key] = { ...set[key] }
+  }
+  return out
+}
+
+export const ACTIVE_ENTRY_EDIT_REJECTED = 'Finish or undo completed sets before changing the exercise mode, sides, or set count.'
+
+// Rebuild only the unfinished portion of an active entry. A mode/side change or a shorter
+// entry could make completed data impossible to place back at its original index, so those
+// edits are rejected once any set is complete. The returned entry is always fresh; neither the
+// active entry passed in nor the routine/config objects are mutated.
+export function rebuildActiveEntry(S, entry, cfg, routine) {
+  const oldSets = Array.isArray(entry?.sets) ? entry.sets : []
+  const oldCfg = { ...(entry?.target || {}), id: entry?.id }
+  const nextCfg = { ...(cfg || {}), id: entry?.id }
+  const setCount = Math.max(1, Math.round(nextCfg.sets) || 1)
+  const completedIndexes = oldSets.reduce((indexes, set, index) => {
+    if (setIsDone(set)) indexes.push(index)
+    return indexes
+  }, [])
+  const incompatible = completedIndexes.length > 0 && (
+    modeOf(oldCfg) !== modeOf(nextCfg) ||
+    isPerSide(oldCfg) !== isPerSide(nextCfg) ||
+    setCount < completedIndexes[completedIndexes.length - 1] + 1
+  )
+  if (incompatible) return { ok: false, reason: ACTIVE_ENTRY_EDIT_REJECTED }
+
+  const rebuilt = buildWorkoutEntry(S, cfg, routine, entry)
+  const completed = new Set(completedIndexes)
+  rebuilt.sets = rebuilt.sets.map((set, index) => completed.has(index) ? cloneWorkoutSet(oldSets[index]) : set)
+  return { ok: true, entry: rebuilt }
+}
+
 /* ============================ custom confirm dialog ============================ */
 function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, close }) {
   return <div style={{ textAlign: 'center', padding: '4px 0' }}>
@@ -1241,10 +1289,7 @@ export function beginWorkout(routineId, bw) {
   // The prescription is applied as the session is built, so you walk up to the bar with the
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
-  const entries = (r ? r.ex : []).map(cfg => {
-    const plan = nextPrescription(st, cfg, r)
-    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
-  })
+  const entries = (r ? r.ex : []).map(cfg => buildWorkoutEntry(st, cfg, r))
   // Block context snapshot (issue: block-management, spec #907 / design #908). When a workout
   // starts while a block is active, freeze { id, name, week } onto the workout so later block
   // edits (rename, week re-mapping, pause/resume/end) cannot rewrite history. Null when no

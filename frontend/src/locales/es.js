@@ -347,6 +347,7 @@ export default {
   'Cardio exercises log time + speed instead of weight × reps.': 'Los ejercicios de cardio registran tiempo + velocidad en vez de peso × reps.',
   'custom': 'propio',
   'Edit': 'Editar',
+  'Finish or undo completed sets before changing the exercise mode, sides, or set count.': 'Termina o desmarca las series completadas antes de cambiar el modo, los lados o el número de series.',
   'Saved': 'Guardado',
   'Delete “{0}”?': '¿Eliminar «{0}»?',
   'It will be removed from your routines. Already-logged workouts keep their sets.': 'Se quitará de tus rutinas. Los entrenamientos ya registrados conservan sus series.',
