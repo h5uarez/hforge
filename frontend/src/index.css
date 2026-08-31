@@ -770,6 +770,13 @@ h4.sec{
   font-size:52px;font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
   font-variant-numeric:tabular-nums;line-height:1;
 }
+.bw-read.editable{display:flex;align-items:baseline;justify-content:center;gap:7px;min-width:0;flex:1 1 auto}
+.bw-read-input{
+  flex:1 1 150px;width:150px;min-width:0;max-width:150px;background:none;border:none;outline:none;
+  text-align:right;color:var(--label);font:inherit;letter-spacing:inherit;padding:0;
+  font-variant-numeric:tabular-nums;
+}
+.bw-read-input:focus{box-shadow:0 2px 0 var(--acc)}
 .bw-read .u{font-size:19px;color:var(--label-2);font-weight:400;letter-spacing:-.01em}
 .bwin{display:flex;align-items:baseline;justify-content:center;gap:7px;margin:16px 0}
 .bwin input{

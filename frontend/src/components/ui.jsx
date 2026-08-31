@@ -24,7 +24,9 @@ import { t } from '../lib/i18n.js'
 // 0). Keeps a local string draft while focused so partial input like "33," survives.
 // `nullable` is for fields where "nothing entered" and 0 mean different things (RIR: a
 // logged 0 is a set taken to failure). Those clear back to null instead of snapping to 0.
-export function NumberField({ value, onChange, onRawChange, decimal = true, nullable = false, className = '', ...rest }) {
+// `displayValue` is an optional localized representation; `value` remains the numeric source
+// of truth so controlled updates still reset an in-progress draft when the value really changes.
+export function NumberField({ value, displayValue, onChange, onRawChange, decimal = true, nullable = false, className = '', ...rest }) {
   const [draft, setDraft] = useState(null)
   const committed = useRef(null)
   // null and undefined are the same "empty" here — a nullable field's key is dropped once cleared.
@@ -44,7 +46,7 @@ export function NumberField({ value, onChange, onRawChange, decimal = true, null
       type="text"
       inputMode={decimal ? 'decimal' : 'numeric'}
       className={'num ' + className}
-      value={draft ?? (value ?? '')}
+      value={draft ?? (displayValue ?? (value ?? ''))}
       onFocus={e => e.target.select()}
       onChange={e => commit(e.target.value)}
       onBlur={() => { setDraft(null); committed.current = null }}
