@@ -49,14 +49,16 @@ export function keepHistoryEntry(entry) {
   )
 }
 
-// Pure active-session update used by the visible workout textarea. Empty values are represented
-// by a missing key rather than null, and the input object is never mutated.
+// Pure active-session update used by the visible workout textarea. Keep the draft exactly as
+// typed so a trailing space is still present when the next word is entered. Empty values are
+// represented by a missing key rather than null, and the input object is never mutated. Stored
+// history is normalized separately by copyNoteFields at the persistence boundary.
 export function updateExerciseNote(entry, raw) {
   if (!entry || typeof entry !== 'object') return entry
   const copy = { ...entry }
-  const note = normalizeNote(raw)
-  if (note === undefined) delete copy.note
-  else copy.note = note
+  const draft = typeof raw === 'string' ? raw.slice(0, NOTE_MAX) : ''
+  if (!draft.trim()) delete copy.note
+  else copy.note = draft
   return copy
 }
 
