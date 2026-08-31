@@ -134,6 +134,12 @@ describe('weight bounds and precision modes', () => {
     expect(adjustWeight(7.25, 0.25, 'kg', true)).toBe(7.5)
   })
 
+  it('uses exactly two half-unit quick controls for bodyweight', () => {
+    expect(weightControlSteps(true, true)).toEqual({ primary: 0.5, chips: [] })
+    expect(adjustWeight(105.6, -weightControlSteps(true, true).primary, 'kg', true)).toBe(105.1)
+    expect(adjustWeight(105.6, weightControlSteps(true, true).primary, 'lb', true)).toBe(106.1)
+  })
+
   it('keeps whole-unit defaults for primary and chip controls', () => {
     expect(weightControlSteps(false)).toEqual({ primary: 1, chips: [-1, 1] })
     expect(adjustWeight(72, -weightControlSteps(false).primary, 'kg')).toBe(71)
@@ -154,10 +160,16 @@ describe('weight bounds and precision modes', () => {
     expect(savedWeight(72.34, 'kg')).toBe(72)
   })
 
-  it('keeps bodyweight and goal persistence whole-kilogram only', () => {
+  it('keeps goal persistence whole-kilogram only', () => {
     expect(savedWeight(72.5, 'kg')).toBe(73)
-    expect(savedWeight('72.5', 'kg')).toBe(73)
     expect(savedWeight(0.5, 'kg')).toBe(1)
+  })
+
+  it('preserves decimal bodyweight saves and normalizes comma input', () => {
+    expect(clampWeight('105,6', 'kg', true)).toBe(105.6)
+    expect(savedWeight('105,6', 'kg', true)).toBe(105.6)
+    expect(savedWeight('105.6', 'kg', true)).toBe(105.6)
+    expect(savedWeight(181.276, 'kg', true)).toBe(180)
   })
 
   it('preserves two decimals for the explicit top-weight save mode', () => {
