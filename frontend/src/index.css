@@ -912,8 +912,12 @@ h4.sec{
 .cal-d i.done{background:var(--acc)}
 .cal-d i.plan{background:var(--label-3)}
 .cal-d i.ovr{background:var(--orange)}
+.cal-d:disabled{cursor:default;opacity:.34}
+.cal-d.selected{background:var(--acc);color:var(--on-acc)}
+.cal-d.selected i{background:var(--on-acc)}
 .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
+.export-calendar-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 
 /* --- accent swatches --- */
 .swatches{display:flex;gap:12px;flex-wrap:wrap}

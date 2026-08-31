@@ -66,6 +66,17 @@ describe('mobile accessibility and layout contracts', () => {
     expect(sheets).toContain("className=\"item\" onClick={() => set('rest')}")
   })
 
+  it('keeps selective export dates accessible and limited to trained days', () => {
+    const home = source('views/Home.jsx')
+    const sheets = source('sheets.jsx')
+    expect(home).toContain("onClick={() => workoutExportSheet()}")
+    expect(home).toContain("aria-label={t('Export')}")
+    expect(sheets).toContain('disabled={!available} aria-pressed={on}')
+    expect(sheets).toContain("aria-label={t(on ? 'Deselect {0}' : 'Select {0}'")
+    expect(sheets).toContain('disabled={!selected.size || busy}')
+    expect(sheets).toContain('createWorkoutBackup(st, selected)')
+  })
+
   it('announces the single mobile toast without changing its store behavior', () => {
     const toast = source('components/Toast.jsx')
     const css = source('index.css')
