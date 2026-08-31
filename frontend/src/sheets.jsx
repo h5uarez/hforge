@@ -3,7 +3,8 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, buildWorkoutBlockSnapshot, validateBlock, activateBlock, pauseBlock, resumeBlock, endBlock, blockStatus, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput } from './lib/history.js'
+// TEMPORARILY DISABLED: block-specific history helpers are retained in comments for later use.
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -1010,6 +1011,10 @@ export function WorkoutRow({ w, onClick }) {
 // before any persistence so a partial schedule never lands on `S`. Activation, pause, resume,
 // and end are explicit only (spec #907 / design #908); no automatic activation or ending.
 
+/*
+ * TEMPORARILY DISABLED: the block editor, manager, and lifecycle sheets are retained verbatim
+ * for later reactivation. The legacy day assignment and workout flows remain active.
+
 const restDay = () => ({ days: { 0: 'rest', 1: 'rest', 2: 'rest', 3: 'rest', 4: 'rest', 5: 'rest', 6: 'rest' } })
 
 const blockErrorText = error => {
@@ -1277,6 +1282,7 @@ function BlockList({ close }) {
   </>
 }
 export const blockManagerSheet = () => ui().openSheet(close => <BlockList close={close} />)
+*/
 
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
@@ -1290,6 +1296,8 @@ export function beginWorkout(routineId, bw) {
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
   const entries = (r ? r.ex : []).map(cfg => buildWorkoutEntry(st, cfg, r))
+  /* TEMPORARILY DISABLED: newly started workouts no longer receive a block snapshot. The old
+     snapshot construction is retained for later reactivation.
   // Block context snapshot (issue: block-management, spec #907 / design #908). When a workout
   // starts while a block is active, freeze { id, name, week } onto the workout so later block
   // edits (rename, week re-mapping, pause/resume/end) cannot rewrite history. Null when no
@@ -1297,6 +1305,10 @@ export function beginWorkout(routineId, bw) {
   const block = buildWorkoutBlockSnapshot(st, todayISO())
   update(s => {
     s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries, block }
+  })
+  */
+  update(s => {
+    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -1414,10 +1426,10 @@ function doFinishWorkout() {
     // finished workout cannot say whether it hit its reps, and a timed session reads back
     // as "0 reps". It is what the progression engine works from.
     entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(setIsDone)),
-    // Block context snapshot, frozen at workout start (issue: block-management). Copied by
-    // value so the finished record does not share a reference with `active.block`; later block
-    // edits / lifecycle changes cannot rewrite history.
-    block: A.block || null,
+    // TEMPORARILY DISABLED: new workouts do not receive block snapshots. Preserve a snapshot
+    // already present on an in-progress workout created before this feature was disabled.
+    // Previous behavior retained for reactivation: block: A.block || null,
+    ...(A.block ? { block: { ...A.block } } : {}),
     prs
   }
   w.vol = workoutVolume(w)

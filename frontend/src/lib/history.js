@@ -253,6 +253,9 @@ export function normalizeTargets(targets, setCount) {
 // other without restructuring. Cross-block sessions are ignored — a
 // load from a different block would silently cross schedule boundaries.
 // Phase 2 will wire this into `buildSets`; Phase 1 only proves the helper.
+/*
+ * TEMPORARILY DISABLED: training-block weight history is retained for later reactivation.
+ * The legacy workout-history path below remains active while block scheduling is paused.
 export function sameBlockWeight(S, exId, blockId) {
   if (!S || !exId || !blockId) return null
   const workouts = S.workouts || []
@@ -266,6 +269,7 @@ export function sameBlockWeight(S, exId, blockId) {
   }
   return null
 }
+*/
 
 // Resolve the planned-effort target for the set at `idx` on `cfg`,
 // given the current Settings `metric`. Returns `{ metric, value }` or
@@ -305,6 +309,8 @@ export function bestWeightFor(S, exId) {
 // (YYYY-MM-DD). Used by the block resolver to detect "this day is in the same
 // local-calendar week as the block's start" — activating a block on a Thursday
 // must show the block's day map for Mon-Sun of that week, not just Thu-Sun.
+/*
+ * TEMPORARILY DISABLED: block calendar resolution is retained for later reactivation.
 const mondayOfISO = iso => {
   const d = localNoon(iso)
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
@@ -326,6 +332,7 @@ const currentWeekBlockIndex = (S, iso) => {
   if (iso < start && mondayOfISO(iso) === mondayOfISO(start)) return 1
   return blockStatus(S, iso)
 }
+*/
 
 export function effectiveRoutineId(S, iso) {
   // Explicit date override always wins. A 'rest' marker is rest, even with an
@@ -337,6 +344,9 @@ export function effectiveRoutineId(S, iso) {
 
   const wd = new Date(iso + 'T12:00:00').getDay()
 
+  /*
+   * TEMPORARILY DISABLED: active training-block schedule resolution is retained here for
+   * later reactivation. Legacy dayPlan -> week resolution is active below.
   // Active block: derive the current local-calendar week and resolve that
   // weekday. A missing, empty, or stale (unknown routine id) day value
   // resolves to rest — it must NEVER fall through to legacy `week`, or a
@@ -358,9 +368,9 @@ export function effectiveRoutineId(S, iso) {
     // week data — treat as rest, not legacy
     return null
   }
+  */
 
-  // No active block (or stale active pointer whose block has been deleted):
-  // legacy resolution unchanged.
+  // Legacy resolution: an explicit day override wins, then the weekly plan.
   return (S.week && S.week[wd]) || null
 }
 export function effectiveRoutine(S, iso) {
@@ -368,6 +378,8 @@ export function effectiveRoutine(S, iso) {
   return id ? S.routines.find(r => r.id === id) || null : null
 }
 export function buildSets(S, cfg) {
+  /*
+   * TEMPORARILY DISABLED: block-specific history selection is retained for later reactivation.
   // Block workout: source kilograms from the previous same-block session ONLY.
   // Other-block history is never consulted — a load from a different block
   // would cross schedule boundaries, and the spec is explicit: same-block OR
@@ -377,6 +389,9 @@ export function buildSets(S, cfg) {
   const last = blockId
     ? sameBlockWeight(S, cfg.id, blockId)
     : lastEntryFor(S, cfg.id)
+  */
+  // Legacy workout setup: use the most recent completed entry regardless of block metadata.
+  const last = lastEntryFor(S, cfg.id)
   const n = Math.max(1, cfg.sets || 1)
   const mode = modeOf(cfg)
   const sets = []
@@ -396,11 +411,12 @@ export function buildSets(S, cfg) {
       // exercise from reps to time must not seed the duration from a rep count.
       const prev = prevAt(i)
       const carried = prev && prev.sec > 0 ? prev : null
-      // Block path: kilograms come from the same-block previous timed set or stay
-      // blank (0). Legacy path: fall back to cfg.weight when no prior carry.
+      /* TEMPORARILY DISABLED: the block-specific blank-load branch is retained for later.
       const w = blockId
         ? (carried ? (carried.w || 0) : 0)
         : (carried ? (carried.w || 0) : (cfg.weight || 0))
+      */
+      const w = carried ? (carried.w || 0) : (cfg.weight || 0)
       sets.push({ sec: carried ? carried.sec : cfg.sec, w, done: false })
     }
     return sets
@@ -410,12 +426,12 @@ export function buildSets(S, cfg) {
   for (let i = 0; i < n; i++) {
     const prev = prevAt(i)
     const usable = prev && prev.r > 0 ? prev : null
-    // Block path: same-block previous set's weight, or blank (0). Never cfg.weight,
-    // never another block's history. Legacy path: prefer the confirmed exWeights
-    // working weight, then previous, then the plan's weight.
+    /* TEMPORARILY DISABLED: the block-specific blank-load branch is retained for later.
     const w = blockId
       ? (usable ? usable.w : 0)
       : (conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight))
+    */
+    const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
     const set = isPerSide(cfg)
       ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.left.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.right.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, w, r: cfg.reps, done: false }
       : { w, r: usable ? usable.r : cfg.reps, done: false }
@@ -490,6 +506,11 @@ export function streakWeeks(S) {
    and a today string, and returns a new state. The store
    wraps them in `update()` for persistence.
    ============================================================ */
+
+/*
+ * TEMPORARILY DISABLED: training-block lifecycle, validation, calendar resolution, and
+ * workout snapshot helpers are retained verbatim for later reactivation. Generic state
+ * persistence and backward-compatible fields remain active in the store and API.
 
 // Local-noon date math, shared by every block helper so the
 // active block's clock cannot drift across a DST boundary the
@@ -741,3 +762,4 @@ export function buildWorkoutBlockSnapshot(S, iso) {
   if (week == null) return null
   return { id: block.id, name: block.name, week }
 }
+*/

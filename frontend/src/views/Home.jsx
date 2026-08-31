@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW, setsDoneActive, blockStatus, blockWeekTrainingDays } from '../lib/history.js'
+import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW /*, setsDoneActive, blockStatus, blockWeekTrainingDays */ } from '../lib/history.js'
+// TEMPORARILY DISABLED: the commented block-only imports above remain for later reactivation.
 import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.js'
 import { t, dateLocale } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, loadStarterPlan, bwDeltaColor, blockManagerSheet } from '../sheets.jsx'
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, loadStarterPlan, bwDeltaColor /*, blockManagerSheet */ } from '../sheets.jsx'
+// TEMPORARILY DISABLED: the commented block-only import above remains for later reactivation.
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
@@ -39,20 +41,21 @@ export default function Home() {
   const wkLabel = weekOffset === 0 ? t('This week') : `${monday.getDate()} ${monday.toLocaleDateString(dateLocale(), { month: 'short' })} – ${sunday.getDate()} ${sunday.toLocaleDateString(dateLocale(), { month: 'short' })}`
 
   const wThisWeek = S.workouts.filter(w => weekKey(w.d) === weekKey(todayISO())).length
-  // Weekly denominator: count of training days the user planned for the current local-calendar
-  // week. When a block is active, this is the count of non-rest days in the block's resolved
-  // current week (so a 4-routine block shows "X / 4"); when no block is active, fall back to
-  // the legacy `S.week` map (the number of weekdays with a routine assigned).
+  // Legacy weekly denominator: the number of weekdays with a routine assigned.
+  const plannedPerWeek = Object.keys(S.week).filter(k => S.week[k]).length
+  /* TEMPORARILY DISABLED: block-aware denominator retained for later reactivation.
   const plannedPerWeek = (() => {
     const fromBlock = blockWeekTrainingDays(S, todayISO())
     if (fromBlock != null) return fromBlock
     return Object.keys(S.week).filter(k => S.week[k]).length
   })()
+  */
   const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
 
   // today's session shown right under the week strip
   const onToday = () => { if (S.active) nav('/workout'); else if (routine) startFlow(routine.id); else dayOverrideSheet(todayISO()) }
 
+  /* TEMPORARILY DISABLED: the active-block banner is retained for later reactivation.
   // Block context for the compact banner below the today card. Stays invisible when no block
   // is active — the legacy date-strip + today-row navigation above is unchanged for non-block
   // users. Tap opens the manager where lifecycle controls live.
@@ -61,6 +64,7 @@ export default function Home() {
   const blockWeek = ab ? blockStatus(S, todayISO()) : null
   const blockFinalWeek = ab && activeBlockDef ? activeBlockDef.weeks.length : null
   const atFinalBoundary = blockFinalWeek != null && blockWeek != null && blockWeek >= blockFinalWeek
+  */
 
   return <div className="narrow">
     <div className="hdr">
@@ -91,10 +95,8 @@ export default function Home() {
       </button>
     </div>
 
-    {/* Compact active-block banner (issue: block-management). Visible only when a block is
-        active; the date-strip navigation above and the no-block experience below are
-        untouched. Tap opens the manager where lifecycle controls (pause / resume / end)
-        live so this card stays read-only. */}
+    {/* TEMPORARILY DISABLED: active training-block banner retained for later reactivation.
+        The legacy home view remains the only rendered schedule context.
     {ab && (
       <button type="button" className="card interactive-card" style={{ borderColor: 'var(--acc)' }} onClick={blockManagerSheet}>
         <div className="row between" style={{ alignItems: 'center' }}>
@@ -114,6 +116,7 @@ export default function Home() {
         </div>
       </button>
     )}
+    */}
 
     {!S.routines.length && !S.active && (
       <div className="card">
