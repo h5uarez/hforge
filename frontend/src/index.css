@@ -644,7 +644,13 @@ h4.sec{
   /* The scrollport is about 313px inside an iPhone 15 workout card. Keep every non-unilateral
      row no wider than that viewport while preserving fixed 44px action/check tracks. */
   .sethead,.setrow{min-width:0}
-  .sethead.timed,.setrow.timed{column-gap:6px}
+  /* Reserve a four-character value slot for decimal loads without widening the
+     row: the tighter gaps keep the action and completion tracks in view. */
+  .sethead.timed,.setrow.timed{
+    --set-grid-template:minmax(24px,24px) minmax(108px,1.35fr) minmax(72px,1fr) 44px 44px;
+    column-gap:5px;
+  }
+  .setrow.timed .stp.w .val{min-width:calc(4ch + 4px)}
   .setrow.eff3,.sethead.eff3{
     --set-grid-template:minmax(24px,24px) minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px;
     column-gap:3px;
