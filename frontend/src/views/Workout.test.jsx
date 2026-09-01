@@ -70,8 +70,9 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('decimal={col.dec}')
     expect(source).toContain('className="info-sp"')
     expect(css).toContain(' 44px 44px;')
-    expect(css).toContain('minmax(108px,1.35fr) minmax(72px,1fr) 44px 44px')
-    expect(css).toContain('.setrow.timed .stp.w .val{min-width:calc(4ch + 4px)}')
+    expect(css).toContain('minmax(76px,.85fr) minmax(104px,1.35fr) 44px 44px')
+    expect(css).toContain('.setrow.timed .stp button{width:23px}')
+    expect(css).toContain('.setrow.timed .stp.r .val{min-width:calc(6ch + 4px)}')
     expect(css).toContain('.sethead.no-col2.timed,.setrow.no-col2.timed')
     expect(css).toContain('--set-go-col:3;--set-check-col:4')
     expect(css).toContain('.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}')
@@ -89,7 +90,7 @@ describe('scrollable workout composition contracts', () => {
     for (const [viewport, scrollport] of [[393, 313], [430, 350]]) {
       expect(mobileMaxWidth).toBeGreaterThanOrEqual(viewport)
       expect(gridWidth([24, 104, 72, 44], 8)).toBeLessThanOrEqual(scrollport)
-      expect(gridWidth([24, 108, 72, 44, 44], 5)).toBeLessThanOrEqual(scrollport)
+      expect(gridWidth([24, 76, 104, 44, 44], 5)).toBeLessThanOrEqual(scrollport)
       expect(gridWidth([24, 70, 54, 58, 44, 44], 3)).toBeLessThanOrEqual(scrollport)
     }
   })

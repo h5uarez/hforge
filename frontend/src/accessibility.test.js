@@ -128,6 +128,22 @@ describe('mobile accessibility and layout contracts', () => {
     expect(ui).toContain('nullable ? null : 0')
   })
 
+  it('contains long shared selector labels and values without losing row affordances', () => {
+    const css = source('index.css')
+    const ui = source('components/ui.jsx')
+    const stats = source('views/Stats.jsx')
+    const routine = source('views/RoutineEdit.jsx')
+    const sheets = source('sheets.jsx')
+    expect(css).toContain('overflow:hidden;text-overflow:ellipsis;white-space:nowrap')
+    expect(css).toContain('min-width:0;max-width:50%;')
+    expect(ui).toContain('{subtitle && <span className="lrow-s">{subtitle}</span>}')
+    expect(ui).toContain("accessory === 'chevron'")
+    expect(stats).toContain("<SelectRow title={t('Exercise')}")
+    expect(routine).toContain("<SelectRow icon=\"chartLine\" title={t('Progression')}")
+    expect(sheets).toContain("<SelectRow title={t('Rule')")
+    expect(sheets).toContain("t('Follow the routine ({0})',")
+  })
+
   it('keeps landmarks, focus, targets, and overlay clearance explicit', () => {
     const css = source('index.css')
     const workout = source('views/Workout.jsx')
