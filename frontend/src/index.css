@@ -569,15 +569,28 @@ h4.sec{
 .setgrid-scroll{width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .sethead,.setrow{
   display:grid;grid-template-columns:var(--set-grid-template);align-items:center;column-gap:8px;
+  --set-check-col:4;
 }
 .sethead{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 30px 30px;
-  min-width:340px;padding:0 0 6px;
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px;
+  min-width:0;padding:0 0 6px;
   font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
 }
 .sethead .w-sp,.sethead .r-sp,.sethead .eff-sp,.sethead .side-sp{text-align:center;min-width:0}
-.sethead .ck-sp{min-width:30px}
-.setrow{--set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 30px 30px;min-width:340px;padding:7px 0;position:relative}
+.sethead .ck-sp,.sethead .info-sp{min-width:44px}
+.setrow{--set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px;min-width:0;padding:7px 0;position:relative}
+.sethead.timed,.setrow.timed{
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px 44px;
+  --set-go-col:4;--set-check-col:5;
+}
+.sethead.no-col2,.setrow.no-col2{
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) 44px;
+  --set-check-col:3;
+}
+.sethead.no-col2.timed,.setrow.no-col2.timed{
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) 44px 44px;
+  --set-go-col:3;--set-check-col:4;
+}
 .setrow+.setrow::before{
   content:'';position:absolute;left:32px;right:0;top:0;height:var(--hair);background:var(--sep);
 }
@@ -593,16 +606,56 @@ h4.sec{
    (.cfgrow below) — RIR's own value is short ("1.5") so its buttons shrink the most, weight/reps
    just enough to make room since their values ("82.5", "12") need more of what's left.
    The header shares the numbers so its labels stay centred over the steppers they name. */
-.setrow.eff3,.sethead.eff3{--set-grid-template:minmax(24px,24px) minmax(104px,1.2fr) minmax(72px,1fr) minmax(68px,.85fr) 30px 30px;column-gap:6px}
-.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 60px}
+.setrow.eff3,.sethead.eff3{
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.2fr) minmax(72px,1fr) minmax(68px,.85fr) 44px 44px;
+  --set-info-col:5;--set-check-col:6;column-gap:6px;min-width:0;
+}
+.setrow.eff3.no-col2,.sethead.eff3.no-col2{
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(68px,.85fr) 44px 44px;
+  --set-info-col:4;--set-check-col:5;min-width:0;
+}
+.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 88px}
+.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 44px 88px}
 .setrow.eff3 .stp button{width:32px}
 .setrow.eff3 .stp button{width:23px}
 .setrow.eff3 .stp.eff button{width:20px}
 .setrow.eff3 .stp .num{font-size:14px}
+/* Unilateral logging intentionally remains a wide, horizontally scrollable grid: both sides
+   and their two completion checks are too information-dense for a single phone-width row. */
 .setrow.per-side{min-width:560px}
+.sethead.per-side{min-width:560px}
 .setrow.per-side .stp.w{min-width:104px}
 .setrow.per-side .stp.r{min-width:84px}
 .setrow.per-side .side-input{width:2ch;min-width:2ch;flex:0 0 2ch}
+.setrow.per-side > .side-label:nth-of-type(1){grid-column:2}
+.setrow.per-side > .side-label:nth-of-type(2){grid-column:6}
+.setrow.per-side > .side-left-w{grid-column:3}
+.setrow.per-side > .side-left-r{grid-column:5}
+.setrow.per-side > .side-right-w{grid-column:7}
+.setrow.per-side > .side-right-r{grid-column:9}
+.setrow.per-side > .side-checks{grid-column:10;display:grid;grid-template-columns:44px 44px;align-items:center;width:100%;min-width:88px}
+.setrow.per-side > .side-checks > .chk{justify-self:center}
+.setrow.per-side.eff3 > .setinfo{grid-column:10;justify-self:center}
+.setrow.per-side.eff3 > .side-checks{grid-column:11}
+.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}
+.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}
+.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}
+@media (max-width:420px){
+  /* The scrollport is about 313px inside an iPhone 15 workout card. Keep every non-unilateral
+     row no wider than that viewport while preserving fixed 44px action/check tracks. */
+  .sethead,.setrow{min-width:0}
+  .sethead.timed,.setrow.timed{column-gap:6px}
+  .setrow.eff3,.sethead.eff3{
+    --set-grid-template:minmax(24px,24px) minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px;
+    column-gap:3px;
+  }
+  .setrow.eff3.no-col2,.sethead.eff3.no-col2{
+    --set-grid-template:minmax(24px,24px) minmax(70px,1.35fr) minmax(58px,.85fr) 44px 44px;
+  }
+  .setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}
+  .setrow.eff3 .stp .num{font-size:14px}
+  .setrow.per-side,.sethead.per-side{min-width:560px;column-gap:8px}
+}
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 .setrow.done{opacity:.45}
 /* programmed target disclosure: keep the prescription prominent while the label and note
@@ -779,10 +832,8 @@ h4.sec{
 .workout-session .session-card:focus-visible{box-shadow:0 0 0 2px var(--acc);outline-offset:4px}
 .workout-session .session-card{padding:12px;margin-bottom:8px}
 .workout-session .session-card .card{padding:12px}
-.workout-session-nav{align-items:stretch;gap:6px}
-.workout-session-nav > button{flex:0 0 auto}
-.session-selector{display:flex;flex:1 1 150px;min-width:0;flex-direction:column;justify-content:center;gap:2px}
-.session-selector select{width:100%;min-width:0;min-height:44px;padding:8px 30px 8px 10px;border:1px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:15px;line-height:1.2;text-overflow:ellipsis}
+.workout-session-nav{align-items:stretch;justify-content:space-between;gap:6px}
+.workout-session-nav > button{flex:1 1 0;width:auto}
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto!important}
   .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat))}
