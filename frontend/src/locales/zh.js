@@ -2,6 +2,9 @@
 export default {
   'Confirm': '确认', 'Close': '关闭',
   'Cancel': '取消',
+  'Retry': '重试', 'Undo': '撤销',
+  'Could not save your workout': '无法保存训练',
+  'Your changes are still visible. Choose an action to recover.': '您的更改仍然可见。请选择恢复操作。',
   'Delete': '删除',
   'Save': '保存',
   'Import': '导入',

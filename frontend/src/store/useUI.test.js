@@ -47,6 +47,40 @@ afterEach(() => {
 })
 
 describe('rest timer setting gate', () => {
+  it('carries the stable active-session sid through rest state', () => {
+    useUI.getState().startRest(90, 'stable-entry')
+    expect(useUI.getState().timer.sid).toBe('stable-entry')
+    useUI.getState().stopRest()
+  })
+  it('persists validated rest resume metadata but never the derived left value', () => {
+    useStore.getState().replaceState({ active: { entries: [{ sid: 'stable-entry', id: 'squat', sets: [] }] } })
+    useUI.getState().startRest(90, 'stable-entry')
+    const saved = JSON.parse(localStorage.getItem('gym_state_v1'))
+    expect(saved.active.restResume).toMatchObject({ total: 90, sid: 'stable-entry' })
+    expect(saved.active.restResume).not.toHaveProperty('left')
+    useUI.getState().stopRest()
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).active).not.toHaveProperty('restResume')
+  })
+  it('persists rest extensions durably while keeping the work timer transient', () => {
+    useStore.getState().replaceState({ active: { entries: [{ sid: 'stable-entry', id: 'squat', sets: [] }] } })
+    useUI.getState().startRest(90, 'stable-entry')
+    const started = JSON.parse(localStorage.getItem('gym_state_v1')).active.restResume
+
+    useUI.getState().addRest(15)
+    const extended = JSON.parse(localStorage.getItem('gym_state_v1')).active.restResume
+    expect(extended).toEqual({ endsAt: started.endsAt + 15000, total: 105, sid: 'stable-entry' })
+    expect(extended).not.toHaveProperty('left')
+
+    useUI.getState().startWork(30, 'Plank', vi.fn())
+    expect(useUI.getState().work).toMatchObject({ total: 30, label: 'Plank' })
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).active).not.toHaveProperty('work')
+  })
+  it('cleans invalid or mismatched rest resume metadata without dropping the session', () => {
+    useStore.getState().replaceState({ active: { entries: [{ sid: 'stable-entry', id: 'squat', sets: [] }], restResume: { endsAt: Date.now() + 1000, total: 90, sid: 'other' } } })
+    expect(useStore.getState().S.active).not.toHaveProperty('restResume')
+    expect(useStore.getState().S.active.entries).toHaveLength(1)
+    expect(useUI.getState().resumeRest()).toBe(false)
+  })
   it('does nothing for automatic or manual entry when disabled', () => {
     useStore.getState().setUser({ id: 'u1', name: 'Test' })
     useStore.getState().update(s => { s.restTimerEnabled = false }, false)

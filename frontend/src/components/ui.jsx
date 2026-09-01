@@ -26,20 +26,29 @@ import { t } from '../lib/i18n.js'
 // logged 0 is a set taken to failure). Those clear back to null instead of snapping to 0.
 // `displayValue` is an optional localized representation; `value` remains the numeric source
 // of truth so controlled updates still reset an in-progress draft when the value really changes.
+export function parseNumberDraft(raw, decimal = true, nullable = false) {
+  const text = String(raw)
+  const pattern = decimal ? /^\s*\d*(?:[.,]\d*)?\s*$/ : /^\s*\d*\s*$/
+  if (!pattern.test(text)) return { valid: false, value: undefined }
+  const parsed = text.trim().replace(',', '.')
+  const value = parsed === '' || parsed === '.' ? (nullable ? null : 0) : Math.max(0, parseFloat(parsed))
+  return { valid: true, value }
+}
+
 export function NumberField({ value, displayValue, onChange, onRawChange, decimal = true, nullable = false, className = '', ...rest }) {
   const [draft, setDraft] = useState(null)
-  const committed = useRef(null)
+  const committed = useRef(value ?? null)
   // null and undefined are the same "empty" here — a nullable field's key is dropped once cleared.
   if (draft !== null && (committed.current ?? null) !== (value ?? null)) { setDraft(null); committed.current = null }
   const commit = raw => {
     onRawChange && onRawChange(raw)
-    let s = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '')
-    const i = s.indexOf('.')
-    if (i !== -1) s = decimal ? s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '') : s.slice(0, i)
-    const n = s === '' || s === '.' ? (nullable ? null : 0) : Math.max(0, parseFloat(s))
-    committed.current = n
-    setDraft(s)
-    onChange(n)
+    // Keep invalid text visible so the user can correct it instead of losing
+    // the edit or accidentally committing a fallback value to workout state.
+    setDraft(raw)
+    const result = parseNumberDraft(raw, decimal, nullable)
+    if (!result.valid) return
+    committed.current = result.value
+    onChange(result.value)
   }
   return (
     <input
@@ -49,7 +58,7 @@ export function NumberField({ value, displayValue, onChange, onRawChange, decima
       value={draft ?? (displayValue ?? (value ?? ''))}
       onFocus={e => e.target.select()}
       onChange={e => commit(e.target.value)}
-      onBlur={() => { setDraft(null); committed.current = null }}
+      onBlur={() => { setDraft(null); committed.current = value ?? null }}
       {...rest}
     />
   )

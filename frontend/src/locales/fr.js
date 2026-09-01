@@ -2,6 +2,9 @@
 export default {
   'Confirm': 'Confirmer', 'Close': 'Fermer',
   'Cancel': 'Annuler',
+  'Retry': 'Réessayer', 'Undo': 'Annuler la modification',
+  'Could not save your workout': 'Votre entraînement n’a pas pu être enregistré',
+  'Your changes are still visible. Choose an action to recover.': 'Vos modifications restent visibles. Choisissez une action pour les récupérer.',
   'Delete': 'Supprimer',
   'Save': 'Enregistrer',
   'Import': 'Importer',

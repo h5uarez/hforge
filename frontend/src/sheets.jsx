@@ -20,6 +20,7 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { MOBILE } from './lib/mobile.js'
+import { newSessionSid } from './lib/session.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
@@ -51,7 +52,7 @@ export const validExerciseNote = raw => {
 export function buildWorkoutEntry(S, cfg, routine, previous) {
   const id = previous?.id ?? cfg.id
   const full = { ...cfg, id }
-  const base = previous ? { ...previous } : { id, sg: cfg.sg }
+  const base = previous ? { ...previous } : { id, sg: cfg.sg, sid: newSessionSid() }
   const plan = nextPrescription(S, full, routine)
   const target = { ...cfg }
   delete target.note
