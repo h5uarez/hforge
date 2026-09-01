@@ -232,12 +232,12 @@ h4.sec{
   background:var(--tint,var(--acc));color:#fff;
 }
 .lrow-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.lrow-t{font-size:17px;letter-spacing:-.012em;line-height:1.25}
+.lrow-t{font-size:17px;letter-spacing:-.012em;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow-s{font-size:13px;color:var(--label-2);line-height:1.3}
 /* flex:none would let a long value ("Follow the routine (Linear progression)") run straight
    through the title next to it, since the title's column is already free to shrink to nothing.
    Letting the value shrink and ellipsise instead keeps the two out of each other's way. */
-.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;min-width:0;
+.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;min-width:0;max-width:50%;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
 .lrow-k{color:var(--acc);font-size:17px;flex:none;--icon-stroke:2.4}
@@ -645,13 +645,14 @@ h4.sec{
      workout card. Keep every non-unilateral row within those widths while preserving fixed
      44px action/check tracks. */
   .sethead,.setrow{min-width:0}
-  /* Reserve a four-character value slot for decimal loads without widening the
-     row: the tighter gaps keep the action and completion tracks in view. */
+  /* Reserve a six-character value slot for decimal loads without widening the
+   row: the tighter gaps and timed-only buttons keep the action and completion tracks in view. */
   .sethead.timed,.setrow.timed{
-    --set-grid-template:minmax(24px,24px) minmax(108px,1.35fr) minmax(72px,1fr) 44px 44px;
+    --set-grid-template:minmax(24px,24px) minmax(76px,.85fr) minmax(104px,1.35fr) 44px 44px;
     column-gap:5px;
   }
-  .setrow.timed .stp.w .val{min-width:calc(4ch + 4px)}
+  .setrow.timed .stp button{width:23px}
+  .setrow.timed .stp.r .val{min-width:calc(6ch + 4px)}
   .setrow.eff3,.sethead.eff3{
     --set-grid-template:minmax(24px,24px) minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px;
     column-gap:3px;
