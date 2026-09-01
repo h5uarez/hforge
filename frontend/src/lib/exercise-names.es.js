@@ -1995,13 +1995,16 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "5215": "remo en máquina con pecho apoyado",
   "5216": "remo seal",
   "5217": "remo en polea con pecho apoyado",
-  "5218": "hip thrust con barra",
+  "5218": "hip thrust",
   "5219": "zancada inversa con barra",
   "5220": "sentadilla dividida con pie delantero elevado",
   "5221": "sentadilla con cinturón",
   "5222": "curl nórdico",
   "5223": "hiperextensión lastrada",
   "5224": "peso muerto rumano con pausa",
+  "5225": "patada de glúteo",
+  "5226": "remo Gironda",
+  "5227": "curl Bayesian",
   }))
 
 // Only unambiguous, commonly used alternatives belong here. These are search/import
@@ -2163,7 +2166,6 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "rdl con mancuernas"
     ],
     "3236": [
-      "hip thrust",
       "hip thrust con banda",
       "hip thrust de rodillas"
     ],
@@ -2229,6 +2231,7 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "chest supported cable row"
     ],
     "5218": [
+      "hip thrust",
       "hip thrust barra"
     ],
     "5219": [
@@ -2253,6 +2256,18 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "peso muerto rumano con pausa",
       "paused RDL",
       "RDL con pausa"
+    ],
+    "5225": [
+      "patada de glúteo",
+      "glute kickback"
+    ],
+    "5226": [
+      "remo Gironda",
+      "gironda row"
+    ],
+    "5227": [
+      "curl Bayesian",
+      "bayesian curl"
     ]
   })
 
@@ -2264,7 +2279,8 @@ export const EXERCISE_NAME_ANGLICISMS_ES = Object.freeze({
   "0631": "Muscle-up is the established calisthenics name in Spain.",
   "3296": "Front lever is the established calisthenics name in Spain.",
   "3297": "Back lever is the established calisthenics name in Spain.",
-  "0276": "Dead bug is the established core-training name in Spain."
+  "0276": "Dead bug is the established core-training name in Spain.",
+  "5218": "Hip thrust is the established training name in Spain."
 })
 
 // Entries that still need semantic confirmation must be listed here with a reason.

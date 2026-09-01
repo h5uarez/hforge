@@ -30,13 +30,19 @@ const POWERLIFTING_ADDITIONS = [
   { id: '5215', en: 'chest-supported machine row', es: 'remo en máquina con pecho apoyado', aliases: ['remo máquina pecho apoyado', 'chest supported machine row'], media: [null, null] },
   { id: '5216', en: 'seal row', es: 'remo seal', aliases: ['seal row'], media: [null, null] },
   { id: '5217', en: 'chest-supported cable row', es: 'remo en polea con pecho apoyado', aliases: ['remo polea pecho apoyado', 'chest supported cable row'], media: [null, null] },
-  { id: '5218', en: 'barbell hip thrust', es: 'hip thrust con barra', aliases: ['hip thrust barra'], media: [null, null] },
+  { id: '5218', en: 'hip thrust', es: 'hip thrust', aliases: ['hip thrust barra'], media: [null, null] },
   { id: '5219', en: 'barbell reverse lunge', es: 'zancada inversa con barra', aliases: ['reverse lunge con barra'], media: [null, null] },
   { id: '5220', en: 'front-foot-elevated split squat', es: 'sentadilla dividida con pie delantero elevado', aliases: ['front foot elevated split squat'], media: [null, null] },
   { id: '5221', en: 'belt squat', es: 'sentadilla con cinturón', aliases: ['belt squat'], media: [null, null] },
   { id: '5222', en: 'nordic hamstring curl', es: 'curl nórdico', aliases: ['curl nordic', 'nordic curl', 'nordic hamstring curl'], media: [null, null] },
   { id: '5223', en: 'weighted back extension', es: 'hiperextensión lastrada', aliases: ['hiperextensión con lastre', 'weighted back extension'], media: [null, null] },
   { id: '5224', en: 'paused barbell romanian deadlift', es: 'peso muerto rumano con pausa', aliases: ['peso muerto rumano con pausa', 'paused RDL', 'RDL con pausa'], media: ['0085-wQ2c4XD.jpg', '0085-wQ2c4XD.gif'] },
+]
+
+const CATALOG_CORRECTIONS = [
+  { id: '5225', en: 'glute kickback', es: 'patada de glúteo', aliases: ['patada de glúteo', 'glute kickback'], media: [null, null], primary: 'glutes', secondary: 'hamstrings' },
+  { id: '5226', en: 'gironda row', es: 'remo Gironda', aliases: ['remo Gironda', 'gironda row'], media: [null, null], primary: 'lats' },
+  { id: '5227', en: 'bayesian curl', es: 'curl Bayesian', aliases: ['curl Bayesian', 'bayesian curl'], media: [null, null], primary: 'biceps' },
 ]
 
 afterEach(async () => {
@@ -46,7 +52,7 @@ afterEach(async () => {
 
 describe('Spain-Spanish exercise names', () => {
   it('keeps every catalog id unique and canonical English names untouched', () => {
-    expect(EXDB).toHaveLength(1347)
+    expect(EXDB).toHaveLength(1350)
     expect(new Set(EXDB.map(ex => ex.id)).size).toBe(EXDB.length)
     expect(byId('0652').n).toBe('pull-up')
     expect(byId('0662').n).toBe('push-up')
@@ -71,7 +77,7 @@ describe('Spain-Spanish exercise names', () => {
     expect(exerciseName(byId('0237'), 'es')).toBe('pullover de pie con cuerda en polea')
     expect(exerciseName(byId('0184'), 'es')).toBe('pullover tumbado con cuerda en polea')
     expect(exerciseName(byId('1409'), 'es')).toBe('puente de glúteos con barra')
-    expect(EXDB.some(ex => ex.n === 'barbell hip thrust')).toBe(true)
+    expect(EXDB.some(ex => ex.n === 'hip thrust')).toBe(true)
     expect(exerciseName(byId('0818'), 'es')).toBe('jalón al pecho con agarre paralelo y doble asa')
     expect(exerciseName(byId('1420'), 'es')).toBe('sentadilla con salto desde rodillas')
     expect(exerciseName(byId('3644'), 'es')).toBe('zancada con balanceo de pesas')
@@ -93,6 +99,30 @@ describe('Spain-Spanish exercise names', () => {
         expect(matchExercise(alias), alias).toBe(addition.id)
       }
     }
+  })
+
+  it('adds the approved catalog corrections with precise names, muscles, media, and matching', () => {
+    for (const addition of CATALOG_CORRECTIONS) {
+      const ex = byId(addition.id)
+      expect(ex, addition.id).toBeDefined()
+      expect(ex.n, addition.id).toBe(addition.en)
+      expect(exerciseName(ex, 'es'), addition.id).toBe(addition.es)
+      expect([ex.img, ex.gif], addition.id).toEqual(addition.media)
+      expect(ex.tg, addition.id).toBe(addition.primary)
+      if (addition.secondary) expect(ex.mg, addition.id).toBe(addition.secondary)
+      expect(ex.st.length, addition.id).toBeGreaterThan(0)
+      for (const alias of addition.aliases) {
+        expect(exerciseMatches(ex, alias), alias).toBe(true)
+        expect(matchExercise(alias), alias).toBe(addition.id)
+      }
+    }
+  })
+
+  it('maps the generic hip thrust alias to the barbell record', () => {
+    expect(matchExercise('hip thrust')).toBe('5218')
+    expect(exerciseMatches(byId('5218'), 'hip thrust')).toBe(true)
+    expect(matchExercise('hip thrust con banda')).toBe('3236')
+    expect(matchExercise('hip thrust de rodillas')).toBe('3236')
   })
 
   it('keeps existing powerlifting records singular instead of duplicating them', () => {
@@ -168,7 +198,7 @@ describe('Spain-Spanish exercise names', () => {
       expect(matchExercise(label), label).toBe(id)
     }
     expect(matchExercise('RDL')).toBe('0085')
-    expect(EXDB).toHaveLength(1347)
+    expect(EXDB).toHaveLength(1350)
   })
 
   it('leaves ambiguous and missing routine variants unresolved', () => {
@@ -185,18 +215,19 @@ describe('Spain-Spanish exercise names', () => {
       'Patada de glúteo en polea',
       'Hiperextensión enfocada a glúteo',
       'Jalón al pecho agarre',
-      'Remo Gironda',
       'Curl bíceps en polea con cuerda o agarres independientes',
       'Curl martillo con mancuerna o cuerda',
     ]
     for (const label of unresolved) expect(matchExercise(label), label).toBeNull()
     expect(matchExercise('Patada de glúteo en polea')).not.toBe('0860')
+    expect(matchExercise('Patada de glúteo')).not.toBe('0860')
+    expect(matchExercise('Remo Gironda')).not.toBe('0466')
     expect(matchExercise('Fondos')).not.toBe('0814')
   })
 
   it('enforces complete coverage, documented anglicisms and collision policy', () => {
     const audit = exerciseNameAudit()
-    expect(audit).toMatchObject({ total: 1347, translated: 1347, fallback: 0, coverage: 1 })
+    expect(audit).toMatchObject({ total: 1350, translated: 1350, fallback: 0, coverage: 1 })
     expect(audit.missingIds).toEqual([])
     expect(audit.unknownIds).toEqual([])
     expect(audit.emptyIds).toEqual([])
@@ -204,7 +235,7 @@ describe('Spain-Spanish exercise names', () => {
     expect(audit.allowedCollisions).toHaveLength(EXERCISE_NAME_COLLISIONS_ES.length)
     expect(EXERCISE_NAME_COLLISIONS_ES.every(entry => entry.reason && entry.ids.length > 1)).toBe(true)
     expect(audit.anglicismsAllowed).toBe(Object.keys(EXERCISE_NAME_ANGLICISMS_ES).length)
-    expect(audit.anglicismsAllowed).toBe(7)
+    expect(audit.anglicismsAllowed).toBe(8)
     expect(audit.unapprovedEnglish).toEqual([])
     expect(new Set(audit.identicalToEnglish)).toEqual(new Set(Object.keys(EXERCISE_NAME_ANGLICISMS_ES)))
   })
