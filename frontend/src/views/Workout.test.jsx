@@ -60,8 +60,9 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toContain('jumpTo(Number(e.target.value))')
   })
 
-  it('keeps timed decimal weights readable with independent mobile action tracks', () => {
+  it('keeps timed decimal weights and effort rows inside 393/430px mobile scrollports', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const mobileMaxWidth = Number(css.match(/@media \(max-width:(\d+)px\)\{/)?.[1])
     expect(source).toContain('const gridClass =')
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
@@ -80,11 +81,17 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('grid-template-columns:44px 44px')
     expect(css).not.toContain('min-width:340px')
     expect(css).not.toContain('min-width:386px')
-    expect(css).toContain('@media (max-width:420px)')
+    expect(mobileMaxWidth).toBeGreaterThanOrEqual(430)
+    expect(css).not.toContain('@media (max-width:420px)')
     expect(css).toContain('minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px')
     expect(css).toContain('.setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}')
-    expect(24 + 108 + 72 + 44 + 44 + 4 * 5).toBeLessThanOrEqual(313)
-    expect(24 + 70 + 54 + 58 + 44 + 44 + 5 * 3).toBeLessThanOrEqual(313)
+    const gridWidth = (tracks, gap) => tracks.reduce((sum, track) => sum + track, 0) + (tracks.length - 1) * gap
+    for (const [viewport, scrollport] of [[393, 313], [430, 350]]) {
+      expect(mobileMaxWidth).toBeGreaterThanOrEqual(viewport)
+      expect(gridWidth([24, 104, 72, 44], 8)).toBeLessThanOrEqual(scrollport)
+      expect(gridWidth([24, 108, 72, 44, 44], 5)).toBeLessThanOrEqual(scrollport)
+      expect(gridWidth([24, 70, 54, 58, 44, 44], 3)).toBeLessThanOrEqual(scrollport)
+    }
   })
 
   it('renders visible persistence recovery actions without clearing the active draft', () => {

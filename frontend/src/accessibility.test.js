@@ -116,7 +116,7 @@ describe('mobile accessibility and layout contracts', () => {
     expect(css).toContain('--set-go-col:3;--set-check-col:4')
     expect(css).not.toContain('min-width:340px')
     expect(css).not.toContain('min-width:386px')
-    expect(css).toContain('@media (max-width:420px)')
+    expect(css).toContain('@media (max-width:430px)')
     expect(css).toContain('minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px')
     expect(css).toContain('scroll-margin-top')
     expect(workout).toContain('className="setgrid-scroll"')
