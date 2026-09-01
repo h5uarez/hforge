@@ -61,11 +61,13 @@ describe('buildPlanBundle — plan-share guard', () => {
    share-r's routine carries per-set metric-tagged effort targets (programmedEffort), the
    bundle must carry them so the friend's import keeps the same prescription. Legacy
    plans (no programmedEffort field) must remain valid — neither the export nor the
-   import invents the field where it was absent. */
+   import invents the field where it was absent. The null-slot cases below document
+   Hforge's internal/legacy compatibility tolerance; canonical external payloads use
+   one populated target object per prescribed set instead. */
 describe('programmedEffort round-trip (Phase 2)', () => {
   it('exports programmedEffort on a routine exercise when it is present in the source state', () => {
-    // The share-r's routine has a slot mix (one target, one null) so the export
-    // proves the array is carried through verbatim, null slots and all.
+    // The internal compatibility case has a slot mix (one target, one null), so the
+    // export proves the array is carried through verbatim, null slots and all.
     const S = {
       routines: [{ id: 'r-push', name: 'Push', ex: [
         { id: 'e-bench', sets: 2, reps: 8, programmedEffort: [{ metric: 'rir', value: 2 }, null] }
@@ -152,6 +154,45 @@ describe('per-side plan compatibility', () => {
     expect(bundle.routines[0].ex[0]).toMatchObject({ id: 'e-bench', reps: 16, side: true })
     const legacy = buildPlanBundle({ routines: [{ id: 'r', name: 'Legs', ex: [{ id: 'e-bench', sets: 3, reps: 10 }] }], customEx: [], week: {} }, 'legacy')
     expect(legacy.routines[0].ex[0]).not.toHaveProperty('side')
+  })
+})
+
+describe('weekly schedule import confirmation', () => {
+  const weeklyBundle = {
+    opengym_plan: 1,
+    name: 'weekly',
+    week: { '0': 'incoming' },
+    routines: [{ id: 'incoming', name: 'Incoming', ex: [{ id: KNOWN_EXERCISE, sets: 1, reps: 5, weight: 0 }] }],
+    customEx: [],
+  }
+
+  it('imports routines and applies root week only when the import confirmation enables schedule', () => {
+    const declined = { routines: [], customEx: [], week: { '2': 'existing' } }
+    const declinedResult = mergePlan(declined, weeklyBundle, { schedule: false })
+    expect(declinedResult.routines).toBe(1)
+    expect(declined.routines).toHaveLength(1)
+    expect(declined.routines[0].id).not.toBe('incoming')
+    expect(declined.week).toEqual({ '2': 'existing' })
+
+    const accepted = { routines: [], customEx: [], week: { '2': 'existing' } }
+    const acceptedResult = mergePlan(accepted, weeklyBundle, { schedule: true })
+    expect(acceptedResult.routines).toBe(1)
+    expect(accepted.routines).toHaveLength(1)
+    const localRoutineId = accepted.routines[0].id
+    expect(localRoutineId).not.toBe('incoming')
+    expect(Object.keys(accepted.week)).toEqual(['0'])
+    expect(accepted.week['0']).toBe(localRoutineId)
+  })
+
+  it('reports no schedule assignment condition for omitted or empty root week', () => {
+    const emptyWeek = parsePlan({ ...weeklyBundle, week: {} })
+    const omittedWeekInput = { ...weeklyBundle }
+    delete omittedWeekInput.week
+    const omittedWeek = parsePlan(omittedWeekInput)
+
+    expect(parsePlan(weeklyBundle).scheduledDays).toBe(1)
+    expect(emptyWeek.scheduledDays).toBe(0)
+    expect(omittedWeek.scheduledDays).toBe(0)
   })
 })
 
