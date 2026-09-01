@@ -165,11 +165,12 @@ function buildIndex() {
 // canonical barbell version, which is what these apps assume when they show it to you.
 // Extending this table is the intended way to improve import accuracy.
 const ALIAS_EX = {
-  'bench press': '0025', 'barbell bench press': '0025', 'flat bench press': '0025',
+  'bench press': '0025', 'barbell bench press': '0025', 'flat bench press': '0025', bp: '0025',
   'incline bench press': '0047', 'decline bench press': '0033',
-  'close grip bench press': '0030', 'close-grip bench press': '0030',
+  'close grip bench press': '0030', 'close-grip bench press': '0030', 'sq low-bar': '1435',
   squat: '0043', 'back squat': '0043', 'barbell squat': '0043', 'front squat': '0042',
-  deadlift: '0032', 'romanian deadlift': '0085', rdl: '0085', 'sumo deadlift': '0117',
+  deadlift: '0032', dl: '0032', 'romanian deadlift': '0085', rdl: '0085',
+  'rdl con mancuernas': '1459', 'peso muerto rumano con mancuernas': '1459', 'sumo deadlift': '0117',
   'lat pulldown': '2330', 'lat pull down': '2330', pulldown: '2330',
   shrug: '0095', shrugs: '0095',
   'overhead press': '0091', 'military press': '0091', 'shoulder press': '0091', ohp: '0091',

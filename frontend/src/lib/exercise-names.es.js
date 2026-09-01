@@ -194,8 +194,8 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1428": "círculos de muñeca",
   "1429": "dominadas con agarre ancho",
   "1430": "fondos de pecho fondos-dominadas jaula",
-  "1431": "dominadas supinas de pie con asistencia",
-  "1432": "dominadas de pie con asistencia",
+  "1431": "dominadas supinas asistidas en máquina",
+  "1432": "dominadas asistidas en máquina",
   "1433": "sentadilla frontal cargada agarre en máquina Smith",
   "1434": "sentadilla con barra baja en máquina Smith",
   "1435": "sentadilla con barra baja",
@@ -206,7 +206,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1441": "curl de muñeca a un brazo a banco sobre inverso con mancuernas",
   "1451": "fondos en posición sentada en máquina de palancas",
   "1452": "encogimientos abdominales en posición sentada en máquina de palancas",
-  "1456": "press militar con agarre cerrado de pie con barra",
+  "1456": "press militar de pie con barra y agarre cerrado",
   "1457": "press militar de pie ancho con barra",
   "1458": "curl sentado con barra Z",
   "1459": "peso muerto rumano con mancuernas",
@@ -256,7 +256,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1626": "press de banca con agarre cerrado en banco declinado inverso en máquina Smith",
   "1627": "curl predicador con agarre cerrado con barra Z",
   "1628": "curl spider con barra Z",
-  "1629": "curl de bíceps con agarre ancho de pie con barra",
+  "1629": "curl de bíceps de pie con barra y agarre ancho",
   "1630": "curl con agarre cerrado en polea",
   "1631": "curl concentrado en polea",
   "1632": "curl de arrastre en polea",
@@ -310,7 +310,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1680": "curl a una mano de pie sobre banco inclinado con mancuerna",
   "1682": "curl con agarre cerrado en posición sentada concentrado con barra Z",
   "1683": "curl de bíceps en máquina Smith",
-  "1684": "subida al cajón a una pierna con equilibrio y curl de bíceps",
+  "1684": "subida al cajón a una pierna con equilibrio y curl de bíceps con mancuernas",
   "1685": "sentadilla por encima de la cabeza a alcance",
   "1686": "sentadilla por encima de la cabeza con giro a alcance",
   "1687": "alcance por encima de la cabeza posterior paso a",
@@ -384,7 +384,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1773": "remo a un brazo con toalla",
   "1774": "puente lateral cadera abducción",
   "1775": "plancha lateral cadera aducción",
-  "2133": "caminata del granjero",
+  "2133": "paseo del granjero",
   "2135": "plancha frontal lastrada",
   "2136": "press cubano variante 2 con mancuernas",
   "2137": "press Arnold con mancuernas",
@@ -412,7 +412,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "2287": "prensa de piernas alterna en máquina de palancas",
   "2288": "con ejercitador de agarre manos en máquina de palancas",
   "2289": "prensa de gemelos en máquina de palancas",
-  "2292": "elevación para deltoides posterior con mancuernas",
+  "2292": "elevación de deltoides posterior con mancuernas",
   "2293": "curl predicador de pie Zottman con mancuernas",
   "2294": "curl predicador Zottman con mancuernas",
   "2297": "encogimientos abdominales con recorrido completo con manos detrás de la cabeza con fitball",
@@ -434,13 +434,13 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "2335": "prensa de gemelos en posición sentada en máquina de palancas",
   "2355": "elevación de rodillas flexionadas en suspensión",
   "2363": "fondos de pecho con agarre ancho en paralelas altas",
-  "2364": "fondos de pecho con agarre ancho de rodillas con asistencia",
+  "2364": "fondos de pecho asistidos de rodillas con agarre ancho",
   "2368": "en posición dividida sentadillas",
   "2371": "giro ruso variante 2 con lastre",
   "2397": "press Scott con mancuernas",
   "2398": "flexiones con agarre cerrado de rodillas",
   "2399": "giro en posición sentada en polea",
-  "2400": "curl femoral inverso asistido en máquina de dominadas",
+  "2400": "curl femoral inverso en máquina de dominadas",
   "2401": "curl de bíceps con soporte para bíceps con mancuernas",
   "2402": "martillo con soporte para bíceps curl con mancuernas",
   "2403": "curl de bíceps alterno con arm blaster y mancuernas",
@@ -463,8 +463,8 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "2616": "jalón lateral con barra V en polea",
   "2705": "pronación en posición tumbada en el suelo con mancuernas",
   "2706": "supinación en posición tumbada en el suelo con mancuernas",
-  "2736": "jalón con agarre supino lateral en máquina de palancas",
-  "2741": "curl de bíceps con agarre ancho de pie con barra Z",
+  "2736": "jalón lateral con agarre supino en máquina de palancas",
+  "2741": "curl de bíceps de pie con barra Z y agarre ancho",
   "2796": "subida al cajón con zancada y mancuernas",
   "2798": "sentadilla con salto, paso y zancada atrás con barra",
   "2799": "elevación alterna de piernas sentado con barra",
@@ -523,7 +523,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "3216": "flexiones con toque en el pecho",
   "3217": "flexiones modificado hindú",
   "3218": "toque circular manos entrelazado punta del pie",
-  "3219": "saltos de tijera",
+  "3219": "saltos alternos de tijera",
   "3220": "a horcajadas saltos",
   "3221": "a medio recorrido rodilla inclinaciones",
   "3222": "sentadilla con salto semiflexionado",
@@ -636,7 +636,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0016": "en decúbito prono con asistencia isquiotibiales",
   "0017": "dominadas asistidas",
   "0018": "extensión de tríceps de pie con asistencia con toalla",
-  "0019": "fondos de tríceps de rodillas con asistencia",
+  "0019": "fondos de tríceps asistidos de rodillas",
   "0020": "equilibrio sobre tabla",
   "0968": "curl de bíceps alterno con banda elástica",
   "0969": "abdominales en V alternos con banda elástica",
@@ -653,7 +653,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0981": "abdominales con salto de tijera navaja con banda elástica",
   "0983": "jalón a un brazo de rodillas con banda elástica",
   "0985": "encogimientos abdominales de rodillas con giro con banda elástica",
-  "0984": "rotación en posición tumbada interna cadera con banda elástica",
+  "0984": "rotación externa de cadera tumbado con banda elástica",
   "0986": "curl de bíceps a un brazo por encima de la cabeza con banda elástica",
   "0987": "sentadilla búlgara a un brazo a una pierna con banda elástica",
   "0988": "remo a un brazo de pie bajo con banda elástica",
@@ -663,7 +663,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0992": "abdominales empuje con banda elástica",
   "0993": "aperturas inversas con banda elástica",
   "0994": "curl de muñeca inverso con banda elástica",
-  "0996": "rotación en posición sentada interna cadera con banda elástica",
+  "0996": "rotación externa de cadera sentado con banda elástica",
   "0997": "press de hombros con banda elástica",
   "0998": "extensión de tríceps lateral con banda elástica",
   "0999": "elevación de gemelos a una pierna con banda elástica",
@@ -687,7 +687,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0041": "elevación frontal con barra",
   "0040": "elevación frontal y pullover con barra",
   "0042": "sentadilla frontal con barra",
-  "0043": "sentadilla trasera con barra",
+  "0043": "sentadilla trasera completa con barra",
   "0044": "buenos días con barra",
   "0045": "press de banca guillotina con barra",
   "0046": "sentadilla hack con barra",
@@ -706,7 +706,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0059": "curl predicador en posición tumbada con barra",
   "0061": "extensión de tríceps tumbado con barra",
   "0060": "press francés tumbado con barra (rompecráneos)",
-  "0063": "sentadilla con postura estrecha con barra",
+  "0063": "sentadilla con barra y postura estrecha",
   "0064": "remo a un brazo inclinado hacia delante con barra",
   "0065": "press a un brazo en el suelo con barra",
   "0066": "peso muerto a un brazo lateral con barra",
@@ -750,14 +750,14 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0103": "rueda abdominal de pie abdominal con barra",
   "0104": "curl de muñeca de pie posterior con barra",
   "0105": "press de pie Bradford con barra",
-  "0106": "curl con agarre cerrado de pie con barra",
+  "0106": "curl de pie con barra y agarre cerrado",
   "0107": "elevación frontal de pie sobre cabeza con barra",
   "0108": "elevación de gemelos de pie pierna con barra",
   "0109": "extensión de tríceps de pie por encima de la cabeza con barra",
-  "0110": "curl con agarre supino de pie con barra",
+  "0110": "curl de pie con barra y agarre supino",
   "0111": "elevación de gemelos de pie con balanceo pierna con barra",
   "0112": "giro de pie con barra",
-  "0113": "curl con agarre ancho de pie con barra",
+  "0113": "curl de pie con barra y agarre ancho",
   "0114": "subida al cajón con barra",
   "0115": "buenos días con piernas semirrígidas con barra",
   "0116": "peso muerto con piernas estiradas con barra",
@@ -767,7 +767,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0121": "remo al mentón variante 3 con barra",
   "0122": "press de banca ancho con barra",
   "0124": "sentadilla ancho con barra",
-  "0123": "remo al mentón con agarre ancho con barra",
+  "0123": "remo al mentón con barra y agarre ancho",
   "0126": "curl de muñeca con barra",
   "0125": "curl de muñeca variante 2 con barra",
   "0127": "sentadilla Zercher con barra",
@@ -1115,7 +1115,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0534": "sentadilla goblet con kettlebell",
   "0535": "cargada suspensión con kettlebell",
   "0536": "zancada con pase entre las piernas con kettlebell",
-  "0537": "dos tiempos a un brazo con kettlebell",
+  "0537": "cargada y envión a un brazo con kettlebell",
   "0538": "envión a un brazo con kettlebell",
   "0539": "press militar a un brazo lateral a con kettlebell",
   "0540": "push press a un brazo con kettlebell",
@@ -1180,7 +1180,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0620": "elevación de piernas tumbado en banco plano",
   "0865": "elevación en posición tumbada pierna-cadera",
   "0624": "marcha contra la pared sentado",
-  "0627": "dominadas supinas con agarre mixto",
+  "0627": "dominadas con agarre mixto",
   "0628": "caminata monstruo",
   "0630": "escaladores",
   "0631": "muscle-up",
@@ -1338,8 +1338,8 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0013": "elevación asistida de piernas tumbado con impulso descendente",
   "0015": "dominadas asistidas con agarre paralelo cerrado",
   "0016": "curl femoral asistido en prono",
-  "1713": "estiramiento asistido de cuádriceps en prono",
-  "1714": "estiramiento asistido del recto femoral en prono",
+  "1713": "estiramiento asistido de cuádriceps tumbado boca abajo",
+  "1714": "estiramiento asistido del recto femoral tumbado boca abajo",
   "1716": "estiramiento asistido del pectoral mayor sentado sobre fitball",
   "1712": "estiramiento asistido de aductores tumbado de lado",
   "3220": "saltos con apertura de piernas",
@@ -1364,7 +1364,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0990": "remo sentado a un brazo con giro y banda elástica",
   "1000": "elevación inversa de gemelo a una pierna con banda elástica",
   "1369": "elevación de gemelos con banda bajo ambos pies, variante 2",
-  "1720": "extensión de tríceps tumbado con barra detrás de la cabeza",
+  "1720": "extensión de tríceps tumbado tras nuca con barra",
   "0058": "elevación de cadera tumbado con barra",
   "1411": "curl de muñeca con barra y palmas hacia abajo sobre banco",
   "1412": "curl de muñeca con barra y palmas hacia arriba sobre banco",
@@ -1421,15 +1421,15 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0196": "pull-through con cuerda en polea",
   "0197": "jalón al pecho con barra para dorsales en polea",
   "1638": "jalón con curl de bíceps en polea",
-  "0199": "jalón con brazos extendidos en polea, variante 2",
+  "0199": "jalón de brazos rectos en polea, variante 2",
   "0200": "jalón con cuerda en polea",
   "0202": "remo para deltoides posterior con estribos en polea",
   "0204": "impulso posterior en polea",
-  "0207": "jalón en polea con agarre supino",
+  "0207": "jalón de tríceps con agarre supino en polea",
   "0208": "remo alto sentado con agarre supino y espalda recta en polea",
   "1320": "remo sentado cruzado con cuerda en polea",
   "1321": "remo sentado elevado con cuerda en polea",
-  "1322": "remo en banco inclinado con extensión de cuerda en polea",
+  "1322": "remo en banco inclinado con cuerda en polea",
   "1724": "extensión de tríceps por encima de la cabeza con cuerda en polea alta",
   "1725": "extensión de tríceps en banco inclinado con cuerda en polea",
   "1726": "extensión de tríceps tumbado en el suelo con cuerda en polea",
@@ -1481,7 +1481,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0337": "extensión de tríceps tumbado cruzando la cara con mancuernas",
   "0338": "press de codos tumbado con mancuernas",
   "0863": "rotación externa de hombro tumbado con mancuernas",
-  "2470": "elevación para deltoides posterior tumbado en el suelo con mancuernas",
+  "2470": "elevación de deltoides posterior tumbado en el suelo con mancuernas",
   "0341": "elevación posterior de deltoides a un brazo tumbado con mancuerna",
   "0345": "elevación lateral posterior a un brazo tumbado con mancuerna",
   "0348": "elevación lateral posterior tumbado boca abajo con mancuernas",
@@ -1522,7 +1522,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0377": "remo para deltoides posterior con mancuernas",
   "0378": "aperturas posteriores con mancuernas",
   "0379": "elevación lateral posterior con apoyo de la cabeza y mancuernas",
-  "0382": "curl de bíceps con agarre supino y mancuernas",
+  "0382": "curl de bíceps con agarre prono y mancuernas",
   "0386": "aperturas inversas con rotación y mancuernas",
   "3547": "curl de bíceps seguido de press de hombros sentado con mancuernas",
   "1737": "extensión de tríceps sentado e inclinado con mancuernas",
@@ -1537,7 +1537,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "2143": "circunducción de brazos de pie con mancuernas",
   "0419": "elevación frontal por encima de la cabeza de pie con mancuernas",
   "0424": "press a un brazo de pie con la palma hacia dentro y mancuerna",
-  "0437": "remo al mentón con mancuernas, vista posterior",
+  "0437": "remo al mentón con mancuernas",
   "0864": "rotación externa vertical de hombros con mancuernas",
   "5201": "curl de bíceps tipo camarero con mancuernas",
   "1167": "estiramiento dinámico de pecho",
@@ -1554,7 +1554,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "3010": "pullover tumbado con brazos flexionados y barra Z",
   "1682": "curl concentrado sentado con barra Z y agarre cerrado",
   "0448": "press francés facial en banco declinado con barra Z y agarre cerrado",
-  "0456": "abdominales con flexión de piernas y rodillas dobladas",
+  "0456": "abdominales con rodillas flexionadas",
   "0457": "abdominales con flexión de piernas y brazos extendidos",
   "2429": "encogimientos abdominales de rana",
   "3296": "front lever",
@@ -1778,12 +1778,12 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1333": "extensión lumbar con brazos extendidos sobre fitball",
   "1334": "extensión lumbar con manos detrás de la cabeza sobre fitball",
   "1336": "extensión lumbar con rotación sobre fitball",
-  "0543": "press a un brazo por encima de la cabeza con kettlebell",
+  "0543": "press unilateral por encima de la cabeza con kettlebell",
   "0570": "recogida de piernas sentado en banco plano",
   "0609": "remo London Bridge con cuerda",
   "1367": "dominadas con agarre ancho tras nuca",
   "3641": "balanceo de pesas por encima de la cabeza de rodillas",
-  "3642": "zancada alterna con lastre",
+  "3642": "zancada con lastre y estiramiento",
   "3644": "zancada con balanceo de pesas",
   "0818": "jalón al pecho con agarre paralelo y doble asa",
   "1420": "sentadilla con salto desde la posición de rodillas",
@@ -1811,7 +1811,198 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0098": "sentadilla lateral dividida con barra",
   "0248": "remo tumbado con barra curva",
   "1439": "encogimiento de hombros en máquina de palancas, variante 2",
-}))
+  }, {
+  // Second editorial pass: prefer the short forms used on Spanish gym floors
+  // (sentado, tumbado, polea, agarre) and keep a descriptor only when it changes
+  // the movement. The canonical English labels remain untouched above.
+  "0001": "abdominales 3/4",
+  "0003": "bicicleta abdominal en el aire",
+  "0016": "curl femoral asistido tumbado boca abajo",
+  "0035": "press cerrado a rompecráneos en banco declinado con barra",
+  "0055": "press tumbado con agarre cerrado y barra",
+  "0056": "extensión de tríceps tumbado con agarre cerrado y barra",
+  "0057": "extensión tumbado con barra",
+  "0059": "curl predicador tumbado con barra",
+  "0072": "curl tumbado boca abajo en banco inclinado con barra",
+  "0090": "buenos días sentado con barra",
+  "0108": "elevación de gemelos de pie con barra, variante 2",
+  "0111": "elevación de gemelos con balanceo y barra",
+  "0124": "sentadilla con barra y postura amplia",
+  "0172": "jalón de tríceps inclinado en polea",
+  "0198": "jalón al pecho en polea",
+  "0200": "jalón de tríceps con cuerda en polea",
+  "0204": "extensión de tríceps hacia atrás en polea",
+  "0232": "jalón de bíceps de pie con cuerda en polea",
+  "0237": "pullover de pie con cuerda en polea",
+  "0238": "jalón de brazos rectos en polea",
+  "0244": "tirón rotacional en polea",
+  "0229": "curl de bíceps de pie en polea",
+  "0311": "elevación lateral full can con mancuernas",
+  "0316": "press inclinado con mancuernas, variante 2",
+  "0322": "curl de bíceps en banco inclinado con mancuernas, variante 2",
+  "0342": "press a un brazo tumbado, variante 2, con mancuernas",
+  "0344": "extensión de tríceps a un brazo tumbado con agarre prono y mancuernas",
+  "0346": "extensión de tríceps a un brazo tumbado con agarre supino y mancuernas",
+  "0347": "pronación de antebrazos tumbado con mancuernas",
+  "0349": "supinación de antebrazos tumbado con mancuernas",
+  "0374": "curl tumbado boca abajo en banco inclinado con mancuernas",
+  "0376": "elevación lateral con mancuernas, variante 2",
+  "0393": "curl de bíceps sentado con apoyo en los muslos y mancuernas",
+  "0408": "elevación lateral a un brazo tumbado de lado con mancuerna",
+  "0415": "elevación alterna de brazos de pie con mancuernas",
+  "0555": "patada lateral sentado",
+  "0570": "encogimiento de rodillas sentado en banco plano",
+  "0650": "encogimiento de rodillas sobre fitball",
+  "0642": "flexiones con patada lateral de pierna",
+  "0661": "flexiones con patada hacia dentro",
+  "0739": "prensa de piernas a 45° en trineo",
+  "0744": "sentadilla en máquina de trineo tumbado",
+  "0750": "sentadilla a cajón en máquina Smith",
+  "0858": "sprints cortos",
+  "0980": "extensión de cadera inclinado hacia delante con banda elástica",
+  "0984": "rotación externa de cadera tumbado con banda elástica",
+  "0996": "rotación externa de cadera sentado con banda elástica",
+  "1000": "elevación inversa de gemelos a una pierna con banda elástica",
+  "1011": "giro sentado con banda elástica",
+  "1301": "press de pecho en máquina, variante interior",
+  "1323": "remo sentado con cuerda en polea",
+  "1343": "elevación de piernas tumbado boca abajo sobre fitball",
+  "1396": "elevación de gemelos de pie en máquina Smith sobre plataforma",
+  "1350": "remo sentado en máquina de palancas",
+  "1355": "empuje unilateral contra la pared",
+  "1363": "estiramiento de la columna",
+  "1371": "elevación de gemelos sentado con barra, variante 2",
+  "1391": "prensa de gemelos en prensa de piernas",
+  "1392": "prensa de gemelos a una pierna en prensa de piernas",
+  "1416": "rotación del tren inferior a una pierna tumbado boca abajo sobre fitball",
+  "1420": "sentadilla con salto desde rodillas",
+  "1438": "press militar a dos brazos sentado con kettlebell",
+  "1451": "fondos sentado en máquina de palancas",
+  "1452": "encogimientos abdominales sentado en máquina de palancas",
+  "1587": "secuencia de postura sentada con piernas abiertas",
+  "1634": "curl de bíceps tumbado en polea",
+  "1641": "curl sentado en polea",
+  "1643": "curl sentado por encima de la cabeza en polea",
+  "1707": "giro tumbado boca abajo sobre fitball",
+  "1746": "extensión de tríceps tumbado boca arriba sobre fitball",
+  "1748": "extensión de tríceps tumbado tras nuca con barra Z y agarre cerrado",
+  "1750": "lanzamiento de pecho tumbado boca arriba con balón medicinal",
+  "2203": "rodillo sentado con flexión de hombros",
+  "2209": "rodillo sentado a una pierna con elevación de hombros",
+  "2321": "curl de bíceps de pie con mancuernas, variante 2",
+  "2334": "prensa de gemelos en trineo tumbado",
+  "2335": "prensa de gemelos sentado en máquina de palancas",
+  "2399": "giro sentado en polea",
+  "2705": "pronación tumbado en el suelo con mancuernas",
+  "2706": "supinación tumbado en el suelo con mancuernas",
+  "2808": "pull-through sumo con mancuerna",
+  "3016": "encogimiento abdominal curl-up",
+  "3122": "press de hombros sentado con banda elástica",
+  "3123": "curl de bíceps sentado con banda elástica",
+  "3124": "press de pecho sentado con banda elástica",
+  "3144": "remo sentado con espalda recta y banda elástica",
+  "3203": "abdominales de medio recorrido del prisionero",
+  "3236": "hip thrust de rodillas con banda elástica",
+  "3298": "plancha con piernas separadas",
+  "3327": "flexiones de plancha completa",
+  "3533": "sentadilla con peso corporal",
+  "3638": "salida a carrera desde una flexión",
+  "3669": "arquero de pie",
+  "3760": "encogimientos abdominales sentado, variante 2, en máquina de palancas",
+  "0668": "puente de glúteos en el suelo, variante 2",
+  "2466": "escalador cruzado en puente",
+  "0182": "curl tumbado con agarre cerrado en polea",
+  "0185": "aperturas tumbado en polea",
+  "2144": "press de pecho sentado en polea",
+  "0212": "encogimientos abdominales sentado en polea",
+  "0218": "remo sentado con agarre ancho en polea",
+  "0239": "remo sentado con espalda recta en polea",
+  "0240": "aperturas inversas tumbado boca arriba en polea",
+  "1618": "press martillo inclinado sobre fitball con mancuernas",
+  "1284": "pullover tumbado sobre fitball con mancuernas",
+  "1328": "remo tumbado para deltoides posterior con mancuernas",
+  "0351": "extensión de tríceps tumbado con mancuernas",
+  "1674": "curl martillo tumbado boca abajo en banco inclinado con mancuernas",
+  "2317": "elevación lateral sentado con brazos flexionados con mancuernas",
+  "1677": "curl de bíceps sentado con mancuernas",
+  "0390": "curl de bíceps sentado sobre fitball con mancuernas",
+  "1379": "elevación de gemelos sentado con mancuernas",
+  "0391": "curl sentado con mancuernas",
+  "0392": "elevación frontal sentado con mancuernas",
+  "1678": "curl martillo sentado con mancuernas",
+  "0394": "patada de tríceps sentado con mancuernas",
+  "0396": "elevación lateral sentado con mancuernas",
+  "0395": "elevación lateral sentado, variante 2, con mancuernas",
+  "0398": "patada de tríceps a un brazo sentado con mancuernas",
+  "0400": "elevación de gemelos a una pierna sentado con mancuernas",
+  "1380": "elevación de gemelos a una pierna con agarre neutro sentado con mancuernas",
+  "1381": "elevación de gemelos a una pierna con la palma hacia arriba sentado con mancuernas",
+  "0402": "curl predicador sentado con mancuernas",
+  "0404": "press de hombros con agarre paralelo sentado con mancuernas",
+  "0453": "extensión de tríceps sentado con barra Z",
+  "0546": "press sentado con kettlebell",
+  "3195": "curl femoral tumbado con fase bilateral y unilateral en máquina de palancas",
+  "0588": "remo sentado con agarre estrecho en máquina de palancas",
+  "0595": "encogimientos abdominales sentado con apoyo pectoral en máquina de palancas",
+  "0596": "aperturas sentado en máquina de palancas",
+  "3759": "buenos días sentado en máquina de palancas",
+  "0602": "aperturas inversas sentado en máquina de palancas",
+  "0601": "aperturas inversas sentado con agarre paralelo en máquina de palancas",
+  "0689": "elevación de piernas sentado",
+  "0691": "encogimiento abdominal lateral sentado contra la pared",
+  "1395": "elevación de gemelos a una pierna sentado en máquina Smith",
+  "0765": "press de hombros sentado en máquina Smith",
+  "1426": "curl de muñeca sentado en máquina Smith",
+  "0847": "curl de bíceps sentado sobre fitball con lastre",
+  "0849": "giro sentado sobre fitball con lastre",
+  "0024": "sentadilla frontal con barra hasta tocar el banco",
+  "0026": "sentadilla con barra hasta tocar el banco",
+  "0029": "sentadilla frontal con barra y agarre de cargada",
+  "0036": "press de banca declinado con barra y agarre ancho",
+  "0037": "pullover en banco declinado con barra y agarre ancho",
+  "0048": "press en banco inclinado con barra y agarre supino",
+  "0050": "press por encima de la cabeza en banco inclinado con barra",
+  "0058": "elevación de cadera tumbado en banco con barra",
+  "0221": "encogimientos laterales sobre BOSU en polea",
+  "0290": "press de hombros sentado en banco con mancuernas",
+  "0324": "press con agarre neutro en banco inclinado con mancuernas",
+  "0325": "press por encima de la cabeza en banco inclinado con mancuernas",
+  "0328": "press por encima de la cabeza en banco inclinado con mancuernas, variante 2",
+  "0367": "curl de muñeca a un brazo con antebrazo sobre banco y mancuerna",
+  "0399": "rotación externa de antebrazo sentado a un brazo con mancuerna",
+  "0424": "press a un brazo de pie con agarre neutro y mancuerna",
+  "0427": "press de pie con agarre neutro y mancuernas",
+  "0525": "cargada bottoms-up desde posición colgante con kettlebell",
+  "0535": "cargada desde posición colgante con kettlebell",
+  "0727": "elevación de gemelos a una pierna con mancuerna",
+  "0759": "elevación de hombros inclinada en máquina Smith",
+  "0854": "ejercicio de agarre de pie con lastre",
+  "1385": "elevación de gemelos sentado en prensa de piernas",
+  "0291": "sentadilla con mancuernas hasta tocar el banco",
+  "5202": "sentadilla con barra con pausa",
+  "5203": "sentadilla con barra con tempo",
+  "5204": "sentadilla con barra desde topes",
+  "5205": "press de banca con barra con pausa",
+  "5206": "press Spoto con barra",
+  "5207": "press Larsen con barra",
+  "5208": "press de suelo con barra",
+  "5209": "peso muerto con barra desde bloques",
+  "5210": "peso muerto con barra con pausa",
+  "5211": "peso muerto deficit con barra",
+  "5212": "peso muerto con agarre de arrancada",
+  "5213": "peso muerto con barra con tempo",
+  "5214": "remo en T con pecho apoyado",
+  "5215": "remo en máquina con pecho apoyado",
+  "5216": "remo seal",
+  "5217": "remo en polea con pecho apoyado",
+  "5218": "hip thrust con barra",
+  "5219": "zancada inversa con barra",
+  "5220": "sentadilla dividida con pie delantero elevado",
+  "5221": "sentadilla con cinturón",
+  "5222": "curl nórdico",
+  "5223": "hiperextensión lastrada",
+  "5224": "peso muerto rumano con pausa",
+  }))
 
 // Only unambiguous, commonly used alternatives belong here. These are search/import
 // vocabulary, not display labels.
@@ -1823,18 +2014,17 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "elevación de gemelos"
     ],
     "1401": [
-      "muscle up"
+      "muscle up",
+      "muscle-up técnico"
     ],
     "2330": [
       "jalón al pecho",
       "jalón en polea"
     ],
-    "3236": [
-      "hip thrust"
-    ],
     "0025": [
       "press banca",
-      "press de banca"
+      "press de banca",
+      "bp"
     ],
     "0027": [
       "remo con barra"
@@ -1843,7 +2033,8 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "press banca agarre cerrado"
     ],
     "0032": [
-      "peso muerto"
+      "peso muerto",
+      "dl"
     ],
     "0042": [
       "sentadilla frontal"
@@ -1871,7 +2062,8 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
     ],
     "0241": [
       "jalón de tríceps",
-      "extensión de tríceps en polea"
+      "extensión de tríceps en polea",
+      "tríceps polea"
     ],
     "0251": [
       "fondos de pecho"
@@ -1888,19 +2080,30 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "curl con mancuernas"
     ],
     "0313": [
-      "curl martillo"
+      "curl martillo",
+      "curl martillo con mancuerna"
     ],
     "0334": [
-      "elevación lateral"
+      "elevación lateral",
+      "elevaciones laterales"
     ],
     "0585": [
       "extensión de cuádriceps"
+    ],
+    "0489": [
+      "hiperextensiones",
+      "hyperextensiones"
+    ],
+    "0597": [
+      "abductor máquina",
+      "abducción en máquina"
     ],
     "0586": [
       "curl femoral"
     ],
     "0603": [
-      "press de hombros"
+      "press de hombros",
+      "press hombro en máquina"
     ],
     "0652": [
       "dominada"
@@ -1911,7 +2114,8 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
     ],
     "0739": [
       "prensa de piernas",
-      "prensa 45 grados"
+      "prensa 45 grados",
+      "prensa"
     ],
     "0811": [
       "peso muerto barra hexagonal"
@@ -1920,10 +2124,135 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "fondos tríceps"
     ],
     "0841": [
-      "dominada lastrada"
+      "dominada lastrada",
+      "dominadas con lastre"
     ],
     "0861": [
       "remo en polea baja"
+    ],
+    "0165": [
+      "curl martillo con cuerda"
+    ],
+    "0184": [
+      "pullover tumbado",
+      "pullover tumbado con cuerda"
+    ],
+    "0237": [
+      "pullover con cuerda",
+      "pullover de pie con cuerda",
+      "jalón de brazos rectos con cuerda",
+      "jalón con brazos extendidos con cuerda",
+      "pullover con cuerda en polea"
+    ],
+    "0238": [
+      "jalón de brazos rectos",
+      "pullover en polea",
+      "pullover con barra en polea"
+    ],
+    "0602": [
+      "pájaro máquina"
+    ],
+    "0757": [
+      "press inclinado multipower",
+      "press inclinado en multipower"
+    ],
+    "1435": [
+      "sq low-bar"
+    ],
+    "1459": [
+      "rdl con mancuernas"
+    ],
+    "3236": [
+      "hip thrust",
+      "hip thrust con banda",
+      "hip thrust de rodillas"
+    ],
+    "5202": [
+      "sentadilla pausada",
+      "paused squat"
+    ],
+    "5203": [
+      "sentadilla con tempo",
+      "tempo squat"
+    ],
+    "5204": [
+      "sentadilla desde topes",
+      "pin squat"
+    ],
+    "5205": [
+      "press banca con pausa",
+      "paused bench press"
+    ],
+    "5206": [
+      "spoto press"
+    ],
+    "5207": [
+      "larsen press"
+    ],
+    "5208": [
+      "floor press",
+      "press banca en el suelo"
+    ],
+    "5209": [
+      "peso muerto desde bloques",
+      "deadlift from blocks"
+    ],
+    "5210": [
+      "peso muerto pausado",
+      "paused deadlift"
+    ],
+    "5211": [
+      "peso muerto con déficit",
+      "deficit deadlift"
+    ],
+    "5212": [
+      "peso muerto con agarre ancho",
+      "snatch grip deadlift"
+    ],
+    "5213": [
+      "peso muerto con tempo",
+      "tempo deadlift"
+    ],
+    "5214": [
+      "remo T pecho apoyado",
+      "chest supported T bar row"
+    ],
+    "5215": [
+      "remo máquina pecho apoyado",
+      "chest supported machine row"
+    ],
+    "5216": [
+      "seal row"
+    ],
+    "5217": [
+      "remo polea pecho apoyado",
+      "chest supported cable row"
+    ],
+    "5218": [
+      "hip thrust barra"
+    ],
+    "5219": [
+      "reverse lunge con barra"
+    ],
+    "5220": [
+      "front foot elevated split squat"
+    ],
+    "5221": [
+      "belt squat"
+    ],
+    "5222": [
+      "curl nordic",
+      "nordic curl",
+      "nordic hamstring curl"
+    ],
+    "5223": [
+      "hiperextensión con lastre",
+      "weighted back extension"
+    ],
+    "5224": [
+      "peso muerto rumano con pausa",
+      "paused RDL",
+      "RDL con pausa"
     ]
   })
 
