@@ -640,9 +640,10 @@ h4.sec{
 .setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}
 .setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}
 .setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}
-@media (max-width:420px){
-  /* The scrollport is about 313px inside an iPhone 15 workout card. Keep every non-unilateral
-     row no wider than that viewport while preserving fixed 44px action/check tracks. */
+@media (max-width:430px){
+  /* The scrollport is about 313px at 393px wide and about 350px at 430px wide inside a
+     workout card. Keep every non-unilateral row within those widths while preserving fixed
+     44px action/check tracks. */
   .sethead,.setrow{min-width:0}
   /* Reserve a four-character value slot for decimal loads without widening the
      row: the tighter gaps keep the action and completion tracks in view. */
