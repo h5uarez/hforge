@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
+import { moveSessionUnit, remapCur, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
@@ -58,12 +59,12 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
   const ex = exOr(entry.id)
-  const workoutNoteId = 'workout-note-' + entryIdx
+  const workoutNoteId = 'workout-note-' + sid
   const workoutNoteContentId = workoutNoteId + '-content'
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
   const cardio = mode === 'cardio'
@@ -126,7 +127,7 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteCha
   )
   const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls}>
     <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-    <span className="val"><NumberField aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+   <span className="val"><NumberField className="side-input" aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
    <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
    </div>
   // Disclosure: which set rows have their immutable planned target revealed. A new Set on
@@ -141,9 +142,9 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteCha
   // timer is cancelled on any pointer move or release so a quick tap never opens a target,
   // and a swipe through the row never opens one either.
   const lpTimer = useRef(null)
-  // Keep the note visible by default so athletes see the existing input without opting in; this
+  // Empty notes stay out of the way, while an existing note remains immediately readable. This
   // is local disclosure state and does not affect the note stored in the active workout.
-  const [workoutNoteOpen, setWorkoutNoteOpen] = useState(true)
+  const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
   const startLongPress = i => {
     cancelLongPress()
     lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
@@ -154,7 +155,7 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteCha
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
     <div className="row between" style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</div>
+      {heading === 'h3' ? <h3 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h3> : <h2 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h2>}
       <div className="row" style={{ gap: 4 }}>
         <button className="iconbtn" aria-label={t('Edit')} onClick={onEdit}><Icon name="pencil" /></button>
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
@@ -193,12 +194,18 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteCha
     </div>}
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
-      <div className={'sethead' + (col3 ? ' eff3' : '')}><span className="n-sp" /><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
+      <div className="setgrid-scroll">
+      <div className={'sethead' + (col3 ? ' eff3' : '') + (isPerSide(cfg) && !cardio && !timed ? ' per-side' : '')}>
+        <span className="n-sp" />{isPerSide(cfg) && !cardio && !timed ? <>
+          <span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="side-sp">L</span><span className="r-sp">{col2.hd}</span>
+          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="side-sp">R</span><span className="r-sp">{col2.hd}</span>
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+      </div>
       {entry.sets.map((s, i) => {
         const target = setTarget(s)
         const isOpen = disclosed.has(i)
         return <Fragment key={i}>
-           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + (col3 ? ' eff3' : '')}
+           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + (col3 ? ' eff3' : '') + (isPerSide(cfg) && !cardio && !timed ? ' per-side' : '')}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
@@ -239,6 +246,7 @@ function ExerciseBlock({ entryIdx, compact, onEdit, onToggle, onField, onNoteCha
           </div>}
         </Fragment>
       })}
+      </div>
       <div style={{ height: 8 }} />
       <div className="row">
         <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>{t('Remove set')}</Button>
@@ -254,12 +262,59 @@ function ActiveWorkout() {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const { startRest, stopRest } = useUI()
+  const persistence = useStore(s => s.persistence)
+  const retryPersistence = useStore(s => s.retryPersistence)
+  const undoPersistence = useStore(s => s.undoPersistence)
+  const cancelPersistence = useStore(s => s.cancelPersistence)
   const A = S.active
   const units = supersetUnits(A.entries)
   const cur = Math.min(A.cur, Math.max(0, A.entries.length - 1))
   const unit = A.entries.length ? unitOf(units, cur) : []
   const unitIdx = units.findIndex(u => u === unit)
   const isSuperset = unit.length > 1
+  const cardRefs = useRef(new Map())
+  const resumed = useRef(false)
+  const [pendingFocus, setPendingFocus] = useState(null)
+  const [moveStatus, setMoveStatus] = useState('')
+  const focusEntry = (sid, scroll = true) => setPendingFocus({ sid, scroll })
+  useLayoutEffect(() => {
+    if (!pendingFocus) return
+    let frame = 0
+    let timer = 0
+    let attempts = 0
+    let fallbackUsed = false
+    const restore = () => {
+      const target = cardRefs.current.get(pendingFocus.sid)
+      // Keep the request pending while a render has not attached the ref yet. A bounded retry
+      // window also covers embedded runtimes that deliver the ref/layout one frame late.
+      if (!target) {
+        const retry = focusRefRetryDecision(attempts, fallbackUsed, false)
+        if (retry.action === 'frame') {
+          attempts = retry.attempts
+          frame = requestAnimationFrame(restore)
+        } else if (retry.action === 'fallback' && !timer) {
+          timer = window.setTimeout(() => { timer = 0; fallbackUsed = true; restore() }, 50)
+        } else if (retry.action === 'stop') {
+          setPendingFocus(null)
+        }
+        return
+      }
+      restoreFocusedEntry(target, pendingFocus.scroll)
+      if (pendingFocus.scroll && attempts++ < 3) {
+        frame = requestAnimationFrame(restore)
+        return
+      }
+      setPendingFocus(null)
+    }
+    restore()
+    return () => { if (frame) cancelAnimationFrame(frame); if (timer) window.clearTimeout(timer) }
+  }, [pendingFocus, A.entries])
+  useEffect(() => {
+    if (resumed.current || !A.entries[cur]) return
+    resumed.current = true
+    focusEntry(A.entries[cur].sid)
+  }, [A.entries, cur])
+  useEffect(() => { useUI.getState().resumeRest() }, [])
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
@@ -280,6 +335,28 @@ function ActiveWorkout() {
     if (v == null) delete e.sets[i][field]; else e.sets[i][field] = v
   })
   const modeAt = idx => modeOf({ ...(A.entries[idx].target || {}), id: A.entries[idx].id })
+  const jumpTo = idx => {
+    const entry = A.entries[idx]
+    if (!entry) return
+    update(s => { s.active.cur = idx })
+    focusEntry(entry.sid)
+  }
+  const moveUnit = (index, delta) => {
+    const before = A.entries
+    const result = moveSessionUnit(before, index, delta)
+    if (!result.changed) return
+    update(s => {
+      const moved = moveSessionUnit(s.active.entries, index, delta)
+      s.active.entries = moved.entries
+      s.active.cur = remapCur(before, s.active.cur, moved.entries)
+    })
+    const position = result.position + 1
+    const moved = A.entries.find(e => e.sid === result.movedSid)
+    if (moved) {
+      focusEntry(moved.sid)
+      setMoveStatus(t('Exercise {0} / {1}', exerciseName(exOr(moved.id)), units.length) + ' — ' + position)
+    }
+  }
   const editExercise = idx => {
     const st = useStore.getState().S
     const entry = st.active?.entries?.[idx]
@@ -341,7 +418,7 @@ function ActiveWorkout() {
         beep(S.sound, 1040, 0.12); vibrate(30)
         const isLastExInUnit = idx === unit[unit.length - 1]
           const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => projectSideSet(x).done))
-        if (isLastExInUnit && !unitDone) startRest(S.restSec)
+        if (isLastExInUnit && !unitDone) startRest(S.restSec, A.entries[idx].sid)
         else if (unitDone) stopRest()
         if (unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
         // Only loaded reps training has a "working weight" worth confirming — a bodyweight
@@ -389,41 +466,80 @@ function ActiveWorkout() {
     }
   }, [])
 
-  return <div className="narrow">
+  const renderCard = (entryIdx, unitIndex, members) => {
+    const entry = A.entries[entryIdx]
+    const superset = members.length > 1
+    return <article key={entry.sid} className={superset ? 'ss-card session-card' : 'card session-card'} tabIndex={0}
+      ref={node => { if (node) cardRefs.current.set(entry.sid, node); else cardRefs.current.delete(entry.sid) }}
+      aria-labelledby={'session-heading-' + entry.sid}>
+      <div className="row between session-card-head">
+        <h2 id={'session-heading-' + entry.sid}>{superset ? t('Superset {0} / {1}', unitIndex + 1, units.length) : t('Exercise {0} / {1}', unitIndex + 1, units.length)}</h2>
+        <div className="row" role="group" aria-label={t('Exercises')}>
+          <button type="button" className="iconbtn" aria-label={t('Move up')} disabled={unitIndex <= 0} onClick={() => moveUnit(unitIndex, -1)}><Icon name="chevronUp" /></button>
+          <button type="button" className="iconbtn" aria-label={t('Move down')} disabled={unitIndex >= units.length - 1} onClick={() => moveUnit(unitIndex, 1)}><Icon name="chevronDown" /></button>
+        </div>
+      </div>
+      {superset && <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>}
+      {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
+        {superset && k > 0 && <div className="ss-amp">+</div>}
+        <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
+          onEdit={() => editExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+      </div>)}
+    </article>
+  }
+
+  return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="hdr">
       <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
-      <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 600 }}>{A.name}</div><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
+      <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
       <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
     </div>
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
+    {persistence?.status === 'failed' && <div className="card persistence-recovery" role="alert" aria-live="assertive">
+      <strong>{t('Could not save your workout')}</strong>
+      <div>{t('Your changes are still visible. Choose an action to recover.')}</div>
+      <div className="row" role="group" aria-label={t('Recovery')}>
+        <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
+        <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
+        <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
+      </div>
+    </div>}
 
     {A.entries.length ? <>
-      <div className="muted small" style={{ marginBottom: 6 }}>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</div>
-      {isSuperset ? (
-        <div className="ss-card">
-          <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>
-          {unit.map((idx, k) => <div key={idx} className="ss-ex">
-            {k > 0 && <div className="ss-amp">+</div>}
-            <ExerciseBlock entryIdx={idx} compact
-              onEdit={() => editExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
-          </div>)}
-        </div>
-      ) : (
-        <ExerciseBlock entryIdx={cur} onEdit={() => editExercise(cur)} onToggle={(i, side) => toggle(cur, i, side)} onField={(i, f, v, side) => setField(cur, i, f, v, side)} onNoteChange={value => setNote(cur, value)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
-      )}
+      <div className="session-cards" aria-label={t('Exercises')}>
+        {units.map((members, index) => renderCard(members[0], index, members))}
+      </div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{moveStatus}</div>
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 
     <div style={{ height: 12 }} />
-    <div className="row">
-      <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => update(s => { s.active.cur = units[unitIdx - 1][0] })}>{t('Prev')}</Button>
-      <Button trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => update(s => { s.active.cur = units[unitIdx + 1][0] })}>{t('Next')}</Button>
-    </div>
+    {A.entries.length > 1 && <div className="row workout-session-nav">
+      <label className="session-selector">
+        <span className="small dim">{t('Exercise')}</span>
+        <select aria-label={t('Exercises')} value={unitIdx < 0 ? '' : unitIdx} onChange={e => {
+          const unitIndex = Number(e.target.value)
+          jumpTo(units[unitIndex]?.[0])
+        }}>
+          {units.map((members, index) => <option key={A.entries[members[0]].sid} value={index}>
+            {index + 1}. {members.map(i => exerciseName(exOr(A.entries[i].id))).join(' + ')}
+          </option>)}
+        </select>
+      </label>
+      <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => jumpTo(units[unitIdx - 1]?.[0])}>{t('Prev')}</Button>
+      <Button trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => jumpTo(units[unitIdx + 1]?.[0])}>{t('Next')}</Button>
+    </div>}
     <div style={{ height: 10 }} />
-    <Button onClick={() => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => commitPickerSelection(() => update(s => {
-      const routine = s.routines.find(r => r.id === s.active.routineId)
-      s.active.entries.push(buildWorkoutEntry(s, cfg, routine, { id: ex.id }))
-      s.active.cur = s.active.entries.length - 1
-    }), closePicker), null, S.routines.find(r => r.id === A.routineId)))} icon="plus">{t('Add exercise')}</Button>
+      <Button onClick={() => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => {
+       let addedSid
+       commitPickerSelection(() => update(s => {
+         const routine = s.routines.find(r => r.id === s.active.routineId)
+         const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
+         addedSid = added.sid
+         s.active.entries.push(added)
+         s.active.cur = s.active.entries.length - 1
+       }), closePicker)
+       if (addedSid) focusEntry(addedSid)
+     }, null, S.routines.find(r => r.id === A.routineId)))} icon="plus">{t('Add exercise')}</Button>
     <div style={{ height: 10 }} />
     {(() => {
        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
@@ -433,7 +549,7 @@ function ActiveWorkout() {
       </button>
     })()}
     <div style={{ height: 40 }} />
-  </div>
+  </main>
 }
 
 export default function Workout() {

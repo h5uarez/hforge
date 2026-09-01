@@ -90,7 +90,19 @@ describe('legacy state normalization', () => {
     expect(persisted).not.toHaveProperty('activeBlock')
     expect(persisted.workouts[0]).not.toHaveProperty('block')
   })
+
+  it('normalizes active legacy entries without touching saved routines or day plans', () => {
+    const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]
+    const dayPlan = { '2026-09-01': 'r1' }
+    useStore.getState().replaceState({ routines, dayPlan, active: { cur: 1, entries: [entry('squat'), entry('squat')] } })
+    const { S } = useStore.getState()
+    expect(S.active.entries.map(e => e.sid)).toEqual(['session-squat-0', 'session-squat-1'])
+    expect(S.routines).toEqual(routines)
+    expect(S.dayPlan).toEqual(dayPlan)
+  })
 })
+
+const entry = id => ({ id, sets: [{ done: true, w: 40, r: 8 }] })
 
 describe('restTimerEnabled compatibility', () => {
   it('defaults old profiles to enabled and persists a disabled choice', () => {
@@ -111,6 +123,50 @@ describe('restTimerEnabled compatibility', () => {
 
     expect(restored.getState().S.restTimerEnabled).toBe(false)
     expect(restored.getState().S.restSec).toBe(90)
+  })
+})
+
+describe('active-session persistence recovery', () => {
+  it('keeps a failed active draft available for retry and leaves plans unchanged', () => {
+    const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]
+    useStore.getState().replaceState({ routines, dayPlan: { tue: 'r1' }, active: { entries: [entry('squat')] } })
+    const originalSetItem = localStorage.setItem
+    let fail = true
+    localStorage.setItem = (key, value) => {
+      if (fail && key === 'gym_state_v1') throw new Error('quota')
+      return originalSetItem(key, value)
+    }
+    useStore.getState().update(s => { s.active.entries[0].sets[0].r = 12 })
+    expect(useStore.getState().persistence.status).toBe('failed')
+    expect(useStore.getState().S.active.entries[0].sets[0].r).toBe(12)
+    expect(useStore.getState().S.routines).toEqual(routines)
+    fail = false
+    expect(useStore.getState().retryPersistence()).toBe(true)
+    expect(useStore.getState().persistence).toBeNull()
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).active.entries[0].sets[0].r).toBe(12)
+    localStorage.setItem = originalSetItem
+  })
+
+  it('supports undo and cancel without changing saved plans after a failed edit', () => {
+    const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]
+    const dayPlan = { tue: 'r1' }
+    useStore.getState().replaceState({ routines, dayPlan, active: { entries: [entry('squat')] } })
+    const originalSetItem = localStorage.setItem
+    localStorage.setItem = (key, value) => { if (key === KEY) throw new Error('quota'); return originalSetItem(key, value) }
+
+    useStore.getState().update(s => { s.active.entries[0].sets[0].r = 12 })
+    expect(useStore.getState().persistence.status).toBe('failed')
+    localStorage.setItem = originalSetItem
+    expect(useStore.getState().cancelPersistence()).toBe(true)
+    expect(useStore.getState().S.active.entries[0].sets[0].r).toBe(8)
+    expect(useStore.getState().S.routines).toEqual(routines)
+    expect(useStore.getState().S.dayPlan).toEqual(dayPlan)
+
+    localStorage.setItem = (key, value) => { if (key === KEY) throw new Error('quota'); return originalSetItem(key, value) }
+    useStore.getState().update(s => { s.active.entries[0].sets[0].r = 13 })
+    localStorage.setItem = originalSetItem
+    expect(useStore.getState().undoPersistence()).toBe(true)
+    expect(useStore.getState().S.active.entries[0].sets[0].r).toBe(8)
   })
 })
 

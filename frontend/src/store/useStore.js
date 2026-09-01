@@ -5,8 +5,10 @@ import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/i18n.js'
+import { normalizeActiveSession } from '../lib/session.js'
 
 const KEY = 'gym_state_v1'
+const LAST_VALID_KEY = 'gym_state_last_valid_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
   theme: 'dark', accent: 'lime', body: 'male', targetW: null, bodyweightCheckEnabled: true,
@@ -39,7 +41,7 @@ const normalizeState = state => {
   if (next.active && typeof next.active === 'object' && !Array.isArray(next.active)) {
     const clean = { ...next.active }
     delete clean.block
-    next.active = clean
+    next.active = normalizeActiveSession(clean)
   }
   return next
 }
@@ -53,7 +55,13 @@ function loadState() {
       localStorage.setItem(KEY, JSON.stringify(state))
       return state
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    // A partial/quota-corrupted primary must not erase the last known valid session.
+    try {
+      const fallback = localStorage.getItem(LAST_VALID_KEY)
+      if (fallback) return normalizeState(JSON.parse(fallback))
+    } catch { /* ignore malformed fallback too */ }
+  }
   return normalizeState({ lang: getInitialLang() })
 }
 
@@ -74,13 +82,23 @@ export const useStore = create((set, get) => {
     S = normalizeState(S)
     S._ts = Date.now()
     registerCustom(S.customEx)
-    localStorage.setItem(KEY, JSON.stringify(S))
-    set({ S })
+    const previous = get().S
+    try {
+      const serialized = JSON.stringify(S)
+      localStorage.setItem(KEY, serialized)
+      localStorage.setItem(LAST_VALID_KEY, serialized)
+      set({ S, persistence: null })
+    } catch (error) {
+      // Keep the draft visible and actionable. No routine/dayPlan data is rewritten here.
+      set({ S, persistence: { status: 'failed', error, draft: S, previous } })
+      return false
+    }
     if (MOBILE) nativePersist()
     if (push && get().user) {
       clearTimeout(pushTm)
       pushTm = setTimeout(() => get().pushState(), 1500)
     }
+    return true
   }
 
   // A setting changed right before switching away/closing the tab must not get lost mid-debounce
@@ -113,6 +131,7 @@ export const useStore = create((set, get) => {
 
   return {
     S: (() => { const s = loadState(); registerCustom(s.customEx); return s })(),
+    persistence: null,
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
 
@@ -121,6 +140,22 @@ export const useStore = create((set, get) => {
       const S = clone(get().S)
       mut(S)
       persist(S, push)
+    },
+    retryPersistence() {
+      const pending = get().persistence
+      if (pending?.status !== 'failed') return false
+      return persist(pending.draft)
+    },
+    undoPersistence() {
+      const pending = get().persistence
+      if (pending?.status !== 'failed') return false
+      return persist(pending.previous)
+    },
+    cancelPersistence() {
+      const pending = get().persistence
+      if (pending?.status !== 'failed') return false
+      set({ S: pending.previous, persistence: null })
+      return true
     },
     replaceState(S, push = false) {
       const next = normalizeState(S)

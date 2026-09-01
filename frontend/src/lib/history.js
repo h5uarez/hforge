@@ -35,6 +35,8 @@ export function copyNoteFields(source) {
 export function copyHistoryEntry(entry) {
   if (!entry || typeof entry !== 'object') return entry
   const copy = copyNoteFields({ ...entry, sets: Array.isArray(entry.sets) ? entry.sets : [] })
+  // sid belongs only to the active snapshot; history remains compatible with the legacy shape.
+  delete copy.sid
   if (copy.target && typeof copy.target === 'object') copy.target = copyNoteFields(copy.target)
   return copy
 }

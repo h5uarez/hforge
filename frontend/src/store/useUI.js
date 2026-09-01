@@ -20,7 +20,7 @@ let workDone = null
 export const useUI = create((set, get) => ({
   sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked, tall }
   toastMsg: '',
-  timer: null,         // rest countdown between sets — { left, total, endsAt }
+  timer: null,         // rest countdown between sets — { left, total, endsAt, sid }
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
 
   openSheet(render, { kind = 'sheet', locked = false, tall = false } = {}) {
@@ -39,12 +39,17 @@ export const useUI = create((set, get) => ({
     toastTm = setTimeout(() => set({ toastMsg: '' }), 2200)
   },
 
-  startRest(sec) {
+  startRest(sec, sid = null) {
     if (useStore.getState().S.restTimerEnabled === false) { get().stopRest(); return }
     get().stopRest()
     if (useStore.getState().S.restTimerEnabled === false) return
     const endsAt = Date.now() + sec * 1000
-    set({ timer: { left: sec, total: sec, endsAt } })
+    set({ timer: { left: sec, total: sec, endsAt, sid } })
+    if (sid && useStore.getState().S.active?.entries?.some(entry => entry.sid === sid)) {
+      useStore.getState().update(state => {
+        state.active.restResume = { endsAt, total: sec, sid }
+      }, false)
+    }
     pushRestTimer(sec)
     timerTick = () => {
       const tm = get().timer
@@ -70,14 +75,44 @@ export const useUI = create((set, get) => ({
     // taking off more than is left means "I'm ready now" — same as skipping, and it keeps a
     // negative duration out of both the progress bar and the server-side push schedule
     if (left <= 0) { get().stopRest(); return }
-    set({ timer: { ...tm, left, total: tm.total + sec, endsAt: tm.endsAt + sec * 1000 } })
+    const next = { ...tm, left, total: tm.total + sec, endsAt: tm.endsAt + sec * 1000 }
+    set({ timer: next })
+    // The visible countdown is transient, but an active-session rest must survive reload.
+    // Keep the durable record in the store's clone-and-persist boundary so extension and
+    // reduction cannot leave the reload snapshot stale.
+    if (next.sid && useStore.getState().S.active?.entries?.some(entry => entry.sid === next.sid)) {
+      useStore.getState().update(state => {
+        state.active.restResume = { endsAt: next.endsAt, total: next.total, sid: next.sid }
+      }, false)
+    }
     pushRestTimer(left)
   },
   stopRest() {
     if (timerInt) clearInterval(timerInt); timerInt = null
     if (timerTick) document.removeEventListener('visibilitychange', timerTick); timerTick = null
     if (get().timer) cancelPushRestTimer()
+    if (useStore.getState().S.active?.restResume) {
+      useStore.getState().update(state => { delete state.active.restResume }, false)
+    }
     set({ timer: null })
+  },
+  resumeRest() {
+    const active = useStore.getState().S.active
+    const saved = active?.restResume
+    const valid = saved && Number.isFinite(saved.endsAt) && Number.isFinite(saved.total)
+      && saved.total > 0 && typeof saved.sid === 'string'
+      && active.entries?.some(entry => entry.sid === saved.sid)
+    if (!valid) {
+      if (saved) useStore.getState().update(state => { delete state.active.restResume }, false)
+      return false
+    }
+    const left = Math.max(0, Math.round((saved.endsAt - Date.now()) / 1000))
+    if (!left) {
+      useStore.getState().update(state => { delete state.active.restResume }, false)
+      return false
+    }
+    get().startRest(left, saved.sid)
+    return true
   },
 
   /* ---- work timer (issue #16) ----

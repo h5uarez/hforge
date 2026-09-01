@@ -2,6 +2,9 @@
 export default {
   'Confirm': '확인', 'Close': '닫기',
   'Cancel': '취소',
+  'Retry': '다시 시도', 'Undo': '실행 취소',
+  'Could not save your workout': '운동을 저장할 수 없습니다',
+  'Your changes are still visible. Choose an action to recover.': '변경 사항이 계속 표시됩니다. 복구할 작업을 선택하세요.',
   'Delete': '삭제',
   'Save': '저장',
   'Import': '가져오기',

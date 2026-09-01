@@ -2,6 +2,9 @@
 export default {
   'Confirm': 'पुष्टि करें', 'Close': 'बंद करें',
   'Cancel': 'रद्द करें',
+  'Retry': 'पुनः प्रयास करें', 'Undo': 'पूर्ववत करें',
+  'Could not save your workout': 'आपका वर्कआउट सहेजा नहीं जा सका',
+  'Your changes are still visible. Choose an action to recover.': 'आपके बदलाव अभी भी दिखाई दे रहे हैं। पुनर्प्राप्ति के लिए कोई कार्रवाई चुनें।',
   'Delete': 'हटाएँ',
   'Save': 'सहेजें',
   'Import': 'आयात करें',

@@ -3,6 +3,9 @@ export default {
   // --- generic ---
   'Confirm': 'Bestätigen', 'Close': 'Schließen',
   'Cancel': 'Abbrechen',
+  'Retry': 'Erneut versuchen', 'Undo': 'Rückgängig',
+  'Could not save your workout': 'Dein Training konnte nicht gespeichert werden',
+  'Your changes are still visible. Choose an action to recover.': 'Deine Änderungen sind weiterhin sichtbar. Wähle eine Wiederherstellungsaktion.',
   'Delete': 'Löschen',
   'Save': 'Speichern',
   'Import': 'Importieren',

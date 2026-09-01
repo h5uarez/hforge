@@ -548,6 +548,7 @@ h4.sec{
 
 /* ------------------------------------------------------------- workout --- */
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
+.workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat))}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#fff;margin-bottom:12px}
 .exmedia img{width:100%;height:320px;object-fit:contain;display:block}
@@ -565,16 +566,18 @@ h4.sec{
 .exmedia.compact img{height:120px}
 .exmedia.mini img{height:84px}
 
+.setgrid-scroll{width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.sethead,.setrow{
+  display:grid;grid-template-columns:var(--set-grid-template);align-items:center;column-gap:8px;
+}
 .sethead{
-  display:flex;align-items:center;gap:8px;padding:0 0 6px;
+  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 30px 30px;
+  min-width:340px;padding:0 0 6px;
   font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
 }
-.sethead .n-sp{width:24px;flex:none}
-.sethead .w-sp{flex:1.4;text-align:center}
-.sethead .r-sp{flex:1;text-align:center}
-.sethead .eff-sp{text-align:center}
-.sethead .ck-sp{width:30px;flex:none}
-.setrow{display:flex;align-items:center;gap:8px;padding:7px 0;position:relative}
+.sethead .w-sp,.sethead .r-sp,.sethead .eff-sp,.sethead .side-sp{text-align:center;min-width:0}
+.sethead .ck-sp{min-width:30px}
+.setrow{--set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 30px 30px;min-width:340px;padding:7px 0;position:relative}
 .setrow+.setrow::before{
   content:'';position:absolute;left:32px;right:0;top:0;height:var(--hair);background:var(--sep);
 }
@@ -583,22 +586,23 @@ h4.sec{
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex:none;
   transition:background var(--fast),color var(--fast);
 }
-.setrow .stp.w{flex:1.4;min-width:0}
-.setrow .stp.r{flex:1;min-width:0}
-.setrow .stp.eff{flex:1.1;min-width:0}
+.setrow .stp{min-width:0}
 .setrow .stp button{width:32px;height:40px}
 /* a 3rd stepper (RIR) needs narrower buttons and a tighter row gap to fit next to weight+reps
    on narrow phones, same technique as the exercise-config sheet's three-steppers-in-a-row
    (.cfgrow below) — RIR's own value is short ("1.5") so its buttons shrink the most, weight/reps
    just enough to make room since their values ("82.5", "12") need more of what's left.
    The header shares the numbers so its labels stay centred over the steppers they name. */
-.setrow.eff3,.sethead.eff3{gap:6px}
-.setrow.eff3 .stp.w,.sethead.eff3 .w-sp{flex:1.2}
-.setrow.eff3 .stp.r,.sethead.eff3 .r-sp{flex:1}
-.setrow.eff3 .stp.eff,.sethead.eff3 .eff-sp{flex:.85}
+.setrow.eff3,.sethead.eff3{--set-grid-template:minmax(24px,24px) minmax(104px,1.2fr) minmax(72px,1fr) minmax(68px,.85fr) 30px 30px;column-gap:6px}
+.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 60px}
+.setrow.eff3 .stp button{width:32px}
 .setrow.eff3 .stp button{width:23px}
 .setrow.eff3 .stp.eff button{width:20px}
 .setrow.eff3 .stp .num{font-size:14px}
+.setrow.per-side{min-width:560px}
+.setrow.per-side .stp.w{min-width:104px}
+.setrow.per-side .stp.r{min-width:84px}
+.setrow.per-side .side-input{width:2ch;min-width:2ch;flex:0 0 2ch}
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 .setrow.done{opacity:.45}
 /* programmed target disclosure: keep the prescription prominent while the label and note
@@ -769,6 +773,20 @@ h4.sec{
 .bw-read{
   font-size:clamp(34px,13vw,52px);font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
   font-variant-numeric:tabular-nums;line-height:1;
+}
+.workout-session .iconbtn,.workout-session .setgo,.workout-session .setinfo{min-width:44px;min-height:44px}
+.workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}
+.workout-session .session-card:focus-visible{box-shadow:0 0 0 2px var(--acc);outline-offset:4px}
+.workout-session .session-card{padding:12px;margin-bottom:8px}
+.workout-session .session-card .card{padding:12px}
+.workout-session-nav{align-items:stretch;gap:6px}
+.workout-session-nav > button{flex:0 0 auto}
+.session-selector{display:flex;flex:1 1 150px;min-width:0;flex-direction:column;justify-content:center;gap:2px}
+.session-selector select{width:100%;min-width:0;min-height:44px;padding:8px 30px 8px 10px;border:1px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:15px;line-height:1.2;text-overflow:ellipsis}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto!important}
+  .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat))}
+  .workout-session .wprog{scroll-behavior:auto}
 }
 .bw-read.editable{display:flex;align-items:baseline;justify-content:center;gap:7px;min-width:0;flex:1 1 auto}
 .bw-read-input{

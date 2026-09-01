@@ -2,6 +2,9 @@
 export default {
   'Confirm': 'Conferma', 'Close': 'Chiudi',
   'Cancel': 'Annulla',
+  'Retry': 'Riprova', 'Undo': 'Annulla modifica',
+  'Could not save your workout': 'Impossibile salvare l’allenamento',
+  'Your changes are still visible. Choose an action to recover.': 'Le modifiche sono ancora visibili. Scegli un’azione per recuperarle.',
   'Delete': 'Elimina',
   'Save': 'Salva',
   'Import': 'Importa',

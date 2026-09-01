@@ -2,6 +2,9 @@
 export default {
   'Confirm': 'Onayla', 'Close': 'Kapat',
   'Cancel': 'İptal',
+  'Retry': 'Tekrar dene', 'Undo': 'Geri al',
+  'Could not save your workout': 'Antrenmanınız kaydedilemedi',
+  'Your changes are still visible. Choose an action to recover.': 'Değişiklikleriniz hâlâ görünür. Kurtarmak için bir işlem seçin.',
   'Delete': 'Sil',
   'Save': 'Kaydet',
   'Import': 'İçe aktar',
