@@ -60,13 +60,17 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toContain('jumpTo(Number(e.target.value))')
   })
 
-  it('reserves independent mobile tracks for set actions and completion checks', () => {
+  it('keeps timed decimal weights readable with independent mobile action tracks', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
     expect(source).toContain('const gridClass =')
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
+    expect(source).toContain("const loadCol = { f: 'w', step: 2.5, dec: true")
+    expect(source).toContain('decimal={col.dec}')
     expect(source).toContain('className="info-sp"')
     expect(css).toContain(' 44px 44px;')
+    expect(css).toContain('minmax(108px,1.35fr) minmax(72px,1fr) 44px 44px')
+    expect(css).toContain('.setrow.timed .stp.w .val{min-width:calc(4ch + 4px)}')
     expect(css).toContain('.sethead.no-col2.timed,.setrow.no-col2.timed')
     expect(css).toContain('--set-go-col:3;--set-check-col:4')
     expect(css).toContain('.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}')
@@ -79,7 +83,7 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('@media (max-width:420px)')
     expect(css).toContain('minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px')
     expect(css).toContain('.setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}')
-    expect(24 + 104 + 72 + 44 + 44 + 4 * 6).toBeLessThanOrEqual(313)
+    expect(24 + 108 + 72 + 44 + 44 + 4 * 5).toBeLessThanOrEqual(313)
     expect(24 + 70 + 54 + 58 + 44 + 44 + 5 * 3).toBeLessThanOrEqual(313)
   })
 
