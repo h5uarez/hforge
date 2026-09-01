@@ -125,7 +125,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   )
-  const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls}>
+  const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
     <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
    <span className="val"><NumberField className="side-input" aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
    <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
@@ -145,6 +145,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
   // Empty notes stay out of the way, while an existing note remains immediately readable. This
   // is local disclosure state and does not affect the note stored in the active workout.
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
+  const perSide = isPerSide(cfg) && !cardio && !timed
+  const gridClass = (col3 ? ' eff3' : '') + (perSide ? ' per-side' : '') + (!col2 ? ' no-col2' : '') + (timed ? ' timed' : '')
   const startLongPress = i => {
     cancelLongPress()
     lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
@@ -182,7 +184,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
       {/* You log the total; this is the split, so the set in front of you is unambiguous
           without the rep count having to mean two different things (issue #31). */}
-      {!cardio && !timed && isPerSide(cfg) && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !projectSideSet(s).done)?.r ?? entry.sets[0]?.r)))}</span>}
+      {!cardio && !timed && perSide && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !projectSideSet(s).done)?.r ?? entry.sets[0]?.r)))}</span>}
       {(ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
@@ -195,17 +197,17 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className="setgrid-scroll">
-      <div className={'sethead' + (col3 ? ' eff3' : '') + (isPerSide(cfg) && !cardio && !timed ? ' per-side' : '')}>
-        <span className="n-sp" />{isPerSide(cfg) && !cardio && !timed ? <>
+      <div className={'sethead' + gridClass}>
+        <span className="n-sp" />{perSide ? <>
           <span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="side-sp">L</span><span className="r-sp">{col2.hd}</span>
-          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="side-sp">R</span><span className="r-sp">{col2.hd}</span>
-        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="side-sp">R</span><span className="r-sp">{col2.hd}</span>{col3 && <span className="info-sp" />}
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{col3 && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
       </div>
       {entry.sets.map((s, i) => {
         const target = setTarget(s)
         const isOpen = disclosed.has(i)
         return <Fragment key={i}>
-           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + (col3 ? ' eff3' : '') + (isPerSide(cfg) && !cardio && !timed ? ' per-side' : '')}
+           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + gridClass}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
@@ -217,7 +219,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
             onPointerCancel={cancelLongPress}
             onPointerLeave={cancelLongPress}>
             <div className="n">{i + 1}</div>
-            {isPerSide(cfg) && !cardio && !timed ? <>
+            {perSide ? <>
               <span className="side-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}
               <span className="side-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}
             </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
@@ -234,7 +236,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
               onClick={e => { e.stopPropagation(); toggleDisclosed(i) }}>
               <Icon name={isOpen ? 'chevronUp' : 'info'} />
             </button>}
-            {isPerSide(cfg) && !cardio && !timed ? <div className="side-checks">
+            {perSide ? <div className="side-checks">
               <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
               <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
             </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
@@ -514,17 +516,6 @@ function ActiveWorkout() {
 
     <div style={{ height: 12 }} />
     {A.entries.length > 1 && <div className="row workout-session-nav">
-      <label className="session-selector">
-        <span className="small dim">{t('Exercise')}</span>
-        <select aria-label={t('Exercises')} value={unitIdx < 0 ? '' : unitIdx} onChange={e => {
-          const unitIndex = Number(e.target.value)
-          jumpTo(units[unitIndex]?.[0])
-        }}>
-          {units.map((members, index) => <option key={A.entries[members[0]].sid} value={index}>
-            {index + 1}. {members.map(i => exerciseName(exOr(A.entries[i].id))).join(' + ')}
-          </option>)}
-        </select>
-      </label>
       <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => jumpTo(units[unitIdx - 1]?.[0])}>{t('Prev')}</Button>
       <Button trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => jumpTo(units[unitIdx + 1]?.[0])}>{t('Next')}</Button>
     </div>}

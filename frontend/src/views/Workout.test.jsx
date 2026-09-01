@@ -40,25 +40,47 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('entry.note.trim().length > 0')
   })
 
-  it('uses a compact localized selector near navigation and compact cards without changing type sizes', () => {
+  it('removes the bottom exercise selector while preserving Previous/Next navigation', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
     expect(source).toContain('workout-session-nav')
-    expect(source).toContain('<select aria-label={t(\'Exercises\')}')
-    expect(source).toContain('const unitIndex = Number(e.target.value)')
-    expect(source).toContain('jumpTo(units[unitIndex]?.[0])')
-    expect(source).toContain('members.map(i => exerciseName(exOr(A.entries[i].id))).join(\' + \')')
+    expect(source).not.toContain('<select')
+    expect(source).not.toContain('session-selector')
+    expect(source).not.toContain('const unitIndex = Number(e.target.value)')
     expect(source).not.toContain('session-index')
     expect(css).not.toContain('.workout-session .session-index')
+    expect(css).not.toContain('.session-selector')
     expect(css).toContain('.workout-session .session-card{padding:12px')
     expect(css).toContain('.workout-session .session-card .card{padding:12px}')
-    expect(css).toContain('.session-selector select{')
-    expect(css).toContain('min-height:44px')
+    expect(css).toContain('.workout-session-nav > button{flex:1 1 0;width:auto}')
   })
 
-  it('maps a selected superset unit to its first entry before jumping', () => {
-    expect(source).toContain('const unitIndex = Number(e.target.value)')
-    expect(source).toContain('jumpTo(units[unitIndex]?.[0])')
+  it('keeps Previous/Next jumps on the existing SID focus path', () => {
+    expect(source).toContain('onClick={() => jumpTo(units[unitIdx - 1]?.[0])}')
+    expect(source).toContain('onClick={() => jumpTo(units[unitIdx + 1]?.[0])}')
     expect(source).not.toContain('jumpTo(Number(e.target.value))')
+  })
+
+  it('reserves independent mobile tracks for set actions and completion checks', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    expect(source).toContain('const gridClass =')
+    expect(source).toContain("' no-col2'")
+    expect(source).toContain("' timed'")
+    expect(source).toContain('className="info-sp"')
+    expect(css).toContain(' 44px 44px;')
+    expect(css).toContain('.sethead.no-col2.timed,.setrow.no-col2.timed')
+    expect(css).toContain('--set-go-col:3;--set-check-col:4')
+    expect(css).toContain('.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}')
+    expect(css).toContain('.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}')
+    expect(css).toContain('.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}')
+    expect(css).toContain('.setrow.per-side > .side-checks{grid-column:10;')
+    expect(css).toContain('grid-template-columns:44px 44px')
+    expect(css).not.toContain('min-width:340px')
+    expect(css).not.toContain('min-width:386px')
+    expect(css).toContain('@media (max-width:420px)')
+    expect(css).toContain('minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px')
+    expect(css).toContain('.setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}')
+    expect(24 + 104 + 72 + 44 + 44 + 4 * 6).toBeLessThanOrEqual(313)
+    expect(24 + 70 + 54 + 58 + 44 + 44 + 5 * 3).toBeLessThanOrEqual(313)
   })
 
   it('renders visible persistence recovery actions without clearing the active draft', () => {
