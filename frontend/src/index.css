@@ -620,8 +620,8 @@ h4.sec{
   --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(68px,.85fr) 44px 44px;
   --set-info-col:4;--set-check-col:5;min-width:0;
 }
-.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 88px}
-.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 44px 88px}
+.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 88px}
+.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 44px 88px}
 .setrow.eff3 .stp button{width:32px}
 .setrow.eff3 .stp button{width:23px}
 .setrow.eff3 .stp.eff button{width:20px}
@@ -630,9 +630,11 @@ h4.sec{
    and their two completion checks are too information-dense for a single phone-width row. */
 .setrow.per-side{min-width:560px}
 .sethead.per-side{min-width:560px}
-.setrow.per-side .stp.w{min-width:104px}
+.setrow.per-side .stp.w{min-width:120px}
 .setrow.per-side .stp.r{min-width:84px}
-.setrow.per-side .side-input{width:2ch;min-width:2ch;flex:0 0 2ch}
+/* Keep the weight track wide enough for a six-character decimal value while the 32px controls
+   retain their existing touch target; the header and both side rows share this grid. */
+.setrow.per-side .side-input{width:6ch;min-width:6ch;flex:0 0 6ch}
 .setrow.per-side > .side-left-label{grid-column:2}
 .setrow.per-side > .side-right-label{grid-column:5}
 .setrow.per-side > .side-left-w{grid-column:3}
