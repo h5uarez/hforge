@@ -152,11 +152,29 @@ jobs:
 
           docker compose --env-file .env -f docker-compose.prod.yml config --quiet
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
-          printf '%s\n' "$GHCR_READ_TOKEN" | docker login ghcr.io \
+          login_attempt=1
+          while ! printf '%s\n' "$GHCR_READ_TOKEN" | docker login ghcr.io \
             --username "$GHCR_USERNAME" \
-            --password-stdin >/dev/null
+            --password-stdin >/dev/null; do
+            if [ "$login_attempt" -ge 3 ]; then
+              echo 'ERROR: GHCR login failed after 3 attempts.' >&2
+              exit 1
+            fi
+            echo "GHCR login attempt $login_attempt failed; retrying in 10 seconds." >&2
+            login_attempt=$((login_attempt + 1))
+            sleep 10
+          done
           unset GHCR_READ_TOKEN GHCR_USERNAME
-          docker compose --env-file .env -f docker-compose.prod.yml pull api web
+          pull_attempt=1
+          while ! docker compose --env-file .env -f docker-compose.prod.yml pull api web; do
+            if [ "$pull_attempt" -ge 3 ]; then
+              echo 'ERROR: GHCR image pull failed after 3 attempts.' >&2
+              exit 1
+            fi
+            echo "GHCR image pull attempt $pull_attempt failed; retrying in 10 seconds." >&2
+            pull_attempt=$((pull_attempt + 1))
+            sleep 10
+          done
 
           # The VM may still have the pre-OIDC OpenGym Compose project running on
           # the published web port. Stop that project without removing volumes so
