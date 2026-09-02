@@ -109,7 +109,7 @@ describe('mobile accessibility and layout contracts', () => {
     expect(css).toContain('.setgrid-scroll')
     expect(css).toContain('overflow-x:auto')
     expect(css).toContain('.setrow.per-side,.sethead.per-side')
-    expect(css).toContain('.setrow.per-side > .side-checks{grid-column:10;')
+    expect(css).toContain('.setrow.per-side > .side-checks{grid-column:8;')
     expect(css).toContain('.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}')
     expect(css).toContain('.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}')
     expect(css).toContain('.sethead.no-col2.timed,.setrow.no-col2.timed')

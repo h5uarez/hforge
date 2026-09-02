@@ -43,9 +43,9 @@ export default function Plan() {
            // Explicit date overrides win over the recurring weekly assignment.
           const routineId = effectiveRoutineId(S, isoFor(d))
           const r = routineId ? S.routines.find(x => x.id === routineId) : null
-          return <div key={d} className="item" onClick={() => dayAssignSheet(d)}>
+          return <div key={d} className="item schedule-item" onClick={() => dayAssignSheet(d)}>
             <div className="grow"><div className="tt">{t(DAYN[d])}</div></div>
-            {r ? <span className="tag acc"><Icon name={glyphOf(r.emoji)} />{r.name}</span> : <span className="tag">{t('Rest')}</span>}
+            {r ? <span className="tag acc schedule-routine"><Icon name={glyphOf(r.emoji)} /><span className="schedule-routine-name">{r.name}</span></span> : <span className="tag schedule-routine"><span className="schedule-routine-name">{t('Rest')}</span></span>}
             <Icon name="chevronRight" className="chev" /></div>
         })}
       </div>

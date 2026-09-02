@@ -355,6 +355,12 @@ h4.sec{
 .item .ss{color:var(--label-2);font-size:13px;margin-top:2px}
 .item .grow{flex:1;min-width:0}
 .chev{color:var(--label);flex:none;font-size:15px;--icon-stroke:2.4}
+/* Schedule rows keep the weekday at its intrinsic width. The routine is the flexible value,
+   so a long name is clipped inside its tag instead of covering the weekday. */
+.schedule-item .grow{flex:1 1 auto;min-width:max-content}
+.schedule-item .tt{white-space:nowrap}
+.schedule-item .schedule-routine{flex:0 1 45%;min-width:0;max-width:45%;overflow:hidden}
+.schedule-item .schedule-routine-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tag{
   display:inline-flex;align-items:center;gap:3px;background:var(--surface-2);
   color:var(--label-2);border-radius:6px;padding:3px 7px;font-size:12px;
@@ -614,8 +620,8 @@ h4.sec{
   --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(68px,.85fr) 44px 44px;
   --set-info-col:4;--set-check-col:5;min-width:0;
 }
-.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 88px}
-.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 18px minmax(104px,1.35fr) 18px minmax(72px,1fr) 44px 88px}
+.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 88px}
+.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 44px 88px}
 .setrow.eff3 .stp button{width:32px}
 .setrow.eff3 .stp button{width:23px}
 .setrow.eff3 .stp.eff button{width:20px}
@@ -627,16 +633,16 @@ h4.sec{
 .setrow.per-side .stp.w{min-width:104px}
 .setrow.per-side .stp.r{min-width:84px}
 .setrow.per-side .side-input{width:2ch;min-width:2ch;flex:0 0 2ch}
-.setrow.per-side > .side-label:nth-of-type(1){grid-column:2}
-.setrow.per-side > .side-label:nth-of-type(2){grid-column:6}
+.setrow.per-side > .side-left-label{grid-column:2}
+.setrow.per-side > .side-right-label{grid-column:5}
 .setrow.per-side > .side-left-w{grid-column:3}
-.setrow.per-side > .side-left-r{grid-column:5}
-.setrow.per-side > .side-right-w{grid-column:7}
-.setrow.per-side > .side-right-r{grid-column:9}
-.setrow.per-side > .side-checks{grid-column:10;display:grid;grid-template-columns:44px 44px;align-items:center;width:100%;min-width:88px}
+.setrow.per-side > .side-left-r{grid-column:4}
+.setrow.per-side > .side-right-w{grid-column:6}
+.setrow.per-side > .side-right-r{grid-column:7}
+.setrow.per-side > .side-checks{grid-column:8;display:grid;grid-template-columns:44px 44px;align-items:center;width:100%;min-width:88px}
 .setrow.per-side > .side-checks > .chk{justify-self:center}
-.setrow.per-side.eff3 > .setinfo{grid-column:10;justify-self:center}
-.setrow.per-side.eff3 > .side-checks{grid-column:11}
+.setrow.per-side.eff3 > .setinfo{grid-column:8;justify-self:center}
+.setrow.per-side.eff3 > .side-checks{grid-column:9}
 .setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}
 .setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}
 .setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}
