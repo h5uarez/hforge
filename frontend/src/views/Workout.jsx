@@ -199,8 +199,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
       <div className="setgrid-scroll">
       <div className={'sethead' + gridClass}>
         <span className="n-sp" />{perSide ? <>
-          <span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="side-sp">L</span><span className="r-sp">{col2.hd}</span>
-          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="side-sp">R</span><span className="r-sp">{col2.hd}</span>{col3 && <span className="info-sp" />}
+          <span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>
+          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>{col3 && <span className="info-sp" />}
         </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{col3 && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
       </div>
       {entry.sets.map((s, i) => {
@@ -220,8 +220,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
             onPointerLeave={cancelLongPress}>
             <div className="n">{i + 1}</div>
             {perSide ? <>
-              <span className="side-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}
-              <span className="side-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}
+              <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}
+              <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}
             </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
             {/* A timed set is started, not typed: the timer counts the hold down and checks the
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
