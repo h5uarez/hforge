@@ -154,10 +154,11 @@ describe('scrollable workout composition contracts', () => {
   it('gives unilateral controls explicit narrow-width geometry', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
     expect(css).toContain('.setrow.per-side{min-width:560px}')
-    expect(css).toContain('.setrow.per-side .stp.w{min-width:104px}')
+    expect(css).toContain('.setrow.per-side .stp.w{min-width:120px}')
     expect(css).toContain('.setrow.per-side .stp.r{min-width:84px}')
-    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 88px')
-    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(104px,1.35fr) minmax(84px,1fr) 18px minmax(104px,1.35fr) minmax(84px,1fr) 44px 88px')
+    expect(css).toContain('.setrow .stp button{width:32px;height:40px}')
+    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 88px')
+    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 44px 88px')
     expect(css).toContain('.setrow.per-side > .side-left-label{grid-column:2}')
     expect(css).toContain('.setrow.per-side > .side-right-label{grid-column:5}')
     expect(css).toContain('.setrow.per-side > .side-left-r{grid-column:4}')
@@ -171,7 +172,11 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('side-right-label')
     expect(source).toContain('<span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>')
     expect(source).toContain('<span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>')
-    expect(css).toContain('.setrow.per-side .side-input{width:2ch;min-width:2ch;flex:0 0 2ch}')
+    expect(css).toContain('.setrow.per-side .side-input{width:6ch;min-width:6ch;flex:0 0 6ch}')
+    const perSideValueWidth = 120 - (2 * 32) - 4
+    expect(perSideValueWidth).toBeGreaterThanOrEqual(41)
+    const perSideGridWidth = [24, 18, 120, 84, 18, 120, 84, 88].reduce((sum, track) => sum + track, 0) + (7 * 8)
+    expect(perSideGridWidth).toBeGreaterThan(393)
     expect(source).toContain('className="side-input"')
   })
 
