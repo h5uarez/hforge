@@ -162,7 +162,7 @@ button,.chip,.tile,.item,.wday,.cal-d,.swatch,.hm-c,.lrow,.seg button,.stp butto
 
 /* ---------------------------------------------------------------- layout -- */
 #app{
-  padding:calc(var(--sat) + 8px) var(--pad) calc(180px + var(--sab));
+  padding:calc(var(--sat) + 8px) var(--pad) calc(100px + var(--sab));
   max-width:560px;margin:0 auto;
 }
 /* while the rest timer floats above the tab bar, keep its height scrollable-past
