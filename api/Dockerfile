@@ -4,6 +4,8 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY server.js ./
 COPY state-validation.js ./
+COPY inactivity-reminders.js ./
+COPY push-catalog.js ./
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["node", "server.js"]
