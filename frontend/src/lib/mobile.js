@@ -10,6 +10,7 @@
 // Like the demo build, MOBILE is replaced at build time, so all of this folds away in
 // web bundles; the Capacitor plugins are only ever imported behind it.
 import { t } from './i18n.js'
+import { ACTIVE_INACTIVITY_NOTIFICATION_ID, inactivityDeadline } from './inactivity.js'
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
 
@@ -57,6 +58,100 @@ export async function syncReminder(S, interactive = false) {
     if (notifications.length) await LocalNotifications.schedule({ notifications })
     return true
   } catch (e) { return false }
+}
+
+let activeInactivityVersion = 0
+let activeInactivitySchedule = null
+const ACTIVE_SCHEDULE_KEY = 'gym_active_inactivity_schedule_v1'
+
+const forgetActiveSchedule = () => {
+  try { localStorage.removeItem(ACTIVE_SCHEDULE_KEY) } catch (e) { /* ignore storage failures */ }
+}
+const rememberActiveSchedule = schedule => {
+  try { localStorage.setItem(ACTIVE_SCHEDULE_KEY, JSON.stringify(schedule)) } catch (e) { /* memory state still works */ }
+}
+const rememberedActiveSchedule = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(ACTIVE_SCHEDULE_KEY) || 'null')
+    return value && typeof value === 'object' ? value : null
+  } catch (e) { return null }
+}
+
+const cancelNativeNotification = async LocalNotifications => {
+  await LocalNotifications.cancel({ notifications: [{ id: ACTIVE_INACTIVITY_NOTIFICATION_ID }] }).catch(() => {})
+}
+
+// Native fallback for an active session. It is deliberately a single `at` schedule, never a
+// repeating notification; edits cancel and replace it before it fires, while the sent bit makes a
+// fired session permanently one-shot.
+export async function cancelActiveInactivity() {
+  if (!MOBILE) return false
+  activeInactivityVersion++
+  activeInactivitySchedule = null
+  forgetActiveSchedule()
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    await cancelNativeNotification(LocalNotifications)
+  } catch (e) { /* web build or plugin unavailable */ }
+}
+
+export function activeInactivityIsScheduled() {
+  return !!activeInactivitySchedule
+}
+
+export function activeInactivityScheduleState() {
+  return activeInactivitySchedule || rememberedActiveSchedule()
+}
+
+export async function syncActiveInactivity(S, now = Date.now(), options = {}) {
+  if (!MOBILE) return false
+  const version = ++activeInactivityVersion
+  activeInactivitySchedule = null
+  forgetActiveSchedule()
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    await cancelNativeNotification(LocalNotifications)
+    const A = S?.active
+    const deadline = inactivityDeadline(A)
+    // Future deadlines are scheduled natively; due sessions are also scheduled when the app is
+    // backgrounded, while the foreground checker owns the visible catch-up path.
+    if (!A || deadline === null || A.inactivityReminderSent === true || options.restActive || options.timedWorkActive) return false
+    const permission = await LocalNotifications.checkPermissions()
+    if (permission.display !== 'granted' || version !== activeInactivityVersion) return false
+    const currentTime = Number.isFinite(now) ? now : Date.now()
+    const deliveryAt = new Date(Math.max(deadline, currentTime + 1000))
+    await LocalNotifications.schedule({ notifications: [{
+      id: ACTIVE_INACTIVITY_NOTIFICATION_ID,
+      title: t('Workout inactivity reminder'),
+      body: t('It has been 15 minutes since your last workout record edit.'),
+      extra: { kind: 'active-inactivity', sessionId: A.id },
+      schedule: { at: deliveryAt, allowWhileIdle: true, repeats: false },
+    }] })
+    if (version === activeInactivityVersion) {
+      activeInactivitySchedule = { sessionId: A.id, deadline, scheduledAt: deliveryAt.getTime() }
+      // The WebView can be recreated after the OS displayed the notification. Retaining this tiny
+      // schedule marker lets the next foreground catch-up consume that event without a duplicate
+      // toast; it is cleared on every edit, finish, discard, or replacement schedule.
+      rememberActiveSchedule(activeInactivitySchedule)
+    }
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+export async function listenForActiveInactivity(onReceived) {
+  if (!MOBILE) return () => {}
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    let disposed = false
+    const handle = await LocalNotifications.addListener('localNotificationReceived', notification => {
+      if (!disposed && notification?.id === ACTIVE_INACTIVITY_NOTIFICATION_ID) onReceived(notification)
+    })
+    return () => { disposed = true; handle.remove() }
+  } catch (e) {
+    return () => {}
+  }
 }
 
 // WKWebView can't do blob-URL downloads, so the backup goes out through the OS share sheet

@@ -10,6 +10,11 @@ import {
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
 import { preparePersistedState } from './state-validation.js';
+import {
+  buildInactivityPushPayload, claimDueInactivityReminder, cancelInactivityReminder,
+  normalizeInactivityReminders, publicInactivityStatus, pushOriginCapable,
+  upsertInactivityReminder, validateInactivitySchedule, validateInactivitySession,
+} from './inactivity-reminders.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -28,6 +33,7 @@ const SESSION_DAYS = Math.max(1, +(process.env.SESSION_DAYS || 90) || 90);
 const MAX_BODY = 5 * 1024 * 1024;
 // Secure cookies require HTTPS; over plain http://localhost the flag would drop the cookie
 const SECURE = /^https:/i.test(ORIGIN) ? ' Secure;' : '';
+const PUSH_ORIGIN_CAPABLE = pushOriginCapable(ORIGIN);
 
 fs.mkdirSync(DATA, { recursive: true });
 
@@ -38,9 +44,16 @@ const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
 const dbFile = path.join(DATA, 'db.json');
 let db = { users: [], creds: [], subs: [], invites: [] };
-try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
-db.subs = db.subs || [];
-db.invites = db.invites || [];
+try {
+  const loaded = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+  if (loaded && typeof loaded === 'object' && !Array.isArray(loaded)) db = loaded;
+} catch {}
+db.users = Array.isArray(db.users) ? db.users : [];
+db.creds = Array.isArray(db.creds) ? db.creds : [];
+db.subs = Array.isArray(db.subs) ? db.subs : [];
+db.invites = Array.isArray(db.invites) ? db.invites : [];
+const rawInactivityReminders = db.inactivityReminders;
+db.inactivityReminders = normalizeInactivityReminders(rawInactivityReminders);
 const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
 function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2)); }
 function atomicWrite(file, content) {
@@ -48,6 +61,7 @@ function atomicWrite(file, content) {
   fs.writeFileSync(tmp, content);
   fs.renameSync(tmp, file);
 }
+if (JSON.stringify(rawInactivityReminders) !== JSON.stringify(db.inactivityReminders)) saveDb();
 const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
 function readState(uid) {
   try {
@@ -68,8 +82,11 @@ catch { vapid = webpush.generateVAPIDKeys(); fs.writeFileSync(vapidFile, JSON.st
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || (SECURE ? ORIGIN : 'mailto:admin@localhost');
 webpush.setVapidDetails(VAPID_SUBJECT, vapid.publicKey, vapid.privateKey);
 
-async function sendPush(userId, payload) {
-  const subs = db.subs.filter(s => s.userId === userId);
+async function sendPush(userId, payload, { single = false } = {}) {
+  const allSubs = db.subs.filter(s => s.userId === userId && validPushSubscription(s));
+  // An active-workout job is one user-facing event, not one alert per browser subscription. The
+  // existing day/rest alerts retain their fan-out behavior; the durable one-shot takes one target.
+  const subs = single ? allSubs.slice(-1) : allSubs;
   if (!subs.length) return;
   const body = JSON.stringify(payload);
   let dirty = false;
@@ -89,6 +106,28 @@ async function sendPush(userId, payload) {
   }));
   if (dirty) saveDb();
 }
+
+// Active-workout reminders are the only server push job that is persisted. The claim is saved
+// synchronously before sendPush starts, so interval ticks and a process restart cannot make a
+// second send attempt for the same user/session pair.
+let inactivityTickRunning = false;
+async function processDueInactivityReminders(now = Date.now()) {
+  if (inactivityTickRunning) return;
+  inactivityTickRunning = true;
+  try {
+    for (;;) {
+      const claim = claimDueInactivityReminder(db.inactivityReminders, now);
+      if (!claim.job) return;
+      db.inactivityReminders = claim.reminders;
+      saveDb();
+      const payload = { ...buildInactivityPushPayload(claim.job.locale), sessionId: claim.job.sessionId };
+      await sendPush(claim.job.userId, payload, { single: true });
+    }
+  } finally {
+    inactivityTickRunning = false;
+  }
+}
+setInterval(() => { void processDueInactivityReminders(); }, 1000).unref();
 
 // Rest-timer alerts: client schedules on start/extend, cancels on skip or on-screen completion —
 // this only fires when the tab was backgrounded/suspended and never got to cancel it itself.
@@ -249,6 +288,25 @@ function readBody(req) {
   });
 }
 const b64uToBuf = s => Buffer.from(s, 'base64url');
+const safePushEndpoint = value => {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return false;
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+};
+const safePushKey = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && /^[A-Za-z0-9_-]+$/.test(value);
+const validPushSubscription = value => value && typeof value === 'object' && !Array.isArray(value)
+  && safePushEndpoint(value.endpoint) && safePushKey(value.keys?.p256dh) && safePushKey(value.keys?.auth);
+
+function inactivityQuery(req) {
+  const params = new URL(req.url, 'http://x').searchParams;
+  const entries = [...params.entries()];
+  if (entries.length !== 1 || entries[0][0] !== 'sessionId') return { ok: false, error: 'invalid request' };
+  return validateInactivitySession({ sessionId: entries[0][1] });
+}
+
+function inactivityStatus(userId, sessionId) {
+  return publicInactivityStatus(db.inactivityReminders.find(item =>
+    item.userId === userId && item.sessionId === sessionId));
+}
 
 /* ---------- live presence (in-memory) ---------- */
 // Clients heartbeat /api/activity while a workout is on screen; the admin dashboard reads who's
@@ -407,7 +465,7 @@ const routes = {
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     const sub = body.subscription;
-    if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) return json(res, 400, { error: 'invalid subscription' });
+    if (!validPushSubscription(sub)) return json(res, 400, { error: 'invalid subscription' });
     db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint);
     db.subs.push({ userId: user.id, endpoint: sub.endpoint, keys: sub.keys, created: new Date().toISOString() });
     saveDb();
@@ -418,9 +476,59 @@ const routes = {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
+    if (!body || typeof body.endpoint !== 'string' || !safePushEndpoint(body.endpoint) || Object.keys(body).some(key => key !== 'endpoint'))
+      return json(res, 400, { error: 'invalid subscription' });
     db.subs = db.subs.filter(s => !(s.userId === user.id && s.endpoint === body.endpoint));
     saveDb();
     json(res, 200, { ok: true });
+  },
+
+  // The active workout itself remains browser-local. Only this bounded metadata enters db.json,
+  // and only a signed-in browser with a stored Push subscription can create a server job.
+  'POST /api/push/inactivity/schedule': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    let body;
+    try { body = await readBody(req); } catch { return json(res, 400, { error: 'invalid request' }); }
+    const input = validateInactivitySchedule(body);
+    if (!input.ok) return json(res, 400, { error: input.error });
+    if (!PUSH_ORIGIN_CAPABLE) return json(res, 409, { error: 'active workout push requires HTTPS or localhost' });
+    if (!db.subs.some(sub => sub.userId === user.id && validPushSubscription(sub))) return json(res, 409, { error: 'active push subscription required' });
+    const result = upsertInactivityReminder(db.inactivityReminders, user.id, input.value);
+    if (result.changed) { db.inactivityReminders = result.reminders; saveDb(); }
+    json(res, 200, { ok: true, ...publicInactivityStatus(result.job) });
+  },
+
+  'POST /api/push/inactivity/cancel': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    let body;
+    try { body = await readBody(req); } catch { return json(res, 400, { error: 'invalid request' }); }
+    const input = validateInactivitySession(body);
+    if (!input.ok) return json(res, 400, { error: input.error });
+    const result = cancelInactivityReminder(db.inactivityReminders, user.id, input.value.sessionId);
+    if (result.changed) { db.inactivityReminders = result.reminders; saveDb(); }
+    json(res, 200, { ok: true, status: 'none' });
+  },
+
+  'GET /api/push/inactivity/status': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const input = inactivityQuery(req);
+    if (!input.ok) return json(res, 400, { error: input.error });
+    json(res, 200, { ok: true, ...inactivityStatus(user.id, input.value.sessionId) });
+  },
+
+  // Reopening a browser uses this read-only operation to recover a sent marker. It never sends,
+  // re-arms, or clears a job; explicit cancel remains the only clearing operation.
+  'POST /api/push/inactivity/recover': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    let body;
+    try { body = await readBody(req); } catch { return json(res, 400, { error: 'invalid request' }); }
+    const input = validateInactivitySession(body);
+    if (!input.ok) return json(res, 400, { error: input.error });
+    json(res, 200, { ok: true, ...inactivityStatus(user.id, input.value.sessionId) });
   },
 
   'POST /api/push/test': async (req, res) => {

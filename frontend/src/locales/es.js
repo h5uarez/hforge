@@ -611,4 +611,14 @@ export default {
   'Previous week': 'Semana anterior', 'Next week': 'Semana siguiente', 'Move up': 'Mover arriba', 'Move down': 'Mover abajo', 'Clear': 'Borrar', 'Decrease': 'Disminuir', 'Increase': 'Aumentar', 'Decrease {0}': 'Disminuir {0}', 'Increase {0}': 'Aumentar {0}', 'minus 0.1': 'menos 0,1', 'plus 0.1': 'más 0,1', 'delete': 'eliminar', 'Previous month': 'Mes anterior', 'Next month': 'Mes siguiente',
     'never': 'nunca', 'just now': 'justo ahora', 'invite': 'invitado por', 'joined': 'se unió', 'Last sync': 'Última sincronización', 'sets': 'series', 'synced': 'sincronizado', 'source code': 'código fuente',
    'Export': 'Exportar', 'Export workouts': 'Exportar entrenamientos', 'Select workout days to export': 'Selecciona los días de entrenamiento que quieres exportar', 'No days selected': 'No hay días seleccionados', '{0} day selected': '{0} día seleccionado', '{0} days selected': '{0} días seleccionados', 'Clear selection': 'Borrar selección', 'Export JSON': 'Exportar JSON', 'Select {0}': 'Seleccionar {0}', 'Deselect {0}': 'Deseleccionar {0}', 'Only days with workouts can be selected.': 'Solo se pueden seleccionar días con entrenamientos.', 'Select at least one workout day to export.': 'Selecciona al menos un día de entrenamiento para exportar.', 'Exporting…': 'Exportando…', 'Export failed': 'No se pudo exportar',
-}
+   'Workout inactivity reminder': 'Recordatorio de inactividad del entrenamiento',
+   'It has been 15 minutes since your last workout record edit.': 'Han pasado 15 minutos desde la última edición de un registro del entrenamiento.',
+   'Edit workout': 'Editar entrenamiento',
+   'Calendar day follows the start time, including overnight workouts.': 'El día del calendario sigue la hora de inicio, también en entrenamientos nocturnos.',
+   'Start time': 'Hora de inicio',
+   'End time': 'Hora de finalización',
+   'End time must be on or after start time': 'La hora de finalización debe ser igual o posterior a la de inicio',
+   'Enter valid start and end times': 'Introduce horas de inicio y finalización válidas',
+   'Workout timestamps updated': 'Horas del entrenamiento actualizadas',
+   'Save changes': 'Guardar cambios',
+   }

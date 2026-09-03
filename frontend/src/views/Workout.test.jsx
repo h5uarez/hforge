@@ -210,6 +210,13 @@ describe('scrollable workout composition contracts', () => {
     }
   })
 
+  it('marks only workout-record mutations and clears the active reminder lifecycle', () => {
+    expect(source).toContain('touchActiveRecord')
+    expect(source).toContain('s.active = null')
+    expect(source).toContain('Discard workout?')
+    expect(readFileSync(resolve(process.cwd(), 'src/components/InactivityReminder.jsx'), 'utf8')).toContain('visibilitychange')
+  })
+
   it('keeps approved exclusions out of the active-session renderer', () => {
     expect(source).not.toContain("from '../lib/mobile.js'")
     expect(source).not.toContain('Capacitor')

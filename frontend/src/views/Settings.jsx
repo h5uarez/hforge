@@ -5,7 +5,7 @@ import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
-import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
+import { pushSupported, enablePush, disablePush, sendTestPush, cancelInactivityPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { getLang, setLangPreference, t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
@@ -302,7 +302,11 @@ function PushCard({ S, update, toast }) {
   const toggle = async v => {
     setBusy(true)
     try {
-      if (!v) { await disablePush(); setOn(false); toast(t('Notifications off')) }
+      if (!v) {
+        await disablePush()
+        if (S.active?.id) await cancelInactivityPush(S.active.id).catch(() => {})
+        setOn(false); toast(t('Notifications off'))
+      }
       else { await enablePush(); setOn(true); toast(t('Notifications on')) }
     } catch (e) { toast(e.message || t('Could not change notification settings')) }
     setBusy(false)

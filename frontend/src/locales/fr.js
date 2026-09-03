@@ -588,4 +588,14 @@ export default {
   'Previous week': 'Previous week', 'Next week': 'Next week', 'Move up': 'Move up', 'Move down': 'Move down', 'Clear': 'Clear', 'Decrease': 'Decrease', 'Increase': 'Increase', 'Decrease {0}': 'Decrease {0}', 'Increase {0}': 'Increase {0}', 'minus 0.1': 'minus 0.1', 'plus 0.1': 'plus 0.1', 'delete': 'delete', 'Previous month': 'Previous month', 'Next month': 'Next month',
     'never': 'never', 'just now': 'just now', 'invite': 'invite', 'joined': 'joined', 'Last sync': 'Last sync', 'sets': 'sets', 'synced': 'synced', 'source code': 'source code',
     'Export': 'Export', 'Export workouts': 'Exporter les entraînements', 'Select workout days to export': 'Sélectionnez les jours d’entraînement à exporter', 'No days selected': 'Aucun jour sélectionné', '{0} day selected': '{0} jour sélectionné', '{0} days selected': '{0} jours sélectionnés', 'Clear selection': 'Effacer la sélection', 'Export JSON': 'Exporter en JSON', 'Select {0}': 'Sélectionner {0}', 'Deselect {0}': 'Désélectionner {0}', 'Only days with workouts can be selected.': 'Seuls les jours avec des entraînements peuvent être sélectionnés.', 'Select at least one workout day to export.': 'Sélectionnez au moins un jour d’entraînement à exporter.', 'Exporting…': 'Exportation…', 'Export failed': 'Échec de l’exportation',
-  }
+   'Workout inactivity reminder': 'Workout inactivity reminder',
+   'It has been 15 minutes since your last workout record edit.': 'It has been 15 minutes since your last workout record edit.',
+   'Edit workout': 'Edit workout',
+   'Calendar day follows the start time, including overnight workouts.': 'Calendar day follows the start time, including overnight workouts.',
+   'Start time': 'Start time',
+   'End time': 'End time',
+   'End time must be on or after start time': 'End time must be on or after start time',
+   'Enter valid start and end times': 'Enter valid start and end times',
+   'Workout timestamps updated': 'Workout timestamps updated',
+   'Save changes': 'Save changes',
+   }

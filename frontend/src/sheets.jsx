@@ -21,6 +21,8 @@ import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { MOBILE } from './lib/mobile.js'
 import { newSessionSid } from './lib/session.js'
+import { touchActiveRecord } from './lib/inactivity.js'
+import { formatWorkoutDateTime, parseWorkoutTimestampEdit } from './lib/workout-time.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
@@ -970,23 +972,64 @@ function DayAssign({ day, close }) {
 export const dayAssignSheet = day => ui().openSheet(close => <DayAssign day={day} close={close} />)
 
 /* ============================ workout detail ============================ */
+function WorkoutTimestampEditor({ workout, close, onSaved }) {
+  const [start, setStart] = useState(() => formatWorkoutDateTime(workout.start))
+  const [end, setEnd] = useState(() => formatWorkoutDateTime(workout.end))
+  const save = () => {
+    const result = parseWorkoutTimestampEdit(start, end)
+    if (!result.ok) {
+      toast(t(result.reason === 'order' ? 'End time must be on or after start time' : 'Enter valid start and end times'))
+      return
+    }
+    update(s => {
+      const found = s.workouts.find(item => item.id === workout.id)
+      if (!found) return
+      // Duration is intentionally derived from end-start. Volume, PRs, and all set data remain
+      // untouched; d follows the edited local start date so calendar/stats use the same key.
+      found.start = result.start
+      found.end = result.end
+      found.d = result.d
+    })
+    close()
+    onSaved?.()
+    toast(t('Workout timestamps updated'))
+  }
+  return <>
+    <h3>{t('Edit workout')}</h3>
+    <div className="muted small" style={{ marginBottom: 14 }}>{t('Calendar day follows the start time, including overnight workouts.')}</div>
+    <label className="small dim" htmlFor="workout-start-time">{t('Start time')}</label>
+    <TextField id="workout-start-time" type="datetime-local" step="1" value={start}
+      aria-label={t('Start time')} onChange={e => setStart(e.target.value)} />
+    <div style={{ height: 10 }} />
+    <label className="small dim" htmlFor="workout-end-time">{t('End time')}</label>
+    <TextField id="workout-end-time" type="datetime-local" step="1" value={end}
+      aria-label={t('End time')} onChange={e => setEnd(e.target.value)} />
+    <div style={{ height: 14 }} />
+    <Button variant="primary" onClick={save}>{t('Save changes')}</Button>
+    <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </>
+}
+
 function WorkoutDetail({ w, close }) {
   const st = useStore(s => s.S)
+  const current = st.workouts.find(item => item.id === w.id) || w
+  const [editing, setEditing] = useState(false)
+  if (editing) return <WorkoutTimestampEditor workout={current} close={close} onSaved={() => setEditing(false)} />
   return <>
-    <h3>{w.name}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
-    {w.entries.map((e, i) => {
+    <div className="row between" style={{ marginBottom: 8 }}><h3 style={{ margin: 0 }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => setEditing(true)} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
+    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+    {current.entries.map((e, i) => {
       const ex = EXIDX[e.id]
       return <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
         {ex && <Thumb ex={ex} />}
-        <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseName(ex) : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
+        <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseName(ex) : (e.n || e.id)} {current.prs && current.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
           <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
           {e.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{e.target.planNote}</div>}
           {e.note && <div className="exnote" role="note"><div className="small dim">{t('Workout note')}</div>{e.note}</div>}
         </div>
       </div>
     })}
-    <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
+    <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== current.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
   </>
 }
 export const workoutDetailSheet = w => ui().openSheet(close => <WorkoutDetail w={w} close={close} />)
@@ -1134,8 +1177,9 @@ export function beginWorkout(routineId, bw) {
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
   const entries = (r ? r.ex : []).map(cfg => buildWorkoutEntry(st, cfg, r))
+  const startedAt = Date.now()
   update(s => {
-    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
+    s.active = { id: uid(), d: todayISO(), start: startedAt, lastRecordEditAt: startedAt, inactivityReminderSent: false, routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -1167,6 +1211,7 @@ function TopWeight({ entryIdx, close }) {
     if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       s.active.entries[entryIdx].topW = n
+      touchActiveRecord(s.active)
       const cur = s.exWeights[entry.id]
       s.exWeights[entry.id] = { w: Math.max(n, cur ? cur.w : 0), d: todayISO() }
     })
