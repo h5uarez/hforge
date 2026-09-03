@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
+import Icon from './Icon.jsx'
 
 // One bottom sheet (or centered dialog) with swipe-to-dismiss.
 function Sheet({ sheet }) {
@@ -79,7 +80,7 @@ function Sheet({ sheet }) {
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
         <div className="center" role="dialog" aria-modal="true">
-          {!sheet.locked && <button type="button" className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+          {!sheet.locked && <button type="button" className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>}
           {sheet.render(close)}
         </div>
       </div>
@@ -90,7 +91,7 @@ function Sheet({ sheet }) {
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
       <div className={'sheet' + (sheet.tall ? ' sheet-tall' : '')} ref={ref} role="dialog" aria-modal="true" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" />
-        {!sheet.locked && <button type="button" className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><span aria-hidden="true">×</span></button>}
+        {!sheet.locked && <button type="button" className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>}
         {sheet.render(close)}
       </div>
     </div>
