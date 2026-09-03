@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "mobile-responsive": {
+      "source": "AsadSumbul/mobile-responsive",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "4da55ac0543c1efbf75a06ceaa71d79c3595ad32f0d4f26646a1aa52cb1eccf4"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "f355bea924675cc4b5b47ff83931cdc296ffe43f97795ecddc91f6fc78037017"
+    }
+  }
+}
