@@ -522,8 +522,8 @@ h4.sec{
 
 /* --- home 1RM card: three compact steppers share one grid row --- */
 .home1rm-grid .stp-w{min-width:0}
-.home1rm-grid .stp button{width:32px;height:40px}
-.home1rm-grid .stp .num{font-size:15px}
+.home1rm-grid .stp button{width:28px;height:40px}
+.home1rm-grid .stp .num{font-size:11.5px;font-variant-numeric:tabular-nums;padding:0}
 
 /* --- slider --- */
 .sld{position:relative;height:32px;display:flex;align-items:center;cursor:pointer;touch-action:none}

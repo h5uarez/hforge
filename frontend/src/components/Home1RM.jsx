@@ -44,7 +44,7 @@ export default function Home1RM() {
         <Icon name={open ? 'chevronUp' : 'chevronDown'} />
       </button>
       <div id="home1rm-body" hidden={!open}>
-        <div className="home1rm-grid" style={{ display: 'grid', gridTemplateColumns: showEffort ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
+        <div className="home1rm-grid" style={{ display: 'grid', gridTemplateColumns: showEffort ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))', gap: 6, marginTop: 10 }}>
           <Stepper label={t('Weight ({0})', S.unit)} value={kg} step={2.5} onChange={setKg} />
           <Stepper label={t('Reps')} value={reps} step={1} decimal={false} onChange={setReps} />
           {showEffort && (
