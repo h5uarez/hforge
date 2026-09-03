@@ -488,6 +488,18 @@ h4.sec{
 .seg-inline button{padding:5px 10px;font-size:13px;min-height:28px}
 .seg-inline button .icn{font-size:14px}
 
+/* --- warmup settings sheet (WarmupSettingsForm only) ---
+   At 360 px the row title ("Experiencia", "Modo peso muerto") and the inline
+   segmented control fight for one line and the title ellipsises ("Exper...").
+   Scoped here: the title wraps to two lines, and narrow rows stack the control
+   full-width below it. Global .lrow-t/.lrow/.seg-inline rules stay untouched. */
+.warmup-settings .lrow{flex-wrap:wrap;row-gap:8px}
+.warmup-settings .lrow-m{flex:1 1 140px}
+.warmup-settings .lrow-t{white-space:normal;overflow:visible;text-overflow:clip}
+.warmup-settings .seg-inline{flex:1 1 100%;min-width:0}
+.warmup-settings .seg-inline button{padding:5px 6px;font-size:12px}
+.warmup-settings .seg button span{overflow-wrap:anywhere}
+
 /* native time input, restyled to sit in a row like a value label */
 .timef{
   background:var(--surface-2);border:none;border-radius:8px;padding:6px 10px;

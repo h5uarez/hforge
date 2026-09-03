@@ -107,7 +107,7 @@ export function WarmupSettingsForm() {
   const cfg = { ...DEFAULT_WARMUP_CONFIG, ...(S.warmupConfig || {}) }
   const set = patch => update(s => { s.warmupConfig = { ...DEFAULT_WARMUP_CONFIG, ...(s.warmupConfig || {}), ...patch } })
 
-  return <>
+  return <div className="warmup-settings">
     <h3>{t('Configure warmup')}</h3>
     <Section title={t('Experience')}>
       <Row title={t('Experience')}>
@@ -137,5 +137,5 @@ export function WarmupSettingsForm() {
       </Row>
     </Section>
     <div style={{ height: 8 }} />
-  </>
+  </div>
 }
