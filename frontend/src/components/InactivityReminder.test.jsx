@@ -10,6 +10,7 @@ describe('active inactivity web push ownership', () => {
     expect(messageHandler).toContain('payload.sessionId !== A?.id')
     expect(messageHandler).toContain('state.active.inactivityReminderSent = true')
     expect(messageHandler).not.toContain('toast(')
+    expect(source).toContain("toast(t('Still there? Your workout awaits.'))")
   })
 
   it('reconciles visible pages by cancelling pending web jobs', () => {

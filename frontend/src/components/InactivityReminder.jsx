@@ -142,7 +142,7 @@ export default function InactivityReminder() {
         })
         if (liveResult.eligible) { state.active = liveResult.active; consumed = true }
       }, false)
-      if (consumed && !nativeAlreadyOwnsEvent && claimVisibleEvent(A.id)) toast(t('Workout inactivity reminder'))
+      if (consumed && !nativeAlreadyOwnsEvent && claimVisibleEvent(A.id)) toast(t('Still there? Your workout awaits.'))
     }
 
     // Recover before syncNative(): syncActiveInactivity clears the marker synchronously while it

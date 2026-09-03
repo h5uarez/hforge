@@ -34,7 +34,7 @@ describe('service worker active inactivity ownership', () => {
     const worker = loadWorker([unrelated, workout])
     const event = pushEvent({
       kind: 'active-inactivity', sessionId: 'workout-a', tag: 'active-inactivity',
-      title: 'Recordatorio de inactividad del entrenamiento', body: 'Texto localizado recibido.',
+      title: 'Hforge', body: '¿Sigues ahí? Tu entrenamiento te espera.',
     })
     worker.listeners.push(event)
     await event.promise
@@ -47,12 +47,12 @@ describe('service worker active inactivity ownership', () => {
     const worker = loadWorker([{ visibilityState: 'hidden', postMessage: vi.fn() }])
     const event = pushEvent({
       kind: 'active-inactivity', sessionId: 'workout-a', tag: 'active-inactivity',
-      title: 'Recordatorio de inactividad del entrenamiento', body: 'Han pasado 15 minutos desde la última edición.',
+      title: 'Hforge', body: 'Still there? Your workout awaits.',
     })
     worker.listeners.push(event)
     await event.promise
-    expect(worker.showNotification).toHaveBeenCalledWith('Recordatorio de inactividad del entrenamiento', expect.objectContaining({
-      body: 'Han pasado 15 minutos desde la última edición.', renotify: false,
+    expect(worker.showNotification).toHaveBeenCalledWith('Hforge', expect.objectContaining({
+      body: 'Still there? Your workout awaits.', renotify: false,
     }))
   })
 })

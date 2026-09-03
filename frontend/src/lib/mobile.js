@@ -122,8 +122,8 @@ export async function syncActiveInactivity(S, now = Date.now(), options = {}) {
     const deliveryAt = new Date(Math.max(deadline, currentTime + 1000))
     await LocalNotifications.schedule({ notifications: [{
       id: ACTIVE_INACTIVITY_NOTIFICATION_ID,
-      title: t('Workout inactivity reminder'),
-      body: t('It has been 15 minutes since your last workout record edit.'),
+      title: 'Hforge',
+      body: t('Still there? Your workout awaits.'),
       extra: { kind: 'active-inactivity', sessionId: A.id },
       schedule: { at: deliveryAt, allowWhileIdle: true, repeats: false },
     }] })

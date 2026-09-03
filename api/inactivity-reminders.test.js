@@ -69,12 +69,12 @@ test('claims exactly one due job before the caller sends it', () => {
 test('builds fixed localized copy without user input and recognizes secure origins', () => {
   assert.deepEqual(buildInactivityPushPayload('en'), {
     kind: 'active-inactivity', tag: 'active-inactivity',
-    title: 'Workout inactivity reminder', body: 'It has been 15 minutes since your last workout record edit.'
+    title: 'Hforge', body: 'Still there? Your workout awaits.'
   });
   assert.deepEqual(buildInactivityPushPayload('es'), {
     kind: 'active-inactivity', tag: 'active-inactivity',
-    title: 'Recordatorio de inactividad del entrenamiento',
-    body: 'Han pasado 15 minutos desde la última edición de un registro del entrenamiento.'
+    title: 'Hforge',
+    body: '¿Sigues ahí? Tu entrenamiento te espera.'
   });
   assert.equal(pushOriginCapable('https://gym.example.com'), true);
   assert.equal(pushOriginCapable('http://localhost:8080'), true);

@@ -40,6 +40,8 @@ describe('native active inactivity notification lifecycle', () => {
     expect(options.notifications).toHaveLength(1)
     expect(options.notifications[0]).toMatchObject({
       id: 200,
+      title: 'Hforge',
+      body: 'Still there? Your workout awaits.',
       extra: { kind: 'active-inactivity', sessionId: 'w1' },
       schedule: { allowWhileIdle: true, repeats: false },
     })
