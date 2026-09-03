@@ -287,23 +287,43 @@ describe('active exercise configuration', () => {
 })
 
 describe('centralized workout start flow', () => {
-  const stateFor = bodyweightCheckEnabled => ({
+  const stateFor = (bodyweightCheckEnabled, active = null) => ({
     S: {
       bodyweightCheckEnabled,
+      active,
       routines: [{ id: 'today-routine', name: 'Today', ex: [] }, { id: 'other-routine', name: 'Other', ex: [] }],
       exWeights: {}, workouts: [], bodyweight: [],
     },
     update(mut) { mut(this.S) },
+  })
+  // confirmSheet renders through the mocked openSheet: invoking the captured
+  // render fn yields the ConfirmDialog element, whose props carry onConfirm.
+  const confirmDialog = () => mocks.openSheet.mock.calls[0][0](() => {})
+
+  it.each([
+    ['Today', 'today-routine', 'Today'],
+    ['other routine', 'other-routine', 'Other'],
+    ['freestyle', null, 'Freestyle'],
+  ])('asks for confirmation naming the routine before %s starts', (_variant, routineId, name) => {
+    mocks.getState.mockReturnValue(stateFor(true))
+    mocks.openSheet.mockReset()
+    startFlow(routineId)
+    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
+    expect(mocks.openSheet).toHaveBeenCalledWith(expect.any(Function), { kind: 'center' })
+    const dialog = confirmDialog()
+    expect(dialog.props.message).toContain(name)
+    expect(dialog.props.confirmText).toContain(name)
   })
 
   it.each([
     ['Today', 'today-routine'],
     ['other routine', 'other-routine'],
     ['freestyle', null],
-  ])('keeps the quick-check sheet for enabled %s starts', (_variant, routineId) => {
+  ])('keeps the quick-check sheet for enabled %s starts after confirming', (_variant, routineId) => {
     mocks.getState.mockReturnValue(stateFor(true))
     mocks.openSheet.mockReset()
     startFlow(routineId)
+    confirmDialog().props.onConfirm()
     expect(mocks.openSheet).toHaveBeenCalledWith(expect.any(Function), { locked: true })
     const options = mocks.openSheet.mock.calls.at(-1)[0]
     expect(options({})).toHaveProperty('props.required', true)
@@ -313,12 +333,24 @@ describe('centralized workout start flow', () => {
     ['Today', 'today-routine'],
     ['other routine', 'other-routine'],
     ['freestyle', null],
-  ])('bypasses the sheet and starts %s with a null bodyweight when disabled', (_variant, routineId) => {
+  ])('bypasses the sheet and starts %s with a null bodyweight when disabled after confirming', (_variant, routineId) => {
     const state = stateFor(false)
     mocks.getState.mockReturnValue(state)
     mocks.openSheet.mockReset()
     startFlow(routineId)
-    expect(mocks.openSheet).not.toHaveBeenCalled()
+    // only the confirm opened so far — nothing started yet
+    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
+    expect(state.S.active).toBeNull()
+    confirmDialog().props.onConfirm()
     expect(state.S.active).toEqual(expect.objectContaining({ routineId, bw: null }))
+  })
+
+  it('resumes instead of confirming when a session is already active', () => {
+    const state = stateFor(true, { id: 'running', name: 'Today' })
+    mocks.getState.mockReturnValue(state)
+    mocks.openSheet.mockReset()
+    startFlow('today-routine')
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+    expect(state.S.active).toEqual({ id: 'running', name: 'Today' })
   })
 })
