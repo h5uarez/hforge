@@ -243,11 +243,11 @@ describe('stepEffort', () => {
     // the first + on an empty cell lands on the lowest value, not on some "typical" middle:
     // the stepper counts up from the floor the way every other stepper in the app does
     expect(stepEffort('rir', null, 1)).toBe(0)
-    expect(stepEffort('rpe', null, 1)).toBe(6)
+    expect(stepEffort('rpe', null, 1)).toBe(5)
     // and then in even steps
     expect(stepEffort('rir', 0, 1)).toBe(0.5)
     expect(stepEffort('rir', 0.5, 1)).toBe(1)
-    expect(stepEffort('rpe', 6, 1)).toBe(6.5)
+    expect(stepEffort('rpe', 5, 1)).toBe(5.5)
   })
 
   it('leaves an untouched cell unlogged when stepped down', () => {
@@ -260,10 +260,10 @@ describe('stepEffort', () => {
   it('clears the cell again when stepped back off the floor', () => {
     // so a mistap is undoable rather than sticking at the floor for good
     expect(stepEffort('rir', 0, -1)).toBe(null)
-    expect(stepEffort('rpe', 6, -1)).toBe(null)
+    expect(stepEffort('rpe', 5, -1)).toBe(null)
     // but a step that stays inside the scale is an ordinary step
     expect(stepEffort('rir', 0.5, -1)).toBe(0)
-    expect(stepEffort('rpe', 6.5, -1)).toBe(6)
+    expect(stepEffort('rpe', 5.5, -1)).toBe(5)
   })
 
   it('stops at the top of the scale', () => {
@@ -275,12 +275,12 @@ describe('stepEffort', () => {
   it('keeps halves clean instead of drifting into float dust', () => {
     let v = null
     for (let i = 0; i < 6; i++) v = stepEffort('rpe', v, 1)
-    expect(v).toBe(8.5)
+    expect(v).toBe(7.5)
     expect(stepEffort('rir', 0.1 + 0.2, 1)).toBe(0.8)
   })
 
   it('steps evenly from a value typed below the floor rather than snapping', () => {
-    // nothing stops someone typing RPE 3; the stepper must not jump them to 6 on one tap
+    // nothing stops someone typing RPE 3; the stepper must not jump them to 5 on one tap
     expect(stepEffort('rpe', 3, 1)).toBe(3.5)
     // stepping down out of the scale from there just clears it
     expect(stepEffort('rpe', 3, -1)).toBe(null)
@@ -317,10 +317,10 @@ describe('capEffort', () => {
 // makes, and what it reads back as afterwards.
 describe('logging effort across a session', () => {
   it('logs a working set on the chosen scale', () => {
-    // four + taps from empty on an RPE profile: 6, 6.5, 7, 7.5
+    // four + taps from empty on an RPE profile: 5, 5.5, 6, 6.5
     let v = null
     for (let i = 0; i < 4; i++) v = stepEffort('rpe', v, 1)
-    expect(setLabel(LIFT, { w: 80, r: 5, rpe: v })).toBe('80×5 (RPE 7.5)')
+    expect(setLabel(LIFT, { w: 80, r: 5, rpe: v })).toBe('80×5 (RPE 6.5)')
   })
 
   it('a set taken to failure is logged, not left blank', () => {

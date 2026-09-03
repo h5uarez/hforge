@@ -110,6 +110,11 @@ const dropHeaviestSingle = sets => {
 // less, grinding/tired lifters five points less, and high-rep deadlifts two
 // points less (the lower back does not need a near-max primer before a set of
 // five). Clamped to [0.70, 0.93] so the ladder always ends near, never on, the top.
+//
+// NOTE (RPE decimals): the fatigue guard below is a cliff at 9.0 — Number(rpe)
+// keeps decimals (never parseInt here), but 7 vs 7.5 build the same ladder by
+// design; only crossing 9.0 (e.g. 8.9 vs 9.0) changes the ceiling. Deliberate:
+// RPE noise below the grind threshold must not reshuffle plates.
 const computeLastPct = ({ reps, rpe, experience, kind }) => {
   let p = reps <= 1 ? 0.92 : reps <= 3 ? 0.90 : reps <= 6 ? 0.83 : reps <= 10 ? 0.78 : 0.70
   if (experience === 'advanced') p += 0.01
@@ -171,6 +176,7 @@ export function buildWarmup({ exerciseId, topKg, topReps, rpe = null, addedKg = 
   const reps = Number(topReps)
   if (!Number.isFinite(reps) || reps < 1) return []
   const kind = resolveKind(exerciseId)
+  // Same >= 9 cliff as computeLastPct: RPE decimals below 9.0 are identical by design.
   const tired = reps >= 10 || (rpe != null && Number(rpe) >= 9)
   const rounding = Number(cfg.roundingKg) > 0 ? Number(cfg.roundingKg) : 2.5
   const bar = Number(cfg.barKg) > 0 ? Number(cfg.barKg) : 20

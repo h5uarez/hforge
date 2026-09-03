@@ -102,9 +102,15 @@ export function rebuildActiveEntry(S, entry, cfg, routine) {
 }
 
 /* ============================ custom confirm dialog ============================ */
-function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, close }) {
-  return <div style={{ textAlign: 'center', padding: '4px 0' }}>
-    {title && <h3 style={{ marginBottom: 8 }}>{title}</h3>}
+// The single reusable confirm component. Every destructive or branching question in the app
+// goes through confirmSheet below with these props:
+//   title, message, confirmText, cancelText, danger, onConfirm.
+// The title carries symmetric side padding so the absolute .modal-close X (36px at top-right
+// of the .center dialog) never overlaps it, and the wrapper carries top padding so the first
+// line never sits under the button. The dialog width is unchanged.
+export function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, close }) {
+  return <div style={{ textAlign: 'center', padding: '12px 4px 4px' }}>
+    {title && <h3 style={{ marginBottom: 8, paddingLeft: 32, paddingRight: 32, overflowWrap: 'anywhere' }}>{title}</h3>}
     <div className="muted" style={{ marginBottom: 18, lineHeight: 1.5 }}>{message}</div>
     <button className={'btn ' + (danger ? 'danger' : 'primary')} onClick={() => { close(); onConfirm && onConfirm() }}>{confirmText || t('Confirm')}</button>
     <div style={{ height: 8 }} />
@@ -1185,7 +1191,9 @@ export function startFlow(routineId) {
     message: r
       ? t('Start {0}? You can log sets as you go.', r.name)
       : t('Start {0}? Pick exercises as you go.', t('Freestyle')),
-    confirmText: t('Start {0}', r ? r.name : t('Freestyle')),
+    // Short button on purpose: the routine name is already in the message body above, and a
+    // long routine name would stretch the primary button and crowd the dialog.
+    confirmText: t('Start'),
     cancelText: t('Cancel'),
     onConfirm: begin,
   })

@@ -80,6 +80,18 @@ describe('buildWarmup bench', () => {
     expect(long[long.length - 1].kg).toBeLessThan(fresh[fresh.length - 1].kg)
   })
 
+  it('ignores RPE decimals below the grind threshold by design, but reacts at 9.0', () => {
+    const at7 = buildWarmup({ exerciseId: 'bench', topKg: 100, topReps: 5, rpe: 7 })
+    const at75 = buildWarmup({ exerciseId: 'bench', topKg: 100, topReps: 5, rpe: 7.5 })
+    // Decimals are parsed (Number, never parseInt) yet change nothing here: only the
+    // 9.0 fatigue cliff moves the ceiling.
+    expect(plates(at75)).toEqual(plates(at7))
+    const at89 = buildWarmup({ exerciseId: 'bench', topKg: 100, topReps: 5, rpe: 8.9 })
+    const at90 = buildWarmup({ exerciseId: 'bench', topKg: 100, topReps: 5, rpe: 9.0 })
+    expect(plates(at90)).not.toEqual(plates(at89))
+    expect(at90[at90.length - 1].kg).toBeLessThan(at89[at89.length - 1].kg)
+  })
+
   it('keeps light tops to bar plus the heavy end, never the light end', () => {
     expect(plates(buildWarmup({ exerciseId: 'bench', topKg: 25, topReps: 5 }))).toEqual([[20, 10]])
     // slice(-n): the rungs closest to the top survive, not the lightest ones.

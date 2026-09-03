@@ -105,6 +105,16 @@ describe('estimateWithEffort', () => {
     expect(rirOf({ rpe: 8 })).toBe(2)
     expect(estimateWithEffort(70, 6, rirOf({ rpe: 9 }))).toEqual({ est: 86.3, effReps: 7, failureAssumed: false })
   })
+
+  it('keeps fractional effort: RPE 7 vs 7.5 give different estimates', () => {
+    const at7 = estimateWithEffort(100, 5, rirOf({ rpe: 7 }))
+    const at75 = estimateWithEffort(100, 5, rirOf({ rpe: 7.5 }))
+    expect(at7.effReps).toBe(8)
+    expect(at75.effReps).toBe(7.5)
+    expect(at7.est).toBe(126.7)   // 100 · (1 + 8/30)
+    expect(at75.est).toBe(125)    // 100 · (1 + 7.5/30)
+    expect(at7.est).not.toBe(at75.est)
+  })
 })
 
 describe('bestSetOf', () => {

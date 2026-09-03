@@ -19,6 +19,10 @@ const EXERCISE_LABEL = {
   ohp: 'Overhead press', pullup: 'Pull-ups', dip: 'Dips',
 }
 
+// Effort range matches Home1RM: RPE 5..10 ⇔ RIR 0..5 (RPE = 10 − RIR), step 0.5.
+// A null effort still means "no effort recorded".
+const UI_RIR_MAX = 5
+
 export default function HomeWarmup() {
   const S = useStore(s => s.S)
   const [open, setOpen] = useState(false)
@@ -36,9 +40,21 @@ export default function HomeWarmup() {
   const bw = isBodyweightKind(resolveKind(exerciseId))
   const cfg = { ...DEFAULT_WARMUP_CONFIG, ...(S.warmupConfig || {}) }
 
+  // Effort arrives on the profile's scale and is stored as RIR; clamp the typed value into
+  // RPE 5..10 (RIR 0..5) so the stepper and the calc guard agree on the same range.
+  const clampRirInput = v => {
+    const converted = rirOf({ [kind]: v })
+    if (converted == null || !Number.isFinite(Number(converted))) return converted
+    return Math.max(0, Math.min(UI_RIR_MAX, Number(converted)))
+  }
+
   const calc = () => {
     if (!(reps >= 1) || (!bw && !(kg > 0))) { setRes(null); return }
-    const rpe = rir == null ? null : toScale('rpe', rir)
+    // Clamp again at compute time so a typed value that bypassed the stepper
+    // still builds inside the validated RPE 5..10 (RIR 0..5) range.
+    let rirUi = rir
+    if (rirUi != null && Number.isFinite(Number(rirUi))) rirUi = Math.max(0, Math.min(UI_RIR_MAX, Number(rirUi)))
+    const rpe = rirUi == null ? null : toScale('rpe', rirUi)
     const sets = buildWarmup({ exerciseId, topKg: bw ? addedKg : kg, topReps: reps, rpe, addedKg: bw ? addedKg : 0, config: cfg })
     const topLine = bw
       ? (addedKg > 0 ? `+${fmtNum(addedKg)} × ${reps}` : `${reps}`)
@@ -68,9 +84,12 @@ export default function HomeWarmup() {
           <Stepper label={t('Reps')} value={reps} step={1} decimal={false} onChange={setReps} />
           {showEffort && (
             <Stepper label={t(kind === 'rpe' ? 'RPE' : 'RIR')} value={toScale(kind, rir)} step={0.5}
-              onChange={v => setRir(Math.min(4, rirOf({ [kind]: v })))} />
+              onChange={v => setRir(clampRirInput(v))} />
           )}
         </div>
+        {showEffort && (
+          <div className="muted small" style={{ marginTop: 6 }}>{t('A grinding top set (RPE 9+) earns a shorter runway.')}</div>
+        )}
         <Button size="sm" variant="primary" onClick={calc} style={{ display: 'block', width: '100%', marginTop: 10 }}>{t('Calcular')}</Button>
         <div style={{ marginTop: 10 }}>
           {res
@@ -91,6 +110,7 @@ export default function HomeWarmup() {
                   <b>{res.topLine} <span className="muted" style={{ fontWeight: 400 }}>{bw && addedKg <= 0 ? '' : S.unit}</span></b>
                 </div>
                 <div className="muted small" style={{ marginTop: 6 }}>{t('Save your strength for the top set.')}</div>
+                <div className="muted small" style={{ marginTop: 6 }}>{t('Percentages are of your planned top set, not of your 1RM. For a top single this ≈ %1RM.')}</div>
               </>
             : <span className="muted small">{t('Enter a valid weight and reps.')}</span>}
         </div>
