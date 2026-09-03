@@ -13,6 +13,7 @@ import { MOBILE, syncReminder } from '../lib/mobile.js'
 import { backupFilename, deliverExport, serializeBackup } from '../lib/export.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
+import { WarmupSettingsForm } from '../components/HomeWarmup.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
 export default function Settings() {
@@ -135,6 +136,13 @@ export default function Settings() {
         <Switch aria-label={t('Show 1RM calculator')} checked={S.home1rmCardEnabled !== false}
           onChange={v => update(s => { s.home1rmCardEnabled = !!v })} />
       </Row>
+      <Row icon="dumbbell" iconTint="var(--orange)" title={t('Show warmup calculator')}
+        subtitle={t('Estimate warmup sets on the Home screen.')}>
+        <Switch aria-label={t('Show warmup calculator')} checked={S.homeWarmupCardEnabled !== false}
+          onChange={v => update(s => { s.homeWarmupCardEnabled = !!v })} />
+      </Row>
+      <Row icon="wrench" iconTint="var(--teal)" title={t('Configure warmup')} accessory="chevron"
+        onClick={() => useUI.getState().openSheet(close => <WarmupSettingsForm />, { kind: 'sheet', tall: true })} />
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>
