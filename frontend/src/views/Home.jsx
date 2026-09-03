@@ -7,6 +7,7 @@ import { t, dateLocale } from '../lib/i18n.js'
 import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, workoutExportSheet, startFlow, loadStarterPlan, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Home1RM from '../components/Home1RM.jsx'
+import HomeWarmup from '../components/HomeWarmup.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -122,6 +123,7 @@ export default function Home() {
     </div>
 
     {S.home1rmCardEnabled !== false && <Home1RM />}
+    {S.homeWarmupCardEnabled !== false && <HomeWarmup />}
 
     <button type="button" className="card tappable interactive-card" onClick={() => calendarSheet()}>
       <div className="row between">

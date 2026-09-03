@@ -21,6 +21,9 @@ export const DEF = {
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
   // keeps the column it had. See effortOf.
   reminder: { on: false, time: '08:00', tz: null }, effort: null,
+  // Warmup ladder preferences for the Home card. Absent on every profile written before the
+  // card existed; only an explicit false on the gate disables it, like the 1RM card above it.
+  warmupConfig: { experience: 'intermediate', barKg: 20, roundingKg: 2.5, style: 'standard', deadliftMode: 'reps' },
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
@@ -30,6 +33,7 @@ const normalizeState = state => {
   const next = Object.assign(clone(DEF), state || {})
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
+  next.warmupConfig = { ...DEF.warmupConfig, ...(state?.warmupConfig || {}) }
   delete next.blocks
   delete next.activeBlock
   if (Array.isArray(next.workouts)) {
