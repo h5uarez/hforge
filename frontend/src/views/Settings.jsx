@@ -130,6 +130,11 @@ export default function Settings() {
         <Switch aria-label={t('Bodyweight check before workouts')} checked={S.bodyweightCheckEnabled !== false}
           onChange={v => update(s => { s.bodyweightCheckEnabled = !!v })} />
       </Row>
+      <Row icon="target" iconTint="var(--blue)" title={t('Show 1RM calculator')}
+        subtitle={t('Estimate one-rep max on the Home screen.')}>
+        <Switch aria-label={t('Show 1RM calculator')} checked={S.home1rmCardEnabled !== false}
+          onChange={v => update(s => { s.home1rmCardEnabled = !!v })} />
+      </Row>
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>

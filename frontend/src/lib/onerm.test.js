@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, bestSetOf, e1rmSeries, best1RM, is1RMRecord, REP_CAP, FORMULAS } from './onerm.js'
+import { estimate1RM, estimateWithEffort, bestSetOf, e1rmSeries, best1RM, is1RMRecord, REP_CAP, FORMULAS } from './onerm.js'
+import { rirOf } from './effort.js'
 
 describe('estimate1RM', () => {
   it('returns the load unchanged for a single rep', () => {
@@ -59,6 +60,50 @@ describe('estimate1RM', () => {
 
   it('falls back to the default for an unknown formula name', () => {
     expect(estimate1RM(100, 5, 'nope')).toBe(estimate1RM(100, 5))
+  })
+})
+
+describe('estimateWithEffort', () => {
+  // The confidence tiers are rendered by the card; this is the same mapping, pinned here so
+  // the numbers behind the HIGH / MEDIUM / unreliable tags stay honest.
+  const tier = eff => (eff <= 8 ? 'HIGH' : eff <= REP_CAP ? 'MEDIUM' : 'unreliable')
+
+  it('adjusts by RIR in effective reps (100×5 RIR0 → 116.7, HIGH)', () => {
+    expect(estimateWithEffort(100, 5, 0)).toEqual({ est: 116.7, effReps: 5, failureAssumed: false })
+    expect(tier(5)).toBe('HIGH')
+  })
+
+  it('treats 70×6 RIR1 as a 7-rep set → 86.3', () => {
+    expect(estimateWithEffort(70, 6, 1)).toEqual({ est: 86.3, effReps: 7, failureAssumed: false })
+  })
+
+  it('caps effective reps at REP_CAP (60×10 RIR4 → 12 → 84.0)', () => {
+    expect(estimateWithEffort(60, 10, 4)).toEqual({ est: 84, effReps: 12, failureAssumed: false })
+    expect(tier(12)).toBe('MEDIUM')
+    expect(tier(13)).toBe('unreliable')
+  })
+
+  it('still estimates past the cap, capped, and flags the caller\'s tier unreliable', () => {
+    expect(estimateWithEffort(100, 13, null)).toEqual({ est: 140, effReps: 12, failureAssumed: true })
+  })
+
+  it('a null RIR means the set is assumed to have gone to failure', () => {
+    expect(estimateWithEffort(100, 5, null).failureAssumed).toBe(true)
+    expect(estimateWithEffort(100, 5, undefined).failureAssumed).toBe(true)
+    expect(estimateWithEffort(100, 5, 0).failureAssumed).toBe(false)
+  })
+
+  it('returns null for the same invalid input estimate1RM rejects', () => {
+    expect(estimateWithEffort(0, 5, 0)).toBeNull()
+    expect(estimateWithEffort(-100, 5, 0)).toBeNull()
+    expect(estimateWithEffort(100, 0, 0)).toBeNull()
+    expect(estimateWithEffort(NaN, 5, 0)).toBeNull()
+    expect(estimateWithEffort(100, undefined, 0)).toBeNull()
+  })
+
+  it('converts RPE to RIR via rirOf before the call', () => {
+    expect(rirOf({ rpe: 8 })).toBe(2)
+    expect(estimateWithEffort(70, 6, rirOf({ rpe: 9 }))).toEqual({ est: 86.3, effReps: 7, failureAssumed: false })
   })
 })
 
