@@ -40,9 +40,9 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('entry.note.trim().length > 0')
   })
 
-  it('removes the bottom exercise selector while preserving Previous/Next navigation', () => {
+  it('renders all exercises without bottom navigation', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
-    expect(source).toContain('workout-session-nav')
+    expect(source).not.toContain('workout-session-nav')
     expect(source).not.toContain('<select')
     expect(source).not.toContain('session-selector')
     expect(source).not.toContain('const unitIndex = Number(e.target.value)')
@@ -54,9 +54,9 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('.workout-session-nav > button{flex:1 1 0;width:auto}')
   })
 
-  it('keeps Previous/Next jumps on the existing SID focus path', () => {
-    expect(source).toContain('onClick={() => jumpTo(units[unitIdx - 1]?.[0])}')
-    expect(source).toContain('onClick={() => jumpTo(units[unitIdx + 1]?.[0])}')
+  it('removes the obsolete Previous/Next jump path', () => {
+    expect(source).not.toContain('workout-session-nav')
+    expect(source).not.toContain('jumpTo(')
     expect(source).not.toContain('jumpTo(Number(e.target.value))')
   })
 
@@ -133,8 +133,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('restores focus when moving through the session with Back or Next', () => {
-    expect(source).toContain('onClick={() => jumpTo(units[unitIdx - 1]?.[0])}')
-    expect(source).toContain('onClick={() => jumpTo(units[unitIdx + 1]?.[0])}')
+    expect(source).toContain('focusEntry')
     expect(source).not.toContain('s.active.cur = units[unitIdx - 1][0]')
     expect(source).not.toContain('s.active.cur = units[unitIdx + 1][0]')
   })
