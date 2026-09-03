@@ -25,6 +25,14 @@ describe('Home1RM source contracts', () => {
     expect(src).toContain('≈ {fmtNum(res.est)}')
   })
 
+  it('lays weight, reps and effort out in one grid row with a full-width Calcular button', () => {
+    expect(src).toContain('home1rm-grid')
+    expect(src).toContain("display: 'grid'")
+    expect(src).toContain('repeat(3')
+    expect(src).toContain("width: '100%'")
+    expect(src).toContain("t(kind === 'rpe' ? 'RPE' : 'RIR')")
+  })
+
   it('keeps the effort stepper conditional on the profile effort mode', () => {
     expect(src).toContain('effortOf(S)')
     expect(src).toContain('showEffort &&')
