@@ -1166,9 +1166,29 @@ export function WorkoutRow({ w, onClick }) {
 }
 
 /* ============================ workout lifecycle ============================ */
+// Every entry point (Home today-row, StartChooser, tab-bar button) funnels
+// through here. When no session is running, ask which routine to start so a
+// stray tap never burns the bodyweight sheet + session setup; the confirm
+// names the routine (or freestyle) and stays cancellable (locked:false via
+// confirmSheet's kind:center default). An already-running session resumes
+// instead — never a second confirm on top of it.
 export function startFlow(routineId) {
-  if (S().bodyweightCheckEnabled === false) beginWorkout(routineId, null)
-  else bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+  const st = S()
+  if (st.active) { nav('/workout'); return }
+  const r = routineId ? st.routines.find(x => x.id === routineId) : null
+  const begin = () => {
+    if (S().bodyweightCheckEnabled === false) beginWorkout(routineId, null)
+    else bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+  }
+  confirmSheet({
+    title: t('Start workout?'),
+    message: r
+      ? t('Start {0}? You can log sets as you go.', r.name)
+      : t('Start {0}? Pick exercises as you go.', t('Freestyle')),
+    confirmText: t('Start {0}', r ? r.name : t('Freestyle')),
+    cancelText: t('Cancel'),
+    onConfirm: begin,
+  })
 }
 export function beginWorkout(routineId, bw) {
   const st = S()
