@@ -83,6 +83,11 @@ function validateSemantic(state) {
   for (let index = 0; index < (state.workouts || []).length; index++) {
     const workout = state.workouts[index], base = `$.workouts[${index}]`;
     if (!plainObject(workout) || !isoDate(workout.d)) return fail('invalid_date', `${base}.d`);
+    for (const key of ['start', 'end']) {
+      if (Object.hasOwn(workout, key) && !nonnegative(workout[key])) return fail('range', `${base}.${key}`);
+    }
+    if (Object.hasOwn(workout, 'start') && Object.hasOwn(workout, 'end') && workout.end < workout.start)
+      return fail('timestamp_order', `${base}.end`);
     if (Object.hasOwn(workout, 'entries') && !Array.isArray(workout.entries)) return fail('invalid_collection', `${base}.entries`);
     for (let entryIndex = 0; entryIndex < (workout.entries || []).length; entryIndex++) {
       const entry = workout.entries[entryIndex], entryPath = `${base}.entries[${entryIndex}]`;

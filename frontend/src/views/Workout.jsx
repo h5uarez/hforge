@@ -9,6 +9,7 @@ import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
+import { touchActiveRecord } from '../lib/inactivity.js'
 import Media from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
@@ -321,10 +322,17 @@ function ActiveWorkout() {
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
 
-  const mutEntry = (idx, fn) => update(s => { fn(s.active.entries[idx]) }, true)
+  const mutEntry = (idx, fn) => update(s => {
+    if (!s.active?.entries?.[idx]) return
+    fn(s.active.entries[idx])
+    touchActiveRecord(s.active)
+  }, true)
   const setNote = (idx, raw) => update(s => {
     const entry = s.active?.entries?.[idx]
-    if (entry) s.active.entries[idx] = updateExerciseNote(entry, raw)
+    if (entry) {
+      s.active.entries[idx] = updateExerciseNote(entry, raw)
+      touchActiveRecord(s.active)
+    }
   }, true)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
@@ -351,6 +359,7 @@ function ActiveWorkout() {
       const moved = moveSessionUnit(s.active.entries, index, delta)
       s.active.entries = moved.entries
       s.active.cur = remapCur(before, s.active.cur, moved.entries)
+      touchActiveRecord(s.active)
     })
     const position = result.position + 1
     const moved = A.entries.find(e => e.sid === result.movedSid)
@@ -375,7 +384,10 @@ function ActiveWorkout() {
         return
       }
       update(s => {
-        if (s.active?.entries?.[idx]?.id === live.id) s.active.entries[idx] = result.entry
+        if (s.active?.entries?.[idx]?.id === live.id) {
+          s.active.entries[idx] = result.entry
+          touchActiveRecord(s.active)
+        }
       }, true)
     }, null, routine)
   }
@@ -522,12 +534,13 @@ function ActiveWorkout() {
     <div style={{ height: 10 }} />
       <Button onClick={() => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => {
        let addedSid
-       commitPickerSelection(() => update(s => {
+        commitPickerSelection(() => update(s => {
          const routine = s.routines.find(r => r.id === s.active.routineId)
          const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
          addedSid = added.sid
-         s.active.entries.push(added)
-         s.active.cur = s.active.entries.length - 1
+          s.active.entries.push(added)
+          s.active.cur = s.active.entries.length - 1
+          touchActiveRecord(s.active)
        }), closePicker)
        if (addedSid) focusEntry(addedSid)
      }, null, S.routines.find(r => r.id === A.routineId)))} icon="plus">{t('Add exercise')}</Button>

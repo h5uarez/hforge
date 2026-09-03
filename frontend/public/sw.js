@@ -10,15 +10,27 @@ self.addEventListener('activate', e => {
   ).then(() => self.clients.claim()))
 })
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {}
-  e.waitUntil(self.registration.showNotification(data.title || 'Hforge', {
-    body: data.body || '',
-    icon: 'icon-512.png',
-    badge: 'icon-180.png',
-    // Legacy compatibility identifier: keep the existing notification tag stable.
-    tag: data.tag || 'opengym',
-    renotify: true
-  }))
+  let data = {}
+  try {
+    const parsed = e.data ? e.data.json() : {}
+    data = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch { data = {} }
+  const activeInactivity = data && data.kind === 'active-inactivity'
+  const broadcastDisplayedPush = async () => {
+    if (!activeInactivity) return null
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    windows.forEach(client => client.postMessage({ type: 'hforge-push-displayed', payload: data }))
+    return windows
+  }
+  e.waitUntil(broadcastDisplayedPush().then(() => self.registration.showNotification(typeof data.title === 'string' ? data.title : 'Hforge', {
+      body: typeof data.body === 'string' ? data.body : '',
+      icon: 'icon-512.png',
+      badge: 'icon-180.png',
+      // Legacy compatibility identifier: keep the existing notification tag stable.
+      tag: data.tag || 'opengym',
+      renotify: activeInactivity ? false : true,
+      data: activeInactivity ? { kind: data.kind, sessionId: data.sessionId } : undefined
+    })))
 })
 self.addEventListener('notificationclick', e => {
   e.notification.close()

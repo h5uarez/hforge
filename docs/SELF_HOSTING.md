@@ -140,10 +140,18 @@ into the project folder. (Individual users can also export their own data as JSO
 
 ## 7. Notifications
 
-Hforge can push two kinds of alert to your phone/desktop, even when the app isn't open:
+Hforge can push three kinds of alert to your phone/desktop, even when the app isn't open:
 rest-timer-over, and a reminder on days you have a workout planned but haven't logged one yet.
-Turn it on per-profile in **Settings → Notifications** (requires a signed-in passkey profile and
-HTTPS — see section 3).
+While an active workout is open, Hforge also shows one inactivity reminder after 15 minutes without
+a record edit; on the Capacitor mobile build that reminder is a one-shot native local notification.
+On the browser/PWA path, the reminder is also scheduled durably by the API, so it can arrive after
+the browser is hidden or closed. The API stores only the user/session id, deadline, locale and sent
+marker; workout contents remain local-only. The browser foreground path owns the event while visible,
+and a closed or hidden browser receives one Web Push notification instead.
+Web Push requires a signed-in passkey profile, an active browser subscription enabled in **Settings →
+Notifications**, and HTTPS (or `localhost` for local development). Guests remain foreground-only.
+The service worker must be allowed to register; some browsers additionally require installing the
+site as a PWA before background delivery is available.
 
 No setup needed server-side, and nothing to configure per timezone: VAPID keys are generated on
 first run and saved to `./data/vapid.json`, and each user's browser reports its own timezone

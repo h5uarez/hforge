@@ -15,7 +15,8 @@ async function bootstrap() {
   )
 
   // Not in the mobile build: the native shell already serves everything from disk.
-  if (!MOBILE && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  const localPushOrigin = location.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+  if (!MOBILE && 'serviceWorker' in navigator && (location.protocol === 'https:' || localPushOrigin)) {
     navigator.serviceWorker.register('sw.js').catch(() => {})
   }
 }

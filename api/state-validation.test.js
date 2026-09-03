@@ -61,6 +61,8 @@ test('rejects invalid known collections and server-relied semantic ranges', () =
     ['range', state => { state.workouts[0].entries[0].sets[0].rir = 11; }, '$.workouts[0].entries[0].sets[0].rir'],
     ['invalid_time', state => { state.reminder.time = '25:00'; }, '$.reminder.time'],
     ['invalid_date', state => { state.workouts[0].d = 'not-a-date'; }, '$.workouts[0].d'],
+    ['non_finite', state => { state.workouts[0].start = Infinity; }, '$.workouts[0].start'],
+    ['timestamp_order', state => { state.workouts[0].start = 20; state.workouts[0].end = 10; }, '$.workouts[0].end'],
     ['invalid_id', state => { state.routines[0].id = ''; }, '$.routines[0].id'],
     ['invalid_day_map', state => { state.week = []; }, '$.week'],
   ];
@@ -68,4 +70,11 @@ test('rejects invalid known collections and server-relied semantic ranges', () =
     const state = validState(); mutate(state);
     assert.deepEqual(preparePersistedState(state), { ok: false, code, path });
   }
+});
+
+test('keeps legacy workouts without timestamps valid for backward compatibility', () => {
+  const state = validState();
+  delete state.workouts[0].start;
+  delete state.workouts[0].end;
+  assert.equal(preparePersistedState(state).ok, true);
 });

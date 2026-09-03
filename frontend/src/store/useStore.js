@@ -6,6 +6,8 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/i18n.js'
 import { normalizeActiveSession } from '../lib/session.js'
+import { normalizeActiveInactivity } from '../lib/inactivity.js'
+import { cancelInactivityPush } from '../lib/push.js'
 
 const KEY = 'gym_state_v1'
 const LAST_VALID_KEY = 'gym_state_last_valid_v1'
@@ -41,7 +43,7 @@ const normalizeState = state => {
   if (next.active && typeof next.active === 'object' && !Array.isArray(next.active)) {
     const clean = { ...next.active }
     delete clean.block
-    next.active = normalizeActiveSession(clean)
+    next.active = normalizeActiveInactivity(normalizeActiveSession(clean))
   }
   return next
 }
@@ -195,6 +197,8 @@ export const useStore = create((set, get) => {
     },
 
     async signOut() {
+      const activeSessionId = get().S.active?.id
+      if (activeSessionId && get().user) await cancelInactivityPush(activeSessionId).catch(() => {})
       try { await get().pushState(); await api('/api/logout', { method: 'POST', body: '{}' }) } catch (e) { /* */ }
       clearLocalSession()
     },
@@ -205,6 +209,8 @@ export const useStore = create((set, get) => {
     // the sessions elsewhere are all still valid, and wiping this device's copy of the data
     // would sign the user out of the one place the bump didn't reach. Caller reports the error.
     async signOutAll() {
+      const activeSessionId = get().S.active?.id
+      if (activeSessionId && get().user) await cancelInactivityPush(activeSessionId).catch(() => {})
       await get().pushState()   // never throws — stores gym_dirty and moves on when offline
       await api('/api/logout/all', { method: 'POST', body: '{}' })
       clearLocalSession()

@@ -29,9 +29,9 @@ const freePort = async () => {
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const request = (port, method, body, cookie) => new Promise((resolve, reject) => {
+const request = (port, method, body, cookie, requestPath = '/api/data') => new Promise((resolve, reject) => {
   const payload = body === undefined ? null : JSON.stringify(body);
-  const req = http.request({ host: '127.0.0.1', port, path: '/api/data', method, headers: { ...(payload && { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }), ...(cookie && { Cookie: cookie }) } }, res => {
+  const req = http.request({ host: '127.0.0.1', port, path: requestPath, method, headers: { ...(payload && { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }), ...(cookie && { Cookie: cookie }) } }, res => {
     const chunks = []; res.on('data', chunk => chunks.push(chunk)); res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString()) }));
   });
   req.once('error', reject); if (payload) req.write(payload); req.end();
@@ -54,6 +54,11 @@ const startServer = async data => {
     lastError = new Error(`attempt ${attempt + 1} did not become ready: ${output} ${lastError}`);
   }
   throw lastError;
+};
+
+const signedCookie = (uid, secret) => {
+  const payload = `${uid}:${Date.now() + 60000}:0`;
+  return `gymsid=${payload}.${crypto.createHmac('sha256', secret).update(payload).digest('base64url')}`;
 };
 
 test('real signed-cookie state writes preserve canonical bytes and reject invalid submissions without mutation', async t => {
@@ -95,4 +100,71 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
     assert.equal(typeof response.body.path, 'string');
     assert.deepEqual(await readFile(path.join(data, `state-${uid}.json`)), saved);
   }
+});
+
+test('durable inactivity routes enforce auth and ownership, survive restart, replace, cancel, and claim once', async t => {
+  const data = await mkdtemp(path.join(os.tmpdir(), 'hforge-inactivity-'));
+  const secret = 'inactivity-test-secret';
+  const users = [
+    { id: 'user-a', name: 'A', sv: 0 },
+    { id: 'user-b', name: 'B', sv: 0 },
+  ];
+  await writeFile(path.join(data, 'secret'), secret);
+  await writeFile(path.join(data, 'db.json'), JSON.stringify({
+    users, creds: [], invites: [],
+    subs: [{ userId: 'user-a', endpoint: 'https://push.example/a', keys: { p256dh: 'p256dh', auth: 'auth' } }],
+    inactivityReminders: [],
+  }));
+  t.after(() => rm(data, { recursive: true, force: true }));
+  const cookieA = signedCookie('user-a', secret);
+  const cookieB = signedCookie('user-b', secret);
+  let server = await startServer(data);
+  t.after(async () => {
+    if (!server.child.killed) server.child.kill();
+    await Promise.race([server.exited, delay(2000)]);
+  });
+
+  const schedulePath = '/api/push/inactivity/schedule';
+  const statusPath = session => `/api/push/inactivity/status?sessionId=${encodeURIComponent(session)}`;
+  const sessionId = 'workout-a';
+  const firstDeadline = Date.now() + 60_000;
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: firstDeadline }, undefined, schedulePath)).status, 401);
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: firstDeadline }, cookieB, schedulePath)).status, 409);
+  assert.equal((await request(server.port, 'GET', undefined, cookieA, '/api/push/inactivity/status')).status, 400);
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: firstDeadline }, cookieA, schedulePath)).status, 200);
+  assert.equal((await request(server.port, 'GET', undefined, cookieB, statusPath(sessionId))).body.status, 'none');
+  assert.equal((await request(server.port, 'POST', { sessionId }, cookieB, '/api/push/inactivity/cancel')).status, 200);
+  assert.equal((await request(server.port, 'GET', undefined, cookieA, statusPath(sessionId))).body.deadline, firstDeadline);
+  assert.equal((await request(server.port, 'POST', { sessionId: 'bad id', deadline: firstDeadline }, cookieA, schedulePath)).status, 400);
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: firstDeadline + 1000, locale: 'es' }, cookieA, schedulePath)).body.locale, 'es');
+
+  const saved = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
+  assert.deepEqual(saved.inactivityReminders, [{ userId: 'user-a', sessionId, deadline: firstDeadline + 1000, sentAt: null, locale: 'es' }]);
+  assert.equal(Object.hasOwn(saved.inactivityReminders[0], 'active'), false);
+
+  if (!server.child.killed) server.child.kill();
+  await Promise.race([server.exited, delay(2000)]);
+  server = await startServer(data);
+  assert.deepEqual((await request(server.port, 'POST', { sessionId }, cookieA, '/api/push/inactivity/recover')).body, {
+    ok: true, status: 'pending', sessionId, deadline: firstDeadline + 1000, sentAt: null, locale: 'es'
+  });
+  assert.equal((await request(server.port, 'POST', { sessionId }, cookieA, '/api/push/inactivity/cancel')).body.status, 'none');
+  assert.equal((await request(server.port, 'GET', undefined, cookieA, statusPath(sessionId))).body.status, 'none');
+
+  // A due claim is persisted before the invalid endpoint is attempted; polling twice cannot create
+  // another attempt or revert the sent marker.
+  const due = Date.now() - 1000;
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: due, locale: 'es' }, cookieA, schedulePath)).status, 200);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if ((await request(server.port, 'GET', undefined, cookieA, statusPath(sessionId))).body.status === 'sent') break;
+    await delay(100);
+  }
+  const sent = (await request(server.port, 'GET', undefined, cookieA, statusPath(sessionId))).body;
+  assert.equal(sent.status, 'sent');
+  assert.equal(typeof sent.sentAt, 'number');
+  if (!server.child.killed) server.child.kill();
+  await Promise.race([server.exited, delay(2000)]);
+  server = await startServer(data);
+  assert.equal((await request(server.port, 'POST', { sessionId }, cookieA, '/api/push/inactivity/recover')).body.status, 'sent');
+  assert.equal((await request(server.port, 'POST', { sessionId, deadline: due + 2000, locale: 'en' }, cookieA, schedulePath)).body.status, 'sent');
 });
