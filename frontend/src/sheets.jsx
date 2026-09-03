@@ -1016,7 +1016,7 @@ function WorkoutDetail({ w, close }) {
   const [editing, setEditing] = useState(false)
   if (editing) return <WorkoutTimestampEditor workout={current} close={close} onSaved={() => setEditing(false)} />
   return <>
-    <div className="row between" style={{ marginBottom: 8 }}><h3 style={{ margin: 0 }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => setEditing(true)} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
+    <div className="row between" style={{ marginBottom: 8, paddingRight: 48 }}><h3 style={{ margin: 0, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => setEditing(true)} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {current.entries.map((e, i) => {
       const ex = EXIDX[e.id]

@@ -19,6 +19,8 @@ import {
 } from '../lib/effort.js'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
 
+const sentenceCaseFirst = value => String(value ?? '').replace(/\p{L}/u, char => char.toUpperCase())
+
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
 function MuscleBalance({ S }) {
@@ -233,7 +235,7 @@ export default function Stats() {
         {exHist.length ? <>
           <div className="sect-b" style={{ marginBottom: 10 }}>
             <SelectRow title={t('Exercise')} sheetTitle={t('Exercise progress')} value={curEx} onChange={setExId}
-              options={exHist.map(id => ({ value: id, label: exerciseName(EXIDX[id]) }))} />
+              options={exHist.map(id => ({ value: id, label: sentenceCaseFirst(exerciseName(EXIDX[id])) }))} />
           </div>
           {exOpts.length > 1 && <Segmented className="seg-range" value={onEff ? 'effort' : onE1 ? 'e1rm' : 'top'} onChange={setExMetric} options={exOpts} />}
           <div className="chart">

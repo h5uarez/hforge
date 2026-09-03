@@ -345,12 +345,6 @@ function ActiveWorkout() {
     if (v == null) delete e.sets[i][field]; else e.sets[i][field] = v
   })
   const modeAt = idx => modeOf({ ...(A.entries[idx].target || {}), id: A.entries[idx].id })
-  const jumpTo = idx => {
-    const entry = A.entries[idx]
-    if (!entry) return
-    update(s => { s.active.cur = idx })
-    focusEntry(entry.sid)
-  }
   const moveUnit = (index, delta) => {
     const before = A.entries
     const result = moveSessionUnit(before, index, delta)
@@ -527,10 +521,6 @@ function ActiveWorkout() {
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 
     <div style={{ height: 12 }} />
-    {A.entries.length > 1 && <div className="row workout-session-nav">
-      <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => jumpTo(units[unitIdx - 1]?.[0])}>{t('Prev')}</Button>
-      <Button trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => jumpTo(units[unitIdx + 1]?.[0])}>{t('Next')}</Button>
-    </div>}
     <div style={{ height: 10 }} />
       <Button onClick={() => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => {
        let addedSid

@@ -50,14 +50,12 @@ describe('mobile accessibility and layout contracts', () => {
     expect(workout).toContain("const workoutNoteId = 'workout-note-' + sid")
   })
 
-  it('removes the bottom exercise selector without removing session navigation', () => {
+  it('renders all exercises without bottom session navigation', () => {
     const css = source('index.css')
     const workout = source('views/Workout.jsx')
-    expect(workout).toContain('workout-session-nav')
+    expect(workout).not.toContain('workout-session-nav')
     expect(workout).not.toContain('<select')
     expect(workout).not.toContain('session-selector')
-    expect(workout).toContain('onClick={() => jumpTo(units[unitIdx - 1]?.[0])}')
-    expect(workout).toContain('onClick={() => jumpTo(units[unitIdx + 1]?.[0])}')
     expect(workout).not.toContain('session-index')
     expect(css).not.toContain('.workout-session .session-index')
     expect(css).not.toContain('.session-selector')
