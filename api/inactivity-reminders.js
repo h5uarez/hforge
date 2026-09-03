@@ -104,12 +104,12 @@ export function publicInactivityStatus(job) {
 export function buildInactivityPushPayload(locale) {
   const copy = normalizePushLocale(locale) === 'es'
     ? {
-        title: 'Recordatorio de inactividad del entrenamiento',
-        body: 'Han pasado 15 minutos desde la última edición de un registro del entrenamiento.',
+        title: 'Hforge',
+        body: '¿Sigues ahí? Tu entrenamiento te espera.',
       }
     : {
-        title: 'Workout inactivity reminder',
-        body: 'It has been 15 minutes since your last workout record edit.',
+        title: 'Hforge',
+        body: 'Still there? Your workout awaits.',
       };
   return { kind: 'active-inactivity', tag: ACTIVE_INACTIVITY_TAG, ...copy };
 }
