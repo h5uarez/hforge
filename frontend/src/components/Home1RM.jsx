@@ -44,16 +44,16 @@ export default function Home1RM() {
         <Icon name={open ? 'chevronUp' : 'chevronDown'} />
       </button>
       <div id="home1rm-body" hidden={!open}>
-        <div className="row" style={{ gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+        <div className="home1rm-grid" style={{ display: 'grid', gridTemplateColumns: showEffort ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
           <Stepper label={t('Weight ({0})', S.unit)} value={kg} step={2.5} onChange={setKg} />
           <Stepper label={t('Reps')} value={reps} step={1} decimal={false} onChange={setReps} />
           {showEffort && (
-            <Stepper label={kind === 'rpe' ? 'RPE' : 'RIR'} value={toScale(kind, rir)} step={0.5}
+            <Stepper label={t(kind === 'rpe' ? 'RPE' : 'RIR')} value={toScale(kind, rir)} step={0.5}
               onChange={v => setRir(Math.min(4, rirOf({ [kind]: v })))} />
           )}
         </div>
+        <Button size="sm" variant="primary" onClick={calc} style={{ display: 'block', width: '100%', marginTop: 10 }}>{t('Calcular')}</Button>
         <div className="row between" style={{ marginTop: 10, gap: 8 }}>
-          <Button size="sm" variant="primary" onClick={calc}>{t('Calcular')}</Button>
           {res
             ? <span className="row" style={{ gap: 8 }}>
                 <span className="big">≈ {fmtNum(res.est)} <span className="muted" style={{ fontSize: '1rem' }}>{S.unit}</span></span>

@@ -520,6 +520,11 @@ h4.sec{
 }
 .stp .num::-webkit-inner-spin-button{display:none}
 
+/* --- home 1RM card: three compact steppers share one grid row --- */
+.home1rm-grid .stp-w{min-width:0}
+.home1rm-grid .stp button{width:32px;height:40px}
+.home1rm-grid .stp .num{font-size:15px}
+
 /* --- slider --- */
 .sld{position:relative;height:32px;display:flex;align-items:center;cursor:pointer;touch-action:none}
 .sld-track{
