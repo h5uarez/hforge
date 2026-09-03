@@ -13,7 +13,8 @@ const localesDir = join(frontendDir, 'src', 'locales')
 const sourceFiles = [
   'src/views/Login.jsx', 'src/views/Settings.jsx', 'src/views/Home.jsx',
   'src/views/RoutineEdit.jsx', 'src/views/Workout.jsx', 'src/views/Stats.jsx', 'src/views/Admin.jsx',
-  'src/components/ui.jsx', 'src/sheets.jsx'
+  'src/components/ui.jsx', 'src/sheets.jsx',
+  'src/lib/push.js', 'src/lib/mobile.js', 'src/store/useUI.js'
 ]
 
 // Values in these forms are intentionally not source-English UI keys:
@@ -24,7 +25,10 @@ export const documentedExclusions = [
   'user-owned and catalog-owned values rendered from state/data',
   'units and side markers: kg, lb, L, R',
   'generated exercise instructions in src/instr/',
-  'intentional English instruction fallbacks when an instruction pack is absent'
+  'intentional English instruction fallbacks when an instruction pack is absent',
+  'push payload vars: routine names and user-owned strings — interpolated verbatim, never translated',
+  'push template emojis: removed per user requirement (professional tone) — the routine emoji (🏋️) remains only as user data, interpolated verbatim at the server call site',
+  'brand token in notifications: Hforge'
 ]
 
 const lineOf = (source, index) => source.slice(0, index).split('\n').length
@@ -79,6 +83,23 @@ export async function runChecks({ cwd = frontendDir, log = console } = {}) {
       errors.push(`${issue.file}:${issue.line}: missing Spanish key ${JSON.stringify(issue.key)}`)
     for (const issue of findRawAccessibilityLiterals(source, spanishKeys, relative(cwd, path)))
       errors.push(`${issue.file}:${issue.line}: raw accessibility literal ${JSON.stringify(issue.key)}; use t()`)
+  }
+  // Server push payloads must come from the catalog: a literal `title:` at a sendPush site
+  // would bypass localization entirely (and this guard with it).
+  const serverPath = join(cwd, '..', 'api', 'server.js')
+  const serverSource = readFileSync(serverPath, 'utf8')
+  if (/sendPush\(\s*[^,]+,\s*\{\s*title:\s*['"]/.test(serverSource))
+    errors.push('api/server.js: sendPush called with a literal title: — payloads must come from buildPushPayload')
+  const payloadSites = (serverSource.match(/\bbuildPushPayload\(/g) || []).length
+  if (payloadSites < 3)
+    errors.push(`api/server.js: expected buildPushPayload at the rest-timer, day-reminder, and test push sites (found ${payloadSites})`)
+  const { catalogs: pushCatalogs } = await import(/* @vite-ignore */ pathToFileURL(join(cwd, '..', 'api', 'push-catalog.js')).href + `?guard=${Date.now()}`)
+  if (!pushCatalogs || !pushCatalogs.en || !pushCatalogs.es) errors.push('api/push-catalog.js: catalogs must export en and es dictionaries')
+  else {
+    const enKeys = Object.keys(pushCatalogs.en), esKeys = Object.keys(pushCatalogs.es)
+    if (!enKeys.length || !esKeys.length) errors.push('api/push-catalog.js: en/es catalogs must be non-empty')
+    const asymmetric = enKeys.filter(key => !(key in pushCatalogs.es)).concat(esKeys.filter(key => !(key in pushCatalogs.en)))
+    if (asymmetric.length) errors.push('api/push-catalog.js: en/es catalog parity mismatch: ' + asymmetric.join(', '))
   }
   if (errors.length) {
     for (const error of errors) log.error(`\n${error}`)

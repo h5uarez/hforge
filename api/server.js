@@ -10,6 +10,7 @@ import {
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
 import { preparePersistedState } from './state-validation.js';
+import { buildPushPayload } from './push-catalog.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -98,7 +99,9 @@ function scheduleRestTimer(userId, sec) {
   if (t) clearTimeout(t);
   restTimers.set(userId, setTimeout(() => {
     restTimers.delete(userId);
-    sendPush(userId, { title: 'Rest over 💪', body: 'Time for your next set.', tag: 'rest-timer' });
+    // Language is read at fire time (not schedule time) — fresher than when the timer
+    // was scheduled, and the existing 10s tick loop already pays for the state read.
+    sendPush(userId, buildPushPayload(readState(userId)?.lang, 'rest-timer'));
   }, sec * 1000));
 }
 function cancelRestTimer(userId) {
@@ -146,11 +149,8 @@ setInterval(() => {
     console.log('reminder firing', user.id, rid);
     user.lastReminder = now.date;
     saveDb();
-    sendPush(user.id, {
-      title: routine ? `${routine.emoji || '🏋️'} ${routine.name} today` : 'Workout planned today',
-      body: "It's on your plan — let's go 💪",
-      tag: 'day-reminder'
-    });
+    sendPush(user.id, buildPushPayload(S.lang, routine ? 'day-reminder' : 'day-reminder-generic',
+      routine ? { emoji: routine.emoji || '🏋️', name: routine.name } : {}));
   }
 // Checked every 10s (not 60s) — ticks aren't aligned to the top of the minute, so a 60s
 // interval could sit on your target minute for up to 59s before noticing. 10s caps that at ~9s.
@@ -426,7 +426,7 @@ const routes = {
   'POST /api/push/test': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    await sendPush(user.id, { title: 'Hforge', body: 'Test notification ✅ — this is what alerts look like.', tag: 'test' });
+    await sendPush(user.id, buildPushPayload(readState(user.id)?.lang, 'test'));
     json(res, 200, { ok: true });
   },
 

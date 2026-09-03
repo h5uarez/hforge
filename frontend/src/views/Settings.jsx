@@ -304,12 +304,12 @@ function PushCard({ S, update, toast }) {
     try {
       if (!v) { await disablePush(); setOn(false); toast(t('Notifications off')) }
       else { await enablePush(); setOn(true); toast(t('Notifications on')) }
-    } catch (e) { toast(e.message || t('Could not change notification settings')) }
+    } catch (e) { toast(t(e.message || 'Could not change notification settings')) }
     setBusy(false)
   }
   const test = async () => {
     try { await sendTestPush(); toast(t('Test sent — should arrive any second')) }
-    catch (e) { toast(e.message || t('Test failed')) }
+    catch (e) { toast(t(e.message || 'Test failed')) }
   }
 
   if (!supported) return (
