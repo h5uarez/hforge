@@ -65,11 +65,11 @@ export const DEFAULT_SEC_INCREMENT = 5
 export const MAX_BW_SETS = 6
 
 // The policy in force for one exercise: its own override, else the routine's default, else
-// the mode's default. Reps keeps behaving the way the app always did (all reps → add a step).
+// the mode's default. The default is off, so routines do not progress automatically unless asked.
 export function policyFor(cfg, routine, mode) {
   const m = mode || modeOf(cfg || {})
   const allowed = POLICIES_FOR[m] || ['off']
-  const pick = (cfg && cfg.prog) || (routine && routine.prog) || (m === 'reps' ? 'linear' : 'off')
+  const pick = (cfg && cfg.prog) || (routine && routine.prog) || 'off'
   return allowed.includes(pick) ? pick : 'off'
 }
 

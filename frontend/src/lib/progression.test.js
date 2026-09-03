@@ -89,8 +89,8 @@ describe('stallCount', () => {
 })
 
 describe('policyFor', () => {
-  it('keeps the app\'s long-standing behaviour as the default for reps work', () => {
-    expect(policyFor({ id: LIFT }, null, 'reps')).toBe('linear')
+  it('defaults reps work to no automatic progression', () => {
+    expect(policyFor({ id: LIFT }, null, 'reps')).toBe('off')
   })
   it('leaves timed and cardio work alone unless asked', () => {
     expect(policyFor({ id: LIFT, mode: 'time' }, null, 'time')).toBe('off')
