@@ -240,7 +240,7 @@ const EFFORT_ROWS = [
   ['1', '9', 'One more rep in the tank'],
   ['2', '8', 'Two more reps'],
   ['3', '7', 'Three more reps'],
-  ['4+', '≤6', 'Easy — warm-up territory'],
+  ['5+', '≤5', 'Easy — warm-up territory'],
 ]
 // RIR 2 / RPE 8: the row a working set usually lands on — the anchor the others are read
 // against. Not where the stepper starts; + walks up from the bottom of the scale.

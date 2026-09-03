@@ -490,9 +490,9 @@ export default {
   'Enter a valid weight and reps.': 'Introduce un peso y unas repeticiones válidos.',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': 'Asumiendo serie al fallo. Añade RPE/RIR para una mejor estimación.',
   'Estimate assumes a barbell compound; isolation lifts vary more.': 'La estimación asume un básico con barra; en aislados varía más.',
-  'HIGH': 'ALTA',
-  'MEDIUM': 'MEDIA',
-  'unreliable': 'poco fiable',
+  'HIGH': 'Alta',
+  'MEDIUM': 'Media',
+  'unreliable': 'Poco fiable',
   'Calcular': 'Calcular',
   // --- Home warmup card ---
   'Warmup calculator': 'Calculadora de aproximaciones',

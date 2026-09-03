@@ -149,11 +149,11 @@ export function fmtSec(sec) {
 // 10-point scale from the top (RPE 8 ≈ RIR 2). A set logged on one scale is never silently
 // rewritten as the other — switching the setting changes what new sets ask for, nothing else.
 // `min`..`max` is the range the stepper walks. RIR bottoms out at 0 (a set taken to failure);
-// RPE bottoms out at 6, since the scale is only meaningful for working sets and anything
-// lighter is a warm-up nobody rates.
+// RPE bottoms out at 5 — the lowest rating that still describes a working set rather than a
+// warm-up — and both scales top out at 10, so the RPE stepper walks 5..10.
 export const EFFORT = {
   rir: { f: 'rir', hd: 'RIR', step: 0.5, min: 0, max: 10 },
-  rpe: { f: 'rpe', hd: 'RPE', step: 0.5, min: 6, max: 10 }
+  rpe: { f: 'rpe', hd: 'RPE', step: 0.5, min: 5, max: 10 }
 }
 // One tap of an effort stepper. Empty is not 0 — an unlogged effort must not become "went to
 // failure" from one stray tap — so − on an empty cell leaves it empty, and + starts at the

@@ -34,19 +34,26 @@ export function estimate1RM(w, r, formula = DEFAULT_FORMULA) {
   if (weight <= 0 || reps < 1) return null
   if (reps > REP_CAP) return null
   const fn = FORMULAS[formula] || FORMULAS[DEFAULT_FORMULA]
-  const est = reps === 1 ? weight : fn(weight, Math.round(reps))
+  // Fractional reps are preserved on purpose: estimateWithEffort feeds effective
+  // reps like 7.5 (RPE 7.5), and rounding here would collapse 7 vs 7.5 to the
+  // same estimate. Integer callers (history, sheets) are unaffected.
+  const est = reps === 1 ? weight : fn(weight, reps)
   if (!isFinite(est) || est <= 0) return null
   return Math.round(est * 10) / 10
 }
 
 // Estimate a 1RM from a set plus how far it was from failure. The adjustment works in
 // effective reps — a set of 6 with RIR 1 is treated as a set of 7 — because that is what the
-// formula actually consumes. A null RIR (no effort recorded) means "assumed to failure",
-// which the caller flags as an assumption rather than a measurement. Effective reps are
-// capped at REP_CAP, so this never asks estimate1RM to guess past the cap; invalid input
-// returns null exactly like estimate1RM.
+// formula actually consumes. Effective reps stay fractional (RIR steps are 0.5, so RPE 7 vs
+// 7.5 give different estimates) and are capped at REP_CAP, so this never asks estimate1RM
+// to guess past the cap; invalid input returns null exactly like estimate1RM.
+// A null RIR (no effort recorded) means "assumed to failure", which the caller flags as an
+// assumption rather than a measurement.
 export function estimateWithEffort(w, reps, rir) {
-  const effReps = Math.min(Math.round(Number(reps)) + Math.round(Number(rir ?? 0)), REP_CAP)
+  const base = Number(reps)
+  const reserve = rir == null ? 0 : Number(rir)
+  if (!Number.isFinite(base) || !Number.isFinite(reserve)) return null
+  const effReps = Math.min(base + reserve, REP_CAP)
   const est = estimate1RM(w, effReps)
   if (est === null) return null
   return { est, effReps, failureAssumed: rir == null }

@@ -311,8 +311,9 @@ describe('centralized workout start flow', () => {
     expect(mocks.openSheet).toHaveBeenCalledTimes(1)
     expect(mocks.openSheet).toHaveBeenCalledWith(expect.any(Function), { kind: 'center' })
     const dialog = confirmDialog()
+    // the routine name lives in the message body; the confirm button stays a short "Start"
     expect(dialog.props.message).toContain(name)
-    expect(dialog.props.confirmText).toContain(name)
+    expect(dialog.props.confirmText).toBe('Start')
   })
 
   it.each([
