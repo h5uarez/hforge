@@ -968,6 +968,17 @@ h4.sec{
 .tile .v{font-size:26px;font-weight:600;letter-spacing:-.026em;margin-top:5px;line-height:1.1}
 .tile.tappable:active{background:var(--surface-2)}
 
+/* --- finish summary compact (FinishSummary sheet only) ---
+   Scoped overrides so the celebration fits a small phone viewport without
+   pushing the primary button off-screen. Global .tiles/.tile/.bodymap rules
+   above stay untouched. */
+.finish-compact{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain}
+.finish-compact .tiles{gap:8px;margin-bottom:8px}
+.finish-compact .tile{padding:10px}
+.finish-compact .tile .v{font-size:1rem;margin-top:3px}
+.finish-compact .bm-v{max-height:min(24vh,160px)}
+.finish-compact .bm-ph{height:120px}
+
 /* --- PR badge --- */
 .pr{
   display:inline-flex;align-items:center;gap:4px;
