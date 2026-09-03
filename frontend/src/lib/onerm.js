@@ -39,6 +39,19 @@ export function estimate1RM(w, r, formula = DEFAULT_FORMULA) {
   return Math.round(est * 10) / 10
 }
 
+// Estimate a 1RM from a set plus how far it was from failure. The adjustment works in
+// effective reps — a set of 6 with RIR 1 is treated as a set of 7 — because that is what the
+// formula actually consumes. A null RIR (no effort recorded) means "assumed to failure",
+// which the caller flags as an assumption rather than a measurement. Effective reps are
+// capped at REP_CAP, so this never asks estimate1RM to guess past the cap; invalid input
+// returns null exactly like estimate1RM.
+export function estimateWithEffort(w, reps, rir) {
+  const effReps = Math.min(Math.round(Number(reps)) + Math.round(Number(rir ?? 0)), REP_CAP)
+  const est = estimate1RM(w, effReps)
+  if (est === null) return null
+  return { est, effReps, failureAssumed: rir == null }
+}
+
 // Best estimate out of one workout entry's completed sets.
 // `topW` is ignored on purpose: it records the working weight a user confirmed after the
 // exercise, with no rep count attached, so it cannot produce an estimate.

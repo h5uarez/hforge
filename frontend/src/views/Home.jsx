@@ -6,6 +6,7 @@ import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.j
 import { t, dateLocale } from '../lib/i18n.js'
 import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, workoutExportSheet, startFlow, loadStarterPlan, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
+import Home1RM from '../components/Home1RM.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -119,6 +120,8 @@ export default function Home() {
         <div className="chart" style={{ marginTop: 8 }}><LineChart points={bwPoints} h={130} unit={S.unit} goal={S.targetW} /></div>
       </> : <div className="muted small">{t("No entries yet — log your weight to start the curve. It's also asked before every workout.")}</div>}
     </div>
+
+    {S.home1rmCardEnabled !== false && <Home1RM />}
 
     <button type="button" className="card tappable interactive-card" onClick={() => calendarSheet()}>
       <div className="row between">
