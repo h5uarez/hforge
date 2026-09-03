@@ -24,13 +24,13 @@ const dur = ms => { const m = Math.max(0, Math.floor(ms / 60000)); return m < 60
 function UserDetail({ id, onChanged, close }) {
   const [d, setD] = useState(null)
   const toast = useUI(s => s.toast)
-  useEffect(() => { api('/api/admin/user?id=' + encodeURIComponent(id)).then(setD).catch(e => toast(e.message)) }, [id])
+  useEffect(() => { api('/api/admin/user?id=' + encodeURIComponent(id)).then(setD).catch(e => toast(t(e.message))) }, [id])
   if (!d) return <div className="muted small">{t('Loading…')}</div>
   const u = d.user
   const setDisabled = disabled => {
     api('/api/admin/user/disable', { method: 'POST', body: JSON.stringify({ id: u.id, disabled }) })
       .then(() => { toast(t(disabled ? 'User disabled' : 'User enabled')); onChanged(); close() })
-      .catch(e => toast(e.message))
+      .catch(e => toast(t(e.message)))
   }
   return <>
     <h3 className="capitalize">{u.name}</h3>
@@ -65,9 +65,9 @@ function InvitesCard({ invites, reload }) {
   const toast = useUI(s => s.toast)
   const gen = () => api('/api/admin/invites/new', { method: 'POST', body: '{}' })
     .then(({ invite }) => { navigator.clipboard?.writeText(invite.code).catch(() => {}); toast(t('Code {0} created & copied', invite.code)); reload() })
-    .catch(e => toast(e.message))
+    .catch(e => toast(t(e.message)))
   const revoke = code => api('/api/admin/invites/revoke', { method: 'POST', body: JSON.stringify({ code }) })
-    .then(() => { toast(t('Code revoked')); reload() }).catch(e => toast(e.message))
+    .then(() => { toast(t('Code revoked')); reload() }).catch(e => toast(t(e.message)))
   const open = (invites || []).filter(i => !i.usedBy)
   const used = (invites || []).filter(i => i.usedBy)
   return <div className="card">
@@ -95,7 +95,7 @@ export default function Admin() {
   const [invites, setInvites] = useState(null)
   const [inviteOnly, setInviteOnly] = useState(false)
 
-  const loadUsers = () => api('/api/admin/users').then(d => { setUsers(d.users); setInviteOnly(d.invite_only) }).catch(e => toast(e.message || t('Failed to load')))
+  const loadUsers = () => api('/api/admin/users').then(d => { setUsers(d.users); setInviteOnly(d.invite_only) }).catch(e => toast(t(e.message || 'Failed to load')))
   const loadInvites = () => api('/api/admin/invites').then(d => setInvites(d.invites)).catch(() => {})
   // poll every 15s so the "training now" section stays live without a manual refresh
   useEffect(() => { if (!user?.admin) return; loadUsers(); loadInvites(); const iv = setInterval(loadUsers, 15000); return () => clearInterval(iv) }, [])
