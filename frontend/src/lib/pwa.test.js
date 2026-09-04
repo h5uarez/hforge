@@ -59,17 +59,14 @@ describe('install/update UI contracts (source)', () => {
     expect(banner).toContain('onClick={() => applyWaitingUpdate()}')
   })
 
-  it('settings install UX branches on real signals without inventing APIs', () => {
+  it('settings has no install UX (removed: no value for this owner)', () => {
     const settings = src('src/views/Settings.jsx')
-    expect(settings).toContain('isStandalone()')
-    expect(settings).toContain('canInstall()')
-    expect(settings).toContain('onCanInstall(')
-    expect(settings).toContain('promptInstall()')
-    expect(settings).toContain('Installed — running full-screen')
-    expect(settings).toContain('Install Hforge')
-    expect(settings).toContain('Add to Home Screen')
-    // No synthetic prompt construction: the event comes from Chromium or not at all.
-    expect(settings).not.toMatch(/new Event\(['"]beforeinstallprompt|dispatchEvent/)
+    expect(settings).not.toContain('InstallTip')
+    expect(settings).not.toContain('Install Hforge')
+    expect(settings).not.toContain('Installed — running full-screen')
+    expect(settings).not.toContain('Add to Home Screen')
+    // Version footer stays: it is not install UX.
+    expect(settings).toContain('AppVersion')
   })
 
   it('pwa.js captures the native prompt instead of synthesizing one', () => {

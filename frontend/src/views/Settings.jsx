@@ -4,13 +4,13 @@ import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
-import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
+import { api, webauthnOK, passkeyLogin, passkeyRegister } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush, cancelInactivityPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { getLang, setLangPreference, t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, syncReminder } from '../lib/mobile.js'
-import { appVersion, canInstall, isStandalone, onCanInstall, promptInstall } from '../lib/pwa.js'
+import { appVersion } from '../lib/pwa.js'
 import { backupFilename, deliverExport, serializeBackup } from '../lib/export.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
@@ -220,9 +220,6 @@ export default function Settings() {
     <input ref={importRef} type="file" accept=".csv,.xml,text/csv,text/xml" style={{ display: 'none' }}
       onChange={ev => { const f = ev.target.files[0]; if (f) importFromApp(f); ev.target.value = '' }} />
 
-    {/* "Add to Home screen" makes no sense inside the native app */}
-    {!MOBILE && <InstallTip user={user} />}
-
     <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
       <AppVersion /> · <a href="https://github.com/h5uarez/hforge" target="_blank" rel="noopener">{t('source code')}</a>
     </div>
@@ -357,62 +354,6 @@ function PushCard({ S, update, toast }) {
     </Section>
     {on && <div style={{ marginTop: -12, marginBottom: 22 }}><Button size="sm" icon="bell" onClick={test}>{t('Send test notification')}</Button></div>}
   </>
-}
-
-// Install / standalone UX: Chromium fires beforeinstallprompt (captured in lib/pwa.js)
-// and Settings offers it as a plain row; iPhone Safari has no such event, so the
-// Share-menu instructions stay; an already-installed app says so instead of
-// nagging. Nothing here invents install APIs — unsupported browsers get no row.
-function InstallTip({ user }) {
-  const toast = useUI(s => s.toast)
-  const [standalone, setStandalone] = useState(() => isStandalone())
-  const [installable, setInstallable] = useState(() => canInstall())
-
-  useEffect(() => {
-    const mq = window.matchMedia?.('(display-mode: standalone)')
-    const sync = () => setStandalone(isStandalone())
-    mq?.addEventListener?.('change', sync)
-    const offInstall = onCanInstall(() => setInstallable(canInstall()))
-    return () => { mq?.removeEventListener?.('change', sync); offInstall() }
-  }, [])
-
-  const install = async () => {
-    const ok = await promptInstall()
-    setInstallable(canInstall())
-    toast(ok ? t('Installing — check your home screen') : t('Install dismissed'))
-  }
-
-  const syncNote = user
-    ? t('Your data syncs with your profile — sign in anywhere to see it.')
-    : t('Guest data stays on this device — export a backup now and then!')
-
-  if (standalone) {
-    return (
-      <Section title={t('App')}>
-        <Row icon="check" iconTint="var(--acc)"
-          title={t('Installed — running full-screen')}
-          subtitle={syncNote} />
-      </Section>
-    )
-  }
-  if (installable) {
-    return (
-      <Section title={t('App')}>
-        <Row icon="download" iconTint="var(--acc)" title={t('Install Hforge')}
-          subtitle={t('Full-screen app on your home screen.') + ' ' + syncNote}
-          accessory="chevron" onClick={install} />
-      </Section>
-    )
-  }
-  const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '')
-  if (!iOS && !IS_ANDROID) return null
-  return (
-    <Section title={t('Tip')}>
-      <Row icon="lightbulb" iconTint="var(--yellow)"
-        title={IS_ANDROID ? t('In Chrome: ⋮ menu → Add to Home screen') : t('In Safari: Share → Add to Home Screen')}
-        subtitle={t('to install Hforge as a full-screen app.') + ' ' + syncNote} />
-    </Section>
-  )
 }
 
 function AppVersion() {
