@@ -64,7 +64,7 @@ export default function HomeWarmup() {
 
   return (
     <div className="card">
-      <button type="button" className="row between" style={{ width: '100%', padding: 0, border: 0, background: 'none', textAlign: 'left' }}
+      <button type="button" className="row between" style={{ width: '100%', border: 0, background: 'none', textAlign: 'left' }}
         onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls="homewarmup-body">
         <span className="row" style={{ gap: 8 }}>
           <Icon name="dumbbell" />
