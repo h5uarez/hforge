@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import { MOBILE } from './lib/mobile.js'
 import { getLang, setLang } from './lib/i18n.js'
+import { registerPwa } from './lib/pwa.js'
 import './index.css'
 
 async function bootstrap() {
@@ -14,11 +14,9 @@ async function bootstrap() {
     <StrictMode><App /></StrictMode>
   )
 
-  // Not in the mobile build: the native shell already serves everything from disk.
-  const localPushOrigin = location.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
-  if (!MOBILE && 'serviceWorker' in navigator && (location.protocol === 'https:' || localPushOrigin)) {
-    navigator.serviceWorker.register('sw.js').catch(() => {})
-  }
+  // PWA registration (mobile-build and secure-origin guards live in registerPwa).
+  // Update UX is user-approved: the banner in App.jsx offers the reload moment.
+  registerPwa()
 }
 
 void bootstrap()
