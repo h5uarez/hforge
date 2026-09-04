@@ -94,7 +94,7 @@ describe('mobile accessibility and layout contracts', () => {
     const toast = source('components/Toast.jsx')
     const css = source('index.css')
     expect(toast).toContain('role="status" aria-live="polite"')
-    expect(css).toContain('max-width:calc(100vw - 2 * var(--pad))')
+    expect(css).toContain('max-width:calc(100% - 2 * var(--pad))')
     expect(css).toContain('overflow-wrap:anywhere')
   })
 
