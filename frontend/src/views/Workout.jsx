@@ -496,6 +496,21 @@ function ActiveWorkout() {
     </article>
   }
 
+  // Existing add-exercise flow, shared by the freestyle empty-state CTA below
+  // and the regular "Add exercise" button — no new routes, same picker.
+  const pickExercise = () => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => {
+    let addedSid
+    commitPickerSelection(() => update(s => {
+      const routine = s.routines.find(r => r.id === s.active.routineId)
+      const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
+      addedSid = added.sid
+      s.active.entries.push(added)
+      s.active.cur = s.active.entries.length - 1
+      touchActiveRecord(s.active)
+    }), closePicker)
+    if (addedSid) focusEntry(addedSid)
+  }, null, S.routines.find(r => r.id === A.routineId)))
+
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="hdr">
       <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
@@ -518,22 +533,11 @@ function ActiveWorkout() {
         {units.map((members, index) => renderCard(members[0], index, members))}
       </div>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{moveStatus}</div>
-    </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
+    </> : <div className="empty empty-center"><div className="ico"><Icon name="shuffle" /></div><div>{t('Freestyle workout — add your first exercise.')}</div><Button variant="primary" icon="play" onClick={pickExercise}>{t('Start your first workout')}</Button></div>}
 
     <div style={{ height: 12 }} />
     <div style={{ height: 10 }} />
-      <Button onClick={() => exercisePicker((ex, closePicker) => exConfigSheet(ex, null, cfg => {
-       let addedSid
-        commitPickerSelection(() => update(s => {
-         const routine = s.routines.find(r => r.id === s.active.routineId)
-         const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
-         addedSid = added.sid
-          s.active.entries.push(added)
-          s.active.cur = s.active.entries.length - 1
-          touchActiveRecord(s.active)
-       }), closePicker)
-       if (addedSid) focusEntry(addedSid)
-     }, null, S.routines.find(r => r.id === A.routineId)))} icon="plus">{t('Add exercise')}</Button>
+      <Button onClick={pickExercise} icon="plus">{t('Add exercise')}</Button>
     <div style={{ height: 10 }} />
     {(() => {
        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length

@@ -34,6 +34,10 @@ export default function Media({ ex, id, compact, minimizable }) {
 }
 
 export function Thumb({ ex }) {
-  if (!ex.img) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
-  return <img className="thumb" loading="lazy" decoding="async" src={imgSrc(ex)} alt="" />
+  const [err, setErr] = useState(false)
+  // No media entry, or the backend media failed to load (offline/demo without
+  // the asset server): a styled glyph placeholder on surface-2, never a broken
+  // white box.
+  if (!ex.img || err) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
+  return <img className="thumb" loading="lazy" decoding="async" src={imgSrc(ex)} alt="" onError={() => setErr(true)} />
 }

@@ -44,4 +44,7 @@ export function weekKey(d) {
 export const localTZ = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' } }
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+// Single source of truth for the 8 accent colours (dark iOS values): the swatch
+// picker and the accent validation in App.jsx read this — CSS only maps the keys
+// to variables ([data-accent] rules) and never duplicates these hexes.
 export const ACCENTS = { lime: '#30d158', sky: '#0a84ff', orange: '#ff9f0a', violet: '#bf5af2', pink: '#ff375f', red: '#ff453a', teal: '#40c8e0', gold: '#ffd60a' }
