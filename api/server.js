@@ -334,6 +334,20 @@ const routes = {
     json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } });
   },
 
+  // Rename the signed-in profile. Same name rules as registration: trimmed,
+  // required, max 40 chars. No invite gate — the profile already exists.
+  'PATCH /api/me': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    const raw = String(body.name ?? '').trim();
+    if (!raw) return json(res, 400, { error: 'name required' });
+    if (raw.length > 40) return json(res, 400, { error: 'name too long' });
+    user.name = raw;
+    saveDb();
+    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } });
+  },
+
   'POST /api/register/options': async (req, res) => {
     const body = await readBody(req);
     const name = String(body.name || '').trim().slice(0, 40);

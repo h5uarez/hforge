@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api } from '../lib/api.js'
+import { api, updateProfile } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
@@ -176,6 +176,14 @@ export const useStore = create((set, get) => {
       if (u) { localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest') }
       else localStorage.removeItem('gym_user')
       set({ user: u })
+    },
+
+    // Rename the signed-in profile. Validation lives in the caller + server;
+    // here we just persist the returned user. Throws so the caller can report it.
+    async renameUser(name) {
+      const updated = await updateProfile(name)
+      get().setUser(updated)
+      return updated
     },
 
     async pushState() {

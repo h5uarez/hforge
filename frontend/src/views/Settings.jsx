@@ -21,7 +21,7 @@ export default function Settings() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
-  const { update, replaceState, setUser, pullState, pushState, signOut, signOutAll, resetDemo } = useStore()
+  const { update, replaceState, setUser, pullState, pushState, signOut, signOutAll, resetDemo, renameUser } = useStore()
   const toast = useUI(s => s.toast)
   const fileRef = useRef(null)
   const importRef = useRef(null)
@@ -55,6 +55,7 @@ export default function Settings() {
     }
   }
   const registerHere = () => useUI.getState().openSheet(close => <RegisterInline close={close} setUser={setUser} pushState={pushState} pullState={pullState} toast={toast} />)
+  const renameHere = () => useUI.getState().openSheet(close => <RenameProfile close={close} initial={user.name} renameUser={renameUser} toast={toast} />)
   // Ends the profile's sessions on every device — this one included, so on success it lands in
   // the same place as the plain sign-out above (home, local data cleared). On failure nothing
   // local is touched: still signed in here, and say so rather than leaving a half-signed-out app.
@@ -87,7 +88,7 @@ export default function Settings() {
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host Hforge')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : user ? <>
-        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={t('Signed in with passkey — data syncs to this profile.')} />
+        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={t('Signed in with passkey — data syncs to this profile.')} accessory="chevron" onClick={renameHere} />
         {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
         <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={() => confirmSheet({ title: t('Sign out?'), message: t('Your data is synced to your profile first, then cleared from this device.'), confirmText: t('Sign out'), danger: true, onConfirm: () => { signOut(); nav('/home') } })} />
         <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
@@ -360,6 +361,45 @@ function AppVersion() {
   const [version, setVersion] = useState(null)
   useEffect(() => { let live = true; appVersion().then(v => { if (live) setVersion(v) }); return () => { live = false } }, [])
   return <>Hforge{version ? ` v${version}` : ''}</>
+}
+
+// Rename the signed-in profile. Same rules as registration: trimmed, required,
+// max 40 chars. Inline error by the field, success toast, full-width input and
+// primary Save (≥44px target) — no fixed widths, mobile-first like every sheet.
+function RenameProfile({ close, initial, renameUser, toast }) {
+  const [name, setName] = useState(initial || '')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    const n = (name || '').trim()
+    if (!n) { setError(t('Name is required')); return }
+    if (n.length > 40) { setError(t('Keep it under 40 characters')); return }
+    setError('')
+    setBusy(true)
+    try {
+      await renameUser(n)
+      close()
+      toast(t('Name updated'))
+    } catch (e) {
+      const msg = String(e.message || '')
+      if (/name required/i.test(msg)) setError(t('Name is required'))
+      else if (/name too long/i.test(msg)) setError(t('Keep it under 40 characters'))
+      else setError(msg || t('Could not update name'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return <>
+    <h3>{t('Your profile')}</h3>
+    <div className="muted small" style={{ marginBottom: 14 }}>{t('Change how your name appears across the app.')}</div>
+    <label className="small muted" htmlFor="rename-name" style={{ display: 'block', marginBottom: 6 }}>{t('Your name')}</label>
+    <TextField id="rename-name" value={name} maxLength={40} autoFocus
+      placeholder={t('Your name')} aria-invalid={!!error} aria-describedby={error ? 'rename-error' : undefined}
+      onChange={e => { setName(e.target.value); if (error) setError('') }} onKeyDown={e => { if (e.key === 'Enter') save() }} />
+    {error && <div id="rename-error" role="alert" className="small" style={{ color: 'var(--red)', marginTop: 6, lineHeight: 1.4 }}>{error}</div>}
+    <div style={{ height: 12 }} />
+    <Button variant="primary" onClick={save} disabled={busy}>{busy ? t('Saving…') : t('Save')}</Button>
+  </>
 }
 
 // The same registration as the sign-in screen's, reached from Settings instead. It asks for

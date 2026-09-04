@@ -57,3 +57,8 @@ export async function passkeyLogin() {
   const res = await api('/api/login/verify', { method: 'POST', body: JSON.stringify({ cid, credential: credToJSON(cred) }) })
   return res.user
 }
+// Rename the signed-in profile — returns the updated { id, name, admin }.
+export async function updateProfile(name) {
+  const res = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ name }) })
+  return res.user
+}
