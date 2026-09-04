@@ -321,6 +321,18 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
 
   const cell = (r, f) => (map[f] === undefined ? '' : String(r[map[f]] ?? '').trim())
 
+  // One row-group per workout. Files that carry a workout-level identity (Hevy's
+  // title/start/end, Strong's workout name) keep same-day sessions apart: the raw
+  // identity cells plus the parsed time-of-day tell two sessions on one date apart
+  // while rows of a single session share all of them. Files without one (FitNotes
+  // writes a per-set timestamp and nothing workout-level) fall back to one group
+  // per date — the historical behaviour, which keeps every set and changes nothing
+  // for those files.
+  const hasWorkoutIdentity = map.workoutName !== undefined || map.startTime !== undefined || map.endTime !== undefined
+  const groupKey = (r, when) => hasWorkoutIdentity
+    ? [when.d, cell(r, 'workoutName'), cell(r, 'startTime'), cell(r, 'endTime'), when.t ?? ''].join('\x1f')
+    : when.d
+
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i]
     const name = cell(r, 'exercise')
@@ -381,10 +393,10 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
       else if (rpe != null) { set.rpe = rpe; rpeSets++ }
     }
 
-    let day = byDate.get(when.d)
+    let day = byDate.get(groupKey(r, when))
     if (!day) {
-      day = { ex: new Map(), name: cell(r, 'workoutName') || '', start: when.t, end: null }
-      byDate.set(when.d, day)
+      day = { d: when.d, ex: new Map(), name: cell(r, 'workoutName') || '', start: when.t, end: null }
+      byDate.set(groupKey(r, when), day)
     }
     if (!day.name) day.name = cell(r, 'workoutName') || ''
     if (map.endTime !== undefined) { const e = parseWhen(cell(r, 'endTime')); if (e && e.t != null) day.end = e.t }
@@ -412,9 +424,12 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
   }
   const converted = (!!fileUnit && fileUnit !== unit) || mixedUnits
 
-  const dates = [...byDate.keys()].sort()
-  const workouts = dates.map(d => {
-    const day = byDate.get(d)
+  // One group per workout, in file order for same-day sessions: date first, then the
+  // session's time of day, then its name. Single-session days read exactly as before.
+  const groups = [...byDate.values()].sort((a, b) =>
+    (a.d < b.d ? -1 : a.d > b.d ? 1 : (a.start ?? 0) - (b.start ?? 0) || (a.name < b.name ? -1 : 1)))
+  const workouts = groups.map(day => {
+    const d = day.d
     const entries = [...day.ex.entries()].map(([id, ss]) => {
       const conv2 = ss.map(({ u, ...s }) => (s.w !== undefined ? { ...s, w: convRow({ ...s, u }) } : s))
       const mx = Math.max(0, ...conv2.map(s => s.w || 0))
@@ -439,7 +454,7 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
     matchedSets: matched,
     created: created.size, unmatchedNames: [...unmatched].sort(),
     sets, skipped, warmups, fileUnit, mixedUnits, converted, rpeSets, rirSets,
-    from: dates[0] || null, to: dates[dates.length - 1] || null,
+    from: groups[0]?.d || null, to: groups[groups.length - 1]?.d || null,
   }
 }
 
@@ -515,7 +530,47 @@ export function parseImport(text, opts) {
 
 /* --------------------------------------------------------------- merge ---- */
 
-/** Merge into state. Existing days win — importing twice never duplicates a workout. */
+// What makes a workout "the same one" across imports. The id alone cannot decide:
+// every parse mints fresh ids, so the same file parsed twice arrives with different
+// ids — while two genuinely different sessions may share a date. The signature is
+// the date plus the logged content, so re-importing a file finds everything already
+// here (nothing duplicates) and a second session on the same date reads as new
+// (nothing is silently discarded). Entries sort by exercise so row order never matters.
+const numOr = (v, fb) => (typeof v === 'number' && Number.isFinite(v) ? v : fb)
+export function workoutSignature(w) {
+  const entries = (w.entries || []).map(e => ({
+    id: e.id,
+    s: (e.sets || []).map(s => [
+      numOr(s.w, 0), numOr(s.r, 0), numOr(s.min, 0), numOr(s.speed, 0), numOr(s.sec, 0),
+      numOr(s.rpe, null), numOr(s.rir, null), s.done ? 1 : 0,
+    ]),
+    t: numOr(e.topW, 0),
+  })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  return JSON.stringify({ d: w.d || null, n: w.name || '', e: entries })
+}
+
+// Split incoming workouts into new sessions vs. ones already in state. Shared by the
+// merge and by the pre-import summary so the preview counts exactly what the merge
+// will do. An id collision with different content keeps both: the incoming workout
+// is re-keyed rather than dropped, because dropping a session silently is the data
+// loss this exists to prevent.
+export function classifyImportWorkouts(existing, incoming) {
+  const haveIds = new Set((existing || []).map(w => w && w.id))
+  const haveSigs = new Set((existing || []).map(workoutSignature))
+  const fresh = []
+  let skipped = 0
+  for (const w of incoming || []) {
+    if (haveSigs.has(workoutSignature(w))) { skipped++; continue }
+    let next = w
+    if (w && haveIds.has(w.id)) next = { ...w, id: 'iw' + uid() }
+    haveIds.add(next.id)
+    haveSigs.add(workoutSignature(next))
+    fresh.push(next)
+  }
+  return { fresh, skipped }
+}
+
+/** Merge into state. Same-day sessions coexist — only exact duplicates are skipped. */
 export function mergeImport(S, parsed) {
   if (parsed.kind === 'bodyweight') {
     const have = new Set(S.bodyweight.map(b => b.d))
@@ -523,8 +578,7 @@ export function mergeImport(S, parsed) {
     S.bodyweight = [...S.bodyweight, ...fresh].sort((a, b) => (a.d < b.d ? -1 : 1))
     return { added: fresh.length, skipped: parsed.bodyweight.length - fresh.length }
   }
-  const have = new Set(S.workouts.map(w => w.d))
-  const fresh = parsed.workouts.filter(w => !have.has(w.d))
+  const { fresh, skipped } = classifyImportWorkouts(S.workouts, parsed.workouts)
   const used = new Set(fresh.flatMap(w => w.entries.map(e => e.id)))
   const customs = parsed.customEx.filter(c => used.has(c.id) && !EXIDX[c.id])
   S.customEx = [...(S.customEx || []), ...customs]
@@ -534,5 +588,5 @@ export function mergeImport(S, parsed) {
     const mx = Math.max(0, ...e.sets.map(s => s.w || 0), e.topW || 0)
     if (mx > 0) { const cur = S.exWeights[e.id]; if (!cur || w.d >= cur.d) S.exWeights[e.id] = { w: mx, d: w.d } }
   }))
-  return { added: fresh.length, skipped: parsed.workouts.length - fresh.length }
+  return { added: fresh.length, skipped }
 }
