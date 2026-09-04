@@ -69,8 +69,11 @@
   --surface-3: #e3e3e8;
 
   --label:     #000000;
-  --label-2:   rgba(60,60,67,.60);
-  --label-3:   rgba(60,60,67,.30);
+  /* Secondary/tertiary ink is darkened past the iOS alphas so microcopy clears
+     4.5:1 on every light surface (worst case surface-2 #ececef: .80 → 5.36:1,
+     .77 → 4.95:1; was .60 → 3.30 and .30 → 1.71 on bg). Dark theme untouched. */
+  --label-2:   rgba(60,60,67,.80);
+  --label-3:   rgba(60,60,67,.77);
   --label-4:   rgba(60,60,67,.16);
 
   --sep:       rgba(60,60,67,.29);
@@ -109,6 +112,22 @@
    this they inherit #fff from the light base above. */
 :root[data-theme="light"][data-accent="orange"],
 :root[data-theme="light"][data-accent="gold"]  { --on-acc:#000 }
+
+/* Light theme — accent icons sitting directly on a bare surface use the darker
+   --acc-2 shade instead of --acc. Lime/orange/teal/gold fail the 3:1 icon bar on
+   white at full strength (2.22/2.20/2.57/1.51:1); --acc-2 clears it on every
+   light surface (worst 3.22:1, orange on surface-2). Scoped to the four failing
+   accents and to icon-on-surface selectors only: filled buttons/chips/tiles,
+   tinted (acc-soft) usages, charts, focus rings and text links keep --acc, and
+   sky/violet/pink/red already clear 3:1 so they are untouched. Dark untouched.
+   .acc-ink is the same ink for JSX icons stuck with inline colours (it equals
+   --acc outside this block, so dark never changes). The :root prefix outranks
+   single-class hosts like .iconbtn without needing !important. */
+:root .acc-ink{color:var(--acc)}
+:root[data-theme="light"][data-accent="lime"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)),
+:root[data-theme="light"][data-accent="orange"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)),
+:root[data-theme="light"][data-accent="teal"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)),
+:root[data-theme="light"][data-accent="gold"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)){color:var(--acc-2)}
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -279,14 +298,23 @@ h4.sec{
 
 /* ----------------------------------------------------------- tab bar ----- */
 #tabbar{
-  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  position:fixed;left:12px;right:12px;bottom:calc(10px + var(--sab));z-index:50;
   display:flex;justify-content:space-around;align-items:flex-end;
-  padding:7px 6px calc(6px + var(--sab));
-  background:color-mix(in srgb,var(--bg-el) 72%,transparent);
-  backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);
-  border-top:var(--hair) solid var(--sep-op);
+  padding:7px 6px 8px;
+  /* Opaque base so page text never reads through the bar (inactive ink was
+     measured ≥4.5:1 on these solids: dark 6.31, light 5.97). Blur is only a
+     progressive enhancement inside @supports below, never the legibility plan. */
+  background:var(--bg-el);
+  border:var(--hair) solid var(--sep);border-radius:var(--r-xl);
+  box-shadow:0 8px 28px -8px rgba(0,0,0,.45);
 }
-:root[data-theme="light"] #tabbar{background:color-mix(in srgb,var(--surface-2) 78%,transparent)}
+:root[data-theme="light"] #tabbar{background:var(--surface)}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  #tabbar{-webkit-backdrop-filter:saturate(180%) blur(24px)}
+}
+@supports (backdrop-filter:blur(1px)){
+  #tabbar{backdrop-filter:saturate(180%) blur(24px)}
+}
 #tabbar button{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   color:var(--label-2);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;min-height:44px;
@@ -589,7 +617,11 @@ h4.sec{
 .workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat))}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#fff;margin-bottom:12px}
-.exmedia img{width:100%;height:clamp(200px,60vw,320px);object-fit:contain;display:block}
+.exmedia img,.exmedia .exmedia-x{width:100%;height:clamp(200px,60vw,320px)}
+.exmedia img{object-fit:contain;display:block}
+/* failed-asset placeholder: the same box the img would have filled, with the
+   Thumb's surface-2/glyph treatment instead of a broken-image icon */
+.exmedia .exmedia-x{display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--label-2);font-size:32px}
 .exmedia .gifhint,.exmedia .giftoggle{
   position:absolute;bottom:9px;display:inline-flex;align-items:center;gap:4px;
   background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:5px 11px;
@@ -601,8 +633,8 @@ h4.sec{
 .exmedia .gifhint .icn,.exmedia .giftoggle .icn{font-size:13px}
 /* superset: both exercises are on screen together, so the animations have to give way —
    at 180px you had to scroll a full screen between two exercises done back-to-back */
-.exmedia.compact img{height:120px}
-.exmedia.mini img{height:84px}
+.exmedia.compact img,.exmedia.compact .exmedia-x{height:120px}
+.exmedia.mini img,.exmedia.mini .exmedia-x{height:84px}
 
 .setgrid-scroll{width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .sethead,.setrow{
@@ -1146,7 +1178,7 @@ h4.sec{
   .workout-session-nav{flex-wrap:wrap}
   .cal-d{font-size:13px}
   .cal-grid{gap:4px}
-  .exmedia img{height:210px}
+  .exmedia img,.exmedia .exmedia-x{height:210px}
 }
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
@@ -1171,6 +1203,6 @@ h4.sec{
   /* 520px fits the clock, the bar and all three controls on one line again */
   #timer.rest{flex-direction:row;align-items:center;gap:14px}
   #timer.rest .head{flex:1;min-width:0}
-  .exmedia img{height:clamp(240px,30vw,380px)}
+  .exmedia img,.exmedia .exmedia-x{height:clamp(240px,30vw,380px)}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
 }

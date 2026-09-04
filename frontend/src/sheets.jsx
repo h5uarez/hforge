@@ -1250,7 +1250,7 @@ function TopWeight({ entryIdx, close }) {
     } else toast(t('Tracked — next time starts at {0}', fmtWeight(S().exWeights[entry.id].w, true) + ' ' + st.unit))
   }
   return <>
-    <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', exerciseName(ex))}</h3>
+    <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" className="acc-ink" />{t('{0} done', exerciseName(ex))}</h3>
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
     <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals />
     <div style={{ height: 10 }} />
@@ -1266,7 +1266,7 @@ export const topWeightSheet = entryIdx => ui().openSheet(close => <TopWeight ent
 // Shown when the last exercise's last set is checked — finish, or keep going.
 function WorkoutComplete({ close }) {
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
-    <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="checkCircle" /></div>
+    <div className="acc-ink" style={{ fontSize: 44, display: 'flex', justifyContent: 'center' }}><Icon name="checkCircle" /></div>
     <h3 style={{ margin: '8px 0' }}>{t("That's the whole workout!")}</h3>
     <div className="muted small" style={{ marginBottom: 16 }}>{t('Every exercise done — great work. Finish up, or keep going and add another exercise.')}</div>
     <Button variant="primary" icon="flag" onClick={() => { close(); finishWorkout() }}>{t('Finish workout')}</Button>
@@ -1283,7 +1283,7 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
   // overflow lets tall content (PR list + body map) scroll inside a small
   // viewport instead of pushing the "Nice!" button off-screen.
   return <div className="finish-compact" style={{ textAlign: 'center', padding: '8px 0' }}>
-    <div style={{ fontSize: 32, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="trophy" /></div>
+    <div className="acc-ink" style={{ fontSize: 32, display: 'flex', justifyContent: 'center' }}><Icon name="trophy" /></div>
     <h3 style={{ margin: '6px 0' }}>{t('Workout complete!')}</h3>
     <div className="tiles" style={{ textAlign: 'left' }}>
       <div className="tile"><div className="l">{t('Duration')}</div><div className="v">{fmtDur(w.end - w.start)}</div></div>
