@@ -67,7 +67,7 @@ export default function Home1RM() {
 
   return (
     <div className="card">
-      <button type="button" className="row between" style={{ width: '100%', padding: 0, border: 0, background: 'none', textAlign: 'left' }}
+      <button type="button" className="row between" style={{ width: '100%', border: 0, background: 'none', textAlign: 'left' }}
         onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls="home1rm-body">
         <span className="row" style={{ gap: 8 }}>
           <Icon name="target" />

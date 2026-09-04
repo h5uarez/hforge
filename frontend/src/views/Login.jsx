@@ -64,7 +64,7 @@ export default function Login() {
     <div style={{ fontSize: 54, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="dumbbell" /></div>
     <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>Hforge</h1>
   </>
-  const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
+  const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78dvh', textAlign: 'center' }
 
   // Demo build: no backend to sign in against — the only way in is the local guest profile.
   if (DEMO) return (
