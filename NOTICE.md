@@ -1,6 +1,6 @@
 # Third-party notices
 
-openGym — Copyright (C) 2026 Duarte Santos.
+Hforge — Copyright (C) 2026 Duarte Santos.
 
 ## Body diagram geometry
 

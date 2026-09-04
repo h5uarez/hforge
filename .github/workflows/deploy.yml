@@ -176,7 +176,7 @@ jobs:
             sleep 10
           done
 
-          # The VM may still have the pre-OIDC OpenGym Compose project running on
+          # The VM may still have the pre-OIDC Hforge Compose project running on
           # the published web port. Stop that project without removing volumes so
           # the Hforge project can take ownership of the port.
           if [ -f docker-compose.yml ]; then

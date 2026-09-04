@@ -33,7 +33,7 @@ The temporary `.env` includes the safe, non-secret `EXERCISE_MEDIA_SOURCE=/tmp/e
 3. Logs in to Azure with `azure/login@v2` using GitHub OIDC.
 4. Creates a temporary, secret-free shell script in the GitHub runner workspace.
 5. Calls Azure VM Run Command with the script and four named parameters: the GHCR username, GHCR read token, commit SHA, and an unpadded base64-encoded `docker-compose.prod.yml` payload.
-6. The VM validates its production paths, writes only `docker-compose.prod.yml`, logs in to GHCR with `--password-stdin`, stops the legacy OpenGym Compose project without removing volumes, pulls and starts the API and web services at the immutable SHA, derives the published web port, and retries the local health check.
+6. The VM validates its production paths, writes only `docker-compose.prod.yml`, logs in to GHCR with `--password-stdin`, stops the legacy Hforge Compose project without removing volumes, pulls and starts the API and web services at the immutable SHA, derives the published web port, and retries the local health check.
 7. After Run Command succeeds, the runner checks the public HTTPS health endpoint.
 
 ## Render behavior

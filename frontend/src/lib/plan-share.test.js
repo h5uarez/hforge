@@ -23,7 +23,7 @@ describe('buildPlanBundle — plan-share guard', () => {
       settings: { private: true },
     }
     const bundle = buildPlanBundle(S, 'my plan')
-    expect(Object.keys(bundle).sort()).toEqual(['customEx', 'exported', 'name', 'opengym_plan', 'routines', 'week'].sort())
+    expect(Object.keys(bundle).sort()).toEqual(['customEx', 'exported', 'name', 'hforge_plan', 'routines', 'week'].sort())
     expect(bundle).not.toHaveProperty('workouts')
     expect(bundle).not.toHaveProperty('settings')
   })
@@ -83,7 +83,7 @@ describe('programmedEffort round-trip (Phase 2)', () => {
     // Hand-built bundle: the field is on the ex and must survive the spread that
     // mergePlan performs when remapping the exercise id.
     const bundle = {
-      opengym_plan: 1,
+      hforge_plan: 1,
       name: 'with-targets',
       customEx: [],
       week: {},
@@ -133,7 +133,7 @@ describe('programmedEffort round-trip (Phase 2)', () => {
     // A hand-built legacy bundle imports cleanly: the import side never synthesises
     // the field, only copies what was already in the source.
     const legacyBundle = {
-      opengym_plan: 1,
+      hforge_plan: 1,
       name: 'legacy',
       customEx: [],
       week: {},
@@ -159,7 +159,7 @@ describe('per-side plan compatibility', () => {
 
 describe('weekly schedule import confirmation', () => {
   const weeklyBundle = {
-    opengym_plan: 1,
+    hforge_plan: 1,
     name: 'weekly',
     week: { '0': 'incoming' },
     routines: [{ id: 'incoming', name: 'Incoming', ex: [{ id: KNOWN_EXERCISE, sets: 1, reps: 5, weight: 0 }] }],
@@ -208,7 +208,7 @@ describe('coach note round-trip', () => {
 
   it('normalizes imported plan notes and discards an imported session note', () => {
     const parsed = parsePlan({
-      opengym_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
+      hforge_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
         { id: KNOWN_EXERCISE, sets: 1, reps: 8, planNote: '  Use a lighter load  ', note: 'do not import this' },
       ] }],
     })
@@ -218,7 +218,7 @@ describe('coach note round-trip', () => {
 
   it('retains planNote through mergePlan and omits empty notes', () => {
     const bundle = {
-      opengym_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
+      hforge_plan: 1, name: 'notes', customEx: [], week: {}, routines: [{ id: 'r', name: 'Push', ex: [
         { id: 'e-bench', sets: 1, reps: 8, planNote: '  Use a pause  ' },
         { id: 'e-row', sets: 1, reps: 10, planNote: '   ' },
       ] }],

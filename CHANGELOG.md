@@ -234,11 +234,11 @@ importer for your history from other apps.
 
 ### One codebase, two flavors
 
-openGym is also a standalone mobile app — and it ships as a direct APK download, not
+Hforge is also a standalone mobile app — and it ships as a direct APK download, not
 through app stores.
 
 - 📱 **Standalone mobile app.** The same frontend now also builds as a native iPhone /
-  Android app (Capacitor) — the install-and-done flavor of openGym: no account, no server,
+  Android app (Capacitor) — the install-and-done flavor of Hforge: no account, no server,
   no sync. Everything stays on the phone.
   - State is mirrored into a file in the app's private storage on every change, so your
     log survives even when the OS evicts WebView storage (iOS does).
@@ -249,7 +249,7 @@ through app stores.
   - `npm run build:mobile`, then open `android/` in Android Studio or `ios/` in Xcode —
     see **docs/MOBILE.md**.
 - 🤖 **Android APK, no Play Store.** The official build is a signed, sideloadable APK
-  (~4.5 MB) from [opengym.duarte-santos.ch](https://opengym.duarte-santos.ch) — deliberately
+  (~4.5 MB) from [hforge.duarte-santos.ch](https://hforge.duarte-santos.ch) — deliberately
   store-free. docs/MOBILE.md covers building and signing your own.
 - 🍎 **iOS reality check.** Apple permits no installs outside the App Store, so there is no
   iOS download; the docs explain the free options (self-hosted PWA on the home screen, or
@@ -298,7 +298,7 @@ A muscle map across the app, and a live demo you can try without installing anyt
 - 🐛 **Fixed: finishing a workout from its last exercise could blank the whole app.** The
   per-exercise weight sheet read the running workout without checking it was still there, and
   finishing clears it while that sheet is still on screen.
-- ▶️ **Live demo** at [duartesantos8.github.io/openGym](https://duartesantos8.github.io/openGym/) —
+- ▶️ **Live demo** at [h5uarez.github.io/hforge](https://h5uarez.github.io/hforge/) —
   a browser-only build (`VITE_DEMO=1`) published to GitHub Pages on every push to `main`. It boots
   into guest mode with a seeded example profile (12 weeks of Push/Pull/Legs, weigh-ins, PRs) so
   every screen has something to show, and it never talks to a server. Passkeys, sync and the admin
@@ -449,7 +449,7 @@ Reliability fixes for the push notifications shipped in v1.1.0, found through li
 
 ## v1.1.0 — 2026-07-21
 
-- 🐳 Prebuilt Docker images published to `ghcr.io/duartesantos8/opengym-{api,web}` (amd64 + arm64)
+- 🐳 Prebuilt Docker images published to `ghcr.io/h5uarez/hforge-{api,web}` (amd64 + arm64)
   via GitHub Actions, so self-hosting no longer requires building from source. `docker compose pull`
   grabs them; `docker compose up -d --build` still builds locally if you'd rather.
 - 🔔 Push notifications: rest-timer-over alert (fires even if the app is closed) and an optional

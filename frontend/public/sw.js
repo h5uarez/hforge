@@ -16,10 +16,6 @@ const MEDIA_CACHE = SW_VERSION + '-media'
 const ALL_CACHES = [SHELL_CACHE, RUNTIME_CACHE, MEDIA_CACHE]
 const MAX_MEDIA_ENTRIES = 120
 
-// Legacy compatibility identifier: keep the pre-existing runtime cache namespace
-// readable so media already cached by older installs keeps working after update.
-const LEGACY_CACHE = 'opengym-rt-v1'
-
 // App shell: everything the app needs to reopen offline once loaded.
 const SHELL = [
   'index.html',
@@ -39,7 +35,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => !ALL_CACHES.includes(k) && k !== LEGACY_CACHE).map(k => caches.delete(k)))
+    Promise.all(keys.filter(k => !ALL_CACHES.includes(k)).map(k => caches.delete(k)))
   ).then(() => self.clients.claim()))
 })
 
@@ -64,8 +60,8 @@ self.addEventListener('push', e => {
       body: typeof data.body === 'string' ? data.body : '',
       icon: 'icon-512.png',
       badge: 'icon-180.png',
-      // Legacy compatibility identifier: keep the existing notification tag stable.
-      tag: data.tag || 'opengym',
+      // Notification grouping tag.
+      tag: data.tag || 'hforge',
       renotify: activeInactivity ? false : true,
       data: activeInactivity ? { kind: data.kind, sessionId: data.sessionId } : undefined
     })))

@@ -14,8 +14,9 @@ import { ACTIVE_INACTIVITY_NOTIFICATION_ID, inactivityDeadline } from './inactiv
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
 
-// Legacy compatibility identifier: existing mobile installs depend on this state filename.
-const FILE = 'opengym-state.json'
+// On-device state mirror. Renamed with the Hforge rebrand; existing installs fall
+// back to their localStorage copy on first launch and re-mirror it under this name.
+const FILE = 'hforge-state.json'
 
 export async function nativeLoad() {
   try {

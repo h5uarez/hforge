@@ -11,7 +11,7 @@ const required = ['EXERCISE_MEDIA_SOURCE']
 const documented = ['RP_ID', 'ORIGIN', 'WEB_PORT', 'RP_NAME']
 const optional = ['ADMIN_UIDS', 'INVITE_ONLY', 'IMAGE_TAG', 'SESSION_DAYS']
 const operatorVariables = [...required, ...documented, ...optional]
-const deadDemoUrl = 'https://duartesantos8.github.io/openGym/'
+const deadDemoUrl = 'https://h5uarez.github.io/hforge/'
 const publishedDemoSurfaces = [
   'README.md',
   'website/index.html',

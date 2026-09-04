@@ -79,9 +79,9 @@ describe('service worker active inactivity ownership', () => {
     expect(worker.skipWaiting).toHaveBeenCalledTimes(1)
   })
 
-  it('clears unknown caches on activate but keeps the versioned set and legacy media', async () => {
+  it('clears unknown caches on activate but keeps the versioned set', async () => {
     const worker = loadWorker([])
-    worker.caches.keys.mockResolvedValue(['hforge-pwa-v1-shell', 'hforge-pwa-v1-rt', 'opengym-rt-v1', 'random-old'])
+    worker.caches.keys.mockResolvedValue(['hforge-pwa-v1-shell', 'hforge-pwa-v1-rt', 'hforge-pwa-v1-media', 'random-old'])
     let promise
     worker.listeners.activate({ waitUntil: value => { promise = value } })
     await promise

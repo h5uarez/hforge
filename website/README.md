@@ -1,4 +1,4 @@
-# Hforge website (opengym.duarte-santos.ch)
+# Hforge website (hforge.duarte-santos.ch)
 
 Source of the project website — plain hand-written HTML/CSS/JS, no build step,
 served by nginx.

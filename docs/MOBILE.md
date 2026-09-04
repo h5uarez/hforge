@@ -11,13 +11,14 @@ Hforge ships in two flavors from the same codebase:
 | Exercise media | served by your server (`img/`, `gif/`) | loaded from the jsDelivr CDN |
 
 The mobile flavor never talks to a backend: no sign-in screen, no sync, no telemetry.
-State is mirrored from `localStorage` into `opengym-state.json` in the app's private data
+State is mirrored from `localStorage` into `hforge-state.json` in the app's private data
 directory on every change (iOS is allowed to evict WebView storage under pressure — the
 file mirror is the durable copy and is restored on launch). Backups go out through the
 OS share sheet instead of a browser download.
 
-The `opengym-state.json` filename is a legacy compatibility identifier and must remain stable
-for existing mobile installs.
+The state mirror is `hforge-state.json` (renamed with the Hforge rebrand). Existing installs
+fall back to their `localStorage` copy on first launch after the update and re-mirror it
+under the new name; the old file is left behind.
 
 ## Prerequisites
 
@@ -64,7 +65,7 @@ accounts, no store rules, no yearly fees between you and the app.
 
 ### Android — sideload the APK
 
-The official signed APK is at **[opengym.duarte-santos.ch](https://opengym.duarte-santos.ch)**.
+The official signed APK is at **[hforge.duarte-santos.ch](https://hforge.duarte-santos.ch)**.
 Android asks you to allow installs from the browser the first time — that's standard for any
 app outside the Play Store.
 
@@ -76,12 +77,11 @@ cd android && ./gradlew assembleRelease            # → app/build/outputs/apk/r
 
 # one-time: create a keystore. KEEP IT — updates must be signed with the same key,
 # or Android refuses to install the new version over the old one.
-# Keep the existing legacy alias `opengym` for upgrade compatibility.
-keytool -genkeypair -keystore my.keystore -alias opengym -keyalg RSA -validity 10950
+keytool -genkeypair -keystore my.keystore -alias hforge -keyalg RSA -validity 10950
 
 # align + sign (zipalign/apksigner ship with the Android SDK build-tools)
 zipalign -f -p 4 app-release-unsigned.apk aligned.apk
-apksigner sign --ks my.keystore --ks-key-alias opengym --out hforge.apk aligned.apk
+apksigner sign --ks my.keystore --ks-key-alias hforge --out hforge.apk aligned.apk
 ```
 
 ### iPhone — what's actually possible
