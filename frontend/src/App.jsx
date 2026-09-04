@@ -13,6 +13,7 @@ import TabBar from './components/TabBar.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
+import PwaUpdateBanner from './components/PwaUpdateBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import InactivityReminder from './components/InactivityReminder.jsx'
 import Login from './views/Login.jsx'
@@ -83,6 +84,7 @@ function Shell() {
         </ErrorBoundary>
       </div>
       <TabBar onStart={startFlow} />
+      <PwaUpdateBanner />
       <RestTimer />
       <InactivityReminder />
       <Modals />
