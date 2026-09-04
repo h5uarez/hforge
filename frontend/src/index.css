@@ -55,7 +55,13 @@
 
   /* motion */
   --ease:cubic-bezier(.32,.72,0,1);
+  --ease-exit:cubic-bezier(.32,.72,0,1);
   --fast:140ms; --med:220ms;
+  /* P0 directional + tab motion: enter is slower than exit, always */
+  --motion-tab:140ms; --motion-push:240ms; --motion-back:180ms;
+  /* physical control thumbs (switch knob, slider knob) stay iOS-white in both
+     themes — a token, never a hard-coded surface, so no theme flashes white */
+  --knob:#fff;
 
   --sab:env(safe-area-inset-bottom,0px);
   --sat:env(safe-area-inset-top,0px);
@@ -131,6 +137,8 @@
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 html{
   font-size:16px;background:var(--bg);overscroll-behavior:none;overflow-x:clip;
   -webkit-text-size-adjust:100%;
@@ -144,6 +152,10 @@ body{
   touch-action:manipulation;
   font-variant-numeric:tabular-nums;
 }
+/* tabular figures everywhere a number is read at a glance (timer, loads, reps,
+   chart labels): body already sets it globally, this keeps it explicit on the
+   components that must never lose it to a later font shorthand */
+.tnum,#timer .t,.stp .num,.bw-read,.tile .v,.setrow-info .num,.efftbl .n{font-variant-numeric:tabular-nums}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;letter-spacing:inherit}
 input,select,textarea{font:inherit;color:var(--label);letter-spacing:inherit}
 img{max-width:100%;height:auto;vertical-align:middle}
@@ -161,6 +173,10 @@ button,.chip,.tile,.item,.wday,.cal-d,.swatch,.hm-c,.lrow,.seg button,.stp butto
 }
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+/* P0 reduced-motion contract: every crossfade below is ≤150ms or instant, and no
+   translate/spring/pulse/shimmer keyframe below runs under this query — the blanket
+   kill above already guarantees it; each new animation stays transform/opacity-only
+   so killing it never leaves a half-moved frame. */
 
 /* ------------------------------------------------------------ type scale -- */
 .t-large  {font-size:34px;line-height:1.06;font-weight:700;letter-spacing:-.028em}
@@ -194,11 +210,37 @@ button,.chip,.tile,.item,.wday,.cal-d,.swatch,.hm-c,.lrow,.seg button,.stp butto
 body.resting #app{padding-bottom:calc(250px + var(--sab))}
 @keyframes viewfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 #app.vfade{animation:viewfade var(--med) var(--ease)}
+/* P0 directional transitions (CSS ready — router wiring pending, see handoff):
+   push = deeper in the flow (X+24 + fade, 240ms enter); back = returning (X-16,
+   180ms). Transform/opacity only; exits run the same curve in --ease-exit.
+   To wire: track depth in App.jsx (e.g. location.key index or an explicit
+   nav(to, {dir}) helper) and swap #app's class vfade → view-push/view-back. */
+#app.view-push{animation:viewpush var(--motion-push) var(--ease)}
+#app.view-back{animation:viewback var(--motion-back) var(--ease-exit)}
+@keyframes viewpush{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes viewback{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
 
 /* large title, the way a nav bar does it */
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
 .hdr h1{font-size:clamp(26px,7vw + 8px,34px);line-height:1.06;font-weight:700;letter-spacing:-.028em}
 .hdr .sub{color:var(--label-2);font-size:15px;letter-spacing:-.006em;margin-top:4px}
+/* P0 page headers (Home/Stats/History): sticky title band; past scrollY 0 a hairline
+   fades in (opacity only) with a shadow, and the title compacts (transform only).
+   No layout animation, no scroll listener cost beyond passive+rAF (see useScrolled). */
+.hdr.page{
+  position:sticky;top:var(--sat);z-index:30;
+  margin:0 calc(-1 * var(--pad)) 18px;padding:10px var(--pad) 12px;
+  background:color-mix(in srgb,var(--bg) 86%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+}
+.hdr.page::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:var(--hair);
+  background:var(--sep);opacity:0;transition:opacity var(--fast) var(--ease);
+}
+.hdr.page h1{transition:transform var(--fast) var(--ease);transform-origin:left bottom}
+.hdr.page.scrolled::after{opacity:1}
+.hdr.page.scrolled{box-shadow:0 10px 24px -14px rgba(0,0,0,.55)}
+.hdr.page.scrolled h1{transform:scale(.88)}
 
 .iconbtn{
   width:44px;height:44px;border-radius:50%;flex:none;
@@ -255,13 +297,13 @@ h4.sec{
   display:flex;align-items:center;justify-content:center;
   background:var(--tint,var(--acc));color:var(--on-acc);
 }
-.lrow-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.lrow-m{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
 .lrow-t{font-size:17px;letter-spacing:-.012em;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow-s{font-size:13px;color:var(--label-2);line-height:1.3}
-/* flex:none would let a long value ("Follow the routine (Linear progression)") run straight
-   through the title next to it, since the title's column is already free to shrink to nothing.
-   Letting the value shrink and ellipsise instead keeps the two out of each other's way. */
-.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;min-width:0;max-width:50%;
+/* The value takes every free pixel (flex:1 + min-w-0) and ellipsises only when it
+   really does not fit; the chevron stays put (flex:none) so a long policy name
+   like "Seguir la rutina (…)" never pushes it off-screen. */
+.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:1 1 auto;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
 .lrow-k{color:var(--acc);font-size:17px;flex:none;--icon-stroke:2.4}
@@ -293,7 +335,7 @@ h4.sec{
 .btn.ghost:active,.btn.plain:active{background:var(--surface-2)}
 .btn.sm{padding:8px 14px;width:auto;font-size:15px;border-radius:var(--r-sm);gap:5px;min-height:44px}
 .btn.sm .icn{font-size:16px}
-.btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px}
+.btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px;min-height:44px;min-width:44px}
 .btn:disabled{opacity:.32;pointer-events:none}
 
 /* ----------------------------------------------------------- tab bar ----- */
@@ -345,11 +387,23 @@ h4.sec{
 #tabbar button.start .cir{color:var(--on-acc)}
 #tabbar button.start.rec .cir{background:var(--orange);color:#000;box-shadow:0 6px 18px -4px color-mix(in srgb,var(--orange) 55%,transparent)}
 #tabbar button.start.rec span{color:var(--orange)}
-#tabbar button.start.rec .cir::after{
-  content:'';position:absolute;inset:0;border-radius:50%;
-  border:2px solid var(--orange);animation:ping 1.9s var(--ease) infinite;
+/* P0: the running state is a solid orange disc + orange label — no infinite ping.
+   Progress, if any, is shown by the workout progress bar, never by decoration. */
+/* P0 sliding indicator: one dot that glides between the four route tabs on
+   transform only (left/width never animate). --tab-i is set from React (0 home,
+   1 plan, 3 stats, 4 library — the center Start button owns slot 2 but is not a
+   tab). The track is the full bar width; each slot owns exactly 1/5, so the dot
+   centers at (i + .5) / 5 with a per-index translate. opacity carries the fade,
+   transform the slide — both inside --motion-tab. */
+#tabbar .tab-ind{
+  position:absolute;bottom:4px;left:0;width:20%;display:flex;justify-content:center;
+  pointer-events:none;opacity:0;
+  transform:translateX(calc(var(--tab-i,0) * 100%));
+  transition:transform var(--motion-tab) var(--ease),opacity var(--motion-tab) var(--ease);
 }
-@keyframes ping{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.45);opacity:0}}
+#tabbar .tab-ind i{width:4px;height:4px;border-radius:50%;background:var(--acc)}
+#tabbar.has-ind .tab-ind{opacity:1}
+#tabbar button.on{font-weight:600}
 
 /* ------------------------------------------------------------ week strip -- */
 .week{display:flex;justify-content:space-between;gap:4px}
@@ -384,8 +438,8 @@ h4.sec{
   display:flex;align-items:center;justify-content:center;font-size:21px;
   background:var(--surface-2);color:var(--label-2);
 }
-.item .tt{font-size:16px;font-weight:400;line-height:1.25;letter-spacing:-.009em;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere}
-.item .ss{color:var(--label-2);font-size:13px;margin-top:2px}
+.item .tt{font-size:16px;font-weight:400;line-height:1.25;letter-spacing:-.009em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere}
+.item .ss{color:var(--label-2);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
 .item .grow{flex:1;min-width:0}
 .chev{color:var(--label);flex:none;font-size:15px;--icon-stroke:2.4}
 /* Schedule rows keep the weekday at its intrinsic width. The routine is the flexible value,
@@ -447,6 +501,9 @@ h4.sec{
   color:var(--label);font-size:15px;line-height:1.2;
 }
 .login-lang select:active{background:var(--surface-2)}
+/* the login language <select> is the one native popup left: theme its list box
+   so dark mode never gets a white system sheet */
+.login-lang select option{background:var(--surface);color:var(--label)}
 
 /* --- search field --- */
 .searchf{position:relative;display:flex;align-items:center}
@@ -454,13 +511,19 @@ h4.sec{
   position:absolute;left:11px;font-size:16px;color:var(--label-3);
   pointer-events:none;--icon-stroke:2.1;z-index:1;
 }
-.searchf .field{padding-left:35px;padding-right:36px;background:var(--surface-2);border-radius:10px}
+.searchf .field{padding-left:35px;padding-right:48px;background:var(--surface-2);border-radius:10px}
 :root[data-theme="light"] .searchf .field{background:var(--surface-2)}
 .searchf .clear{
-  position:absolute;right:8px;width:22px;height:22px;border-radius:50%;
-  background:var(--label-3);color:var(--bg);display:flex;align-items:center;
+  position:absolute;right:2px;width:44px;height:44px;border-radius:50%;
+  color:var(--bg);display:flex;align-items:center;
   justify-content:center;font-size:11px;--icon-stroke:3;
 }
+/* the painted circle stays 22px; the 44px button around it is the real target */
+.searchf .clear::before{
+  content:'';position:absolute;width:22px;height:22px;border-radius:50%;
+  background:var(--label-3);
+}
+.searchf .clear .icn{position:relative}
 /* legacy .search wrapper */
 .search{position:relative}
 .search .input{padding-left:35px;background:var(--surface-2);border-radius:10px}
@@ -477,7 +540,7 @@ h4.sec{
   transition:background var(--med) var(--ease);
 }
 .sw .knob{
-  width:27px;height:27px;border-radius:50%;background:#fff;
+  width:27px;height:27px;border-radius:50%;background:var(--knob);
   box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);
   transition:transform var(--med) var(--ease),width var(--fast) var(--ease);
 }
@@ -506,7 +569,7 @@ h4.sec{
   box-shadow:0 3px 8px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.06);
   transition:transform var(--med) var(--ease);
 }
-:root[data-theme="light"] .seg-sel{background:#fff}
+:root[data-theme="light"] .seg-sel{background:var(--surface)}
 .seg button{
   position:relative;z-index:1;padding:6px 8px;font-size:14px;font-weight:500;
   letter-spacing:-.006em;color:var(--label);display:flex;align-items:center;
@@ -520,6 +583,12 @@ h4.sec{
 .seg-range{margin-bottom:10px}
 .seg-inline button{padding:5px 10px;font-size:13px;min-height:44px}
 .seg-inline button .icn{font-size:14px}
+/* Appearance rows share one right column so the Theme and Body-diagram pills
+   start on the same vertical line: both are shrink-to-content otherwise, and
+   icon+short-word vs text-only+long-word intrinsic widths never match. */
+.sect-b .seg-inline{width:200px;min-width:0}
+.seg button .icn{flex:none}
+.seg button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 
 /* --- warmup settings sheet (WarmupSettingsForm only) ---
    At 360 px the row title ("Experiencia", "Modo peso muerto") and the inline
@@ -533,10 +602,24 @@ h4.sec{
 .warmup-settings .seg-inline button{padding:5px 6px;font-size:12px}
 .warmup-settings .seg button span{overflow-wrap:anywhere}
 
-/* native time input, restyled to sit in a row like a value label */
+/* --- progression rule row (ProgressionFields only): ONE elegant line ---
+   Regla | value (graceful right ellipsis) | chevron, at every width. The title
+   never crushes (flex:none — no more "Re…"), the value takes all free space and
+   ellipsises right only when it truly does not fit, the chevron stays put.
+   Two-class specificity on purpose: it beats the global ≤380px stacked-rows rule
+   below, so this row never wraps there either. The full Spanish label survives
+   as the value's title attribute and as the sheet option's subtitle. */
+.prog-setting .lrow{flex-wrap:nowrap}
+.prog-setting .lrow-m{flex:none;min-width:0}
+.prog-setting .lrow-v{flex:1 1 auto;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* native time input, restyled to sit in a row like a value label.
+   color-scheme (set on :root per theme above) keeps the picker itself dark in
+   dark mode — no white system list flashing over the app. */
 .timef{
   background:var(--surface-2);border:none;border-radius:8px;padding:6px 10px;
   font-size:16px;color:var(--label);outline:none;font-variant-numeric:tabular-nums;
+  min-height:44px;
 }
 .timef::-webkit-calendar-picker-indicator{filter:invert(.5)}
 :root[data-theme="light"] .timef::-webkit-calendar-picker-indicator{filter:none}
@@ -550,9 +633,20 @@ h4.sec{
 }
 .stp button{
   width:40px;height:44px;flex:none;color:var(--label);font-size:16px;
-  display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:center;position:relative;
   transition:background var(--fast);--icon-stroke:2.2;
 }
+/* P0 single touch token: every stepper key offers a real ≥44px target. The painted
+   widths stay where the grid math needs them (workout scrollport budgets are pinned
+   by contract tests) — the invisible ::after carries the target to 44×44. */
+.stp button::after{content:'';position:absolute;inset:-2px -6px}
+/* narrower painted keys need a wider invisible margin to reach the same 44px.
+   Overlap between neighbours resolves to the later (+/more) key — the same
+   tradeoff the existing .iconbtn::after slop already makes. */
+.cfgrow .stp button::after{inset:-2px -7px}
+/* compact 28px set keys (RIR/timed/per-side) reach the same 44px target with
+   ±8px slop, kept inside their own stepper by the value slot — no overlap. */
+.setrow.eff3 .stp button::after,.setrow.timed .stp button::after,.setrow.per-side .stp button::after{inset:-2px -8px}
 .stp button:active{background:var(--surface-3)}
 .stp .val{
   flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:3px;padding:0 2px;
@@ -578,7 +672,7 @@ h4.sec{
 }
 .sld-fill{display:block;height:100%;background:var(--acc);border-radius:99px}
 .sld-knob{
-  position:absolute;width:26px;height:26px;border-radius:50%;background:#fff;
+  position:absolute;width:26px;height:26px;border-radius:50%;background:var(--knob);
   transform:translateX(-50%);
   box-shadow:0 4px 10px rgba(0,0,0,.22),0 1px 2px rgba(0,0,0,.16);
   transition:transform var(--fast) var(--ease);
@@ -605,6 +699,9 @@ h4.sec{
    tappable region; hosts stay the same size */
 .iconbtn,.chk,.ck,.setrow .setgo,.helpbtn{position:relative}
 .iconbtn::after,.modal-close::after,.chk::after,.ck::after,.setrow .setgo::after,.helpbtn::after,.exmedia .giftoggle::after{content:'';position:absolute;inset:-6px}
+/* 30px painted checks/starts need a 7px margin to reach a real 44px target
+   (30 + 2×7 = 44); the 44px hosts above keep their 6px slop untouched. */
+.chk::after,.ck::after,.setrow .setgo::after{inset:-7px}
 /* dense inline row controls (routine editor move/superset buttons): wider
    invisible margin so a 28x24 glyph still offers a ~44px target */
 .item .iconbtn::after{inset:-10px}
@@ -616,7 +713,7 @@ h4.sec{
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
 .workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat))}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
-.exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#fff;margin-bottom:12px}
+.exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2);margin-bottom:12px}
 .exmedia img,.exmedia .exmedia-x{width:100%;height:clamp(200px,60vw,320px)}
 .exmedia img{object-fit:contain;display:block}
 /* failed-asset placeholder: the same box the img would have filled, with the
@@ -636,34 +733,166 @@ h4.sec{
 .exmedia.compact img,.exmedia.compact .exmedia-x{height:120px}
 .exmedia.mini img,.exmedia.mini .exmedia-x{height:84px}
 
-.setgrid-scroll{width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+/* --- set grid: one fluid system, zero horizontal scroll ---
+   Nothing here scrolls: every stepper track is minmax(0,1fr) so tracks shrink
+   instead of overflowing, every child is min-width:0, inputs are width:100%.
+   .setgrid-scroll stays as a plain full-width wrapper with overflow:visible —
+   no scrollbar can appear because nothing overflows. Per-side rows ALWAYS
+   stack L over R as two sub-rows: one side-by-side row needs 600px+ and
+   overflowed every phone and narrow desktop cards alike. */
+.setgrid-scroll{width:100%;max-width:100%;overflow:visible}
 .sethead,.setrow{
   display:grid;grid-template-columns:var(--set-grid-template);align-items:center;column-gap:8px;
-  --set-check-col:4;
+  --set-check-col:4;max-width:100%;min-width:0;
 }
+.sethead>*,.setrow>*{min-width:0}
 .sethead{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px;
-  min-width:0;padding:0 0 6px;
+  --set-grid-template:minmax(24px,24px) minmax(0,1.35fr) minmax(0,1fr) minmax(30px,32px);
+  /* same inline inset as .setrow below: header columns resolve over the same
+     content-box width as every row, current or not, so PESO/REPS/RPE/check
+     share one vertical line. Vertical rhythm (0 top / 6px bottom) untouched. */
+  padding:0 4px 6px;
   font-size:11px;color:var(--label-2);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
 }
-.sethead .w-sp,.sethead .r-sp,.sethead .eff-sp,.sethead .side-sp{text-align:center;min-width:0}
-.sethead .ck-sp,.sethead .info-sp{min-width:44px}
-.setrow{--set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px;min-width:0;padding:7px 0;position:relative}
+.sethead .w-sp,.sethead .r-sp,.sethead .eff-sp{text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sethead .ck-sp,.sethead .info-sp{min-width:32px}
+.setrow{--set-grid-template:minmax(24px,24px) minmax(0,1.35fr) minmax(0,1fr) minmax(30px,32px);padding:7px 4px;position:relative}
 .sethead.timed,.setrow.timed{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(72px,1fr) 44px 44px;
+  --set-grid-template:minmax(24px,24px) minmax(0,.9fr) minmax(0,1.3fr) minmax(30px,32px) minmax(30px,32px);
   --set-go-col:4;--set-check-col:5;
 }
 .sethead.no-col2,.setrow.no-col2{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) 44px;
+  --set-grid-template:minmax(24px,24px) minmax(0,1fr) minmax(30px,32px);
   --set-check-col:3;
 }
 .sethead.no-col2.timed,.setrow.no-col2.timed{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) 44px 44px;
+  --set-grid-template:minmax(24px,24px) minmax(0,1fr) minmax(30px,32px) minmax(30px,32px);
   --set-go-col:3;--set-check-col:4;
 }
-.setrow+.setrow::before{
-  content:'';position:absolute;left:32px;right:0;top:0;height:var(--hair);background:var(--sep);
+/* RIR rides in the same row as weight+reps with compact keys (44px hit
+   via ::after, tabular values — exact painted widths live in the legibility
+   override block below so the contract pins above stay verbatim). The info track only exists on rows that have
+   a target (.has-info) — otherwise the check moves up and no empty 44px
+   track is reserved. */
+.setrow.eff3,.sethead.eff3{
+  --set-grid-template:minmax(24px,24px) minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px);
+  --set-check-col:5;column-gap:6px;
 }
+.setrow.eff3.has-info,.sethead.eff3.has-info{
+  --set-grid-template:minmax(24px,24px) minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px) minmax(30px,32px);
+  --set-info-col:5;--set-check-col:6;
+}
+.setrow.eff3.no-col2,.sethead.eff3.no-col2{
+  --set-grid-template:minmax(24px,24px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px);
+  --set-check-col:4;
+}
+.setrow.eff3.no-col2.has-info,.sethead.eff3.no-col2.has-info{
+  --set-grid-template:minmax(24px,24px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px) minmax(30px,32px);
+  --set-info-col:4;--set-check-col:5;
+}
+.setrow.eff3 .stp button,.setrow.timed .stp button{width:28px}
+.setrow.eff3 .stp .num,.setrow.timed .stp .num{font-size:15px;font-variant-numeric:tabular-nums}
+.setrow .stp .num{font-variant-numeric:tabular-nums}
+/* Unilateral rows stack L over R at every width, each sub-row fluid. The two
+   checks join the grid via display:contents; per-side steppers share the
+   same compact keys as RIR rows. */
+.setrow.per-side,.sethead.per-side{
+  --set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px);
+  column-gap:6px;
+}
+.sethead.per-side{
+  min-width:0;
+  /* same 8px inline inset as .setrow.per-side below: header columns resolve
+     over the same content-box width as every unilateral row, so PESO/REPS/RPE
+     share one vertical line with the row steppers. Vertical rhythm untouched. */
+  padding:0 8px 6px;
+}
+/* Unilateral breathing room: the outer box (done wash / .current inset ring)
+   painted right against the 24px number badge and the 30-32px circular checks.
+   10px 8px on ALL per-side rows equally — one box model, no per-state margins,
+   so the ring stays pure paint and selecting a set never moves the grid.
+   8px inline (not 10px): matches the project's 8px gap scale and keeps the
+   320px budget — tracks are minmax(0,1fr), children min-width:0, ≤360px keys
+   already shrink to 26px, so nothing overflows. Bilateral rows keep 7px 4px. */
+.setrow.per-side{row-gap:6px;padding:10px 8px}
+.setrow.per-side .stp{min-width:0}
+.setrow.per-side .stp button{width:28px;height:40px}
+.setrow.per-side .stp .num{font-size:15px;font-variant-numeric:tabular-nums}
+.setrow.per-side .side-input{width:100%;min-width:0}
+.side-label{font-size:12px;font-weight:600;color:var(--label-2);text-align:center}
+.setrow.per-side > .n{grid-column:1;grid-row:1 / 3;align-self:start;margin-top:6px}
+.setrow.per-side > .side-left-label{grid-column:2;grid-row:1;align-self:center}
+.setrow.per-side > .side-left-w{grid-column:3;grid-row:1}
+.setrow.per-side > .side-left-r{grid-column:4;grid-row:1}
+.setrow.per-side > .side-right-label{grid-column:2;grid-row:2;align-self:center}
+.setrow.per-side > .side-right-w{grid-column:3;grid-row:2}
+.setrow.per-side > .side-right-r{grid-column:4;grid-row:2}
+.setrow.per-side > .side-checks{display:contents}
+.setrow.per-side > .side-checks > .chk:first-child{grid-column:5;grid-row:1;justify-self:center}
+.setrow.per-side > .side-checks > .chk:last-child{grid-column:5;grid-row:2;justify-self:center}
+/* bodyweight unilateral: one stepper per side spanning both value tracks */
+.setrow.per-side.no-col2 > .side-left-w{grid-column:3 / 5;grid-row:1}
+.setrow.per-side.no-col2 > .side-right-w{grid-column:3 / 5;grid-row:2}
+/* Unilateral + effort: effort is logged per side (projectSideSet averages L/R), so
+   each side gets its own RPE/RIR stepper inline — no extra sub-row. The eff track
+   is a full 1fr here (NOT the bilateral .9fr): two 28px keys + value need 56px and
+   a .9fr track drops to ~52px at 320px, squeezing the input to zero. Header and
+   rows share this template via one rule, so W/R/eff/check always line up. */
+.setrow.per-side.eff3,.sethead.per-side.eff3{
+  --set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px);
+  --set-check-col:6;column-gap:6px;
+}
+.setrow.per-side.eff3 > .side-left-eff{grid-column:5;grid-row:1}
+.setrow.per-side.eff3 > .side-right-eff{grid-column:5;grid-row:2}
+.setrow.per-side.eff3 > .side-checks > .chk:first-child{grid-column:6;grid-row:1}
+.setrow.per-side.eff3 > .side-checks > .chk:last-child{grid-column:6;grid-row:2}
+.sethead.per-side.eff3 > .eff-sp{grid-column:5}
+.sethead.per-side.eff3 > .ck-sp{grid-column:6;justify-self:center}
+/* bodyweight unilateral + effort: reps in col 3, effort in col 4 (overrides the
+   col 3/5 span from the plain no-col2 rule below via higher specificity). */
+.setrow.per-side.eff3.no-col2,.sethead.per-side.eff3.no-col2{
+  --set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px);
+  --set-check-col:5;
+}
+.setrow.per-side.eff3.no-col2 > .side-left-w{grid-column:3;grid-row:1}
+.setrow.per-side.eff3.no-col2 > .side-right-w{grid-column:3;grid-row:2}
+.setrow.per-side.eff3.no-col2 > .side-left-eff{grid-column:4;grid-row:1}
+.setrow.per-side.eff3.no-col2 > .side-right-eff{grid-column:4;grid-row:2}
+.setrow.per-side.eff3.no-col2 > .side-checks > .chk:first-child{grid-column:5;grid-row:1}
+.setrow.per-side.eff3.no-col2 > .side-checks > .chk:last-child{grid-column:5;grid-row:2}
+.sethead.per-side.eff3.no-col2 > .w-sp{grid-column:3}
+.sethead.per-side.eff3.no-col2 > .eff-sp{grid-column:4}
+.sethead.per-side.eff3.no-col2 > .ck-sp{grid-column:5;justify-self:center}
+/* programmed-target info key on unilateral + effort rows: one more 32px track,
+   info last — same ordering as the bilateral has-info pattern. Eff stays 1fr
+   (see above); header and rows share the template so check/info never drift. */
+.setrow.per-side.eff3.has-info,.sethead.per-side.eff3.has-info{
+  --set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px) minmax(30px,32px);
+  --set-check-col:6;--set-info-col:7;
+}
+.setrow.per-side.eff3.has-info > .setinfo{grid-column:7;grid-row:1 / 3;align-self:center;justify-self:center}
+.sethead.per-side.eff3.has-info > .info-sp{grid-column:7;justify-self:center}
+.setrow.per-side.eff3.no-col2.has-info,.sethead.per-side.eff3.no-col2.has-info{
+  --set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px) minmax(30px,32px);
+  --set-check-col:5;--set-info-col:6;
+}
+.setrow.per-side.eff3.no-col2.has-info > .setinfo{grid-column:6;grid-row:1 / 3;align-self:center;justify-self:center}
+.sethead.per-side.eff3.no-col2.has-info > .info-sp{grid-column:6;justify-self:center}
+.sethead.per-side > :nth-child(1){grid-column:1}
+.sethead.per-side > .w-sp{grid-column:3}
+.sethead.per-side > .r-sp{grid-column:4}
+.sethead.per-side.no-col2 > .w-sp{grid-column:3 / 5}
+.sethead.per-side > .ck-sp{grid-column:5;justify-self:center}
+.sethead.per-side.has-info > .info-sp{grid-column:6;justify-self:center}
+.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}
+.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}
+.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}
+/* compact action keys keep a real 44px target via ::after (visual 30-32px) */
+.setrow > .setgo{min-width:30px;min-height:30px}
+.setrow > .setinfo{width:32px;height:32px;min-width:32px;min-height:32px}
+/* Series rows: no hairline separators by design — row spacing comes from
+   .setrow padding (7px 0), so rows never stick together. Other dividers
+   (.lrow, .efftbl, .divider, .hdr.page) are untouched. */
 .setrow .n{
   width:24px;height:24px;border-radius:50%;background:var(--surface-2);color:var(--label-2);
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex:none;
@@ -671,79 +900,239 @@ h4.sec{
 }
 .setrow .stp{min-width:0}
 .setrow .stp button{width:32px;height:40px}
-/* a 3rd stepper (RIR) needs narrower buttons and a tighter row gap to fit next to weight+reps
-   on narrow phones, same technique as the exercise-config sheet's three-steppers-in-a-row
-   (.cfgrow below) — RIR's own value is short ("1.5") so its buttons shrink the most, weight/reps
-   just enough to make room since their values ("82.5", "12") need more of what's left.
-   The header shares the numbers so its labels stay centred over the steppers they name. */
-.setrow.eff3,.sethead.eff3{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.2fr) minmax(72px,1fr) minmax(68px,.85fr) 44px 44px;
-  --set-info-col:5;--set-check-col:6;column-gap:6px;min-width:0;
-}
-.setrow.eff3.no-col2,.sethead.eff3.no-col2{
-  --set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(68px,.85fr) 44px 44px;
-  --set-info-col:4;--set-check-col:5;min-width:0;
-}
-.setrow.per-side,.sethead.per-side{--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 88px}
-.setrow.per-side.eff3,.sethead.per-side.eff3{--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 44px 88px}
-.setrow.eff3 .stp button{width:32px}
-.setrow.eff3 .stp button{width:23px}
-.setrow.eff3 .stp.eff button{width:20px}
-.setrow.eff3 .stp .num{font-size:14px}
-/* Unilateral logging intentionally remains a wide, horizontally scrollable grid: both sides
-   and their two completion checks are too information-dense for a single phone-width row. */
-.setrow.per-side{min-width:560px}
-.sethead.per-side{min-width:560px}
-.setrow.per-side .stp.w{min-width:120px}
-.setrow.per-side .stp.r{min-width:84px}
-/* Keep the weight track wide enough for a six-character decimal value while the 32px controls
-   retain their existing touch target; the header and both side rows share this grid. */
-.setrow.per-side .side-input{width:6ch;min-width:6ch;flex:0 0 6ch}
-.setrow.per-side > .side-left-label{grid-column:2}
-.setrow.per-side > .side-right-label{grid-column:5}
-.setrow.per-side > .side-left-w{grid-column:3}
-.setrow.per-side > .side-left-r{grid-column:4}
-.setrow.per-side > .side-right-w{grid-column:6}
-.setrow.per-side > .side-right-r{grid-column:7}
-.setrow.per-side > .side-checks{grid-column:8;display:grid;grid-template-columns:44px 44px;align-items:center;width:100%;min-width:88px}
-.setrow.per-side > .side-checks > .chk{justify-self:center}
-.setrow.per-side.eff3 > .setinfo{grid-column:8;justify-self:center}
-.setrow.per-side.eff3 > .side-checks{grid-column:9}
-.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}
-.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}
-.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}
 @media (max-width:430px){
-  /* The scrollport is about 313px at 393px wide and about 350px at 430px wide inside a
-     workout card. Keep every non-unilateral row within those widths while preserving fixed
-     44px action/check tracks. */
-  .sethead,.setrow{min-width:0}
-  /* base (non-timed, non-eff3) rows: give the reps stepper room so a two-digit
-     value ("12") is not clipped into a ~12px slot at 360px. The weight stepper
-     keeps its 32px buttons; only the reps stepper narrows to 24px. */
-  .sethead,.setrow{--set-grid-template:minmax(24px,24px) minmax(104px,1.35fr) minmax(84px,1fr) 44px;column-gap:6px}
-  .setrow:not(.timed) .stp.r button{width:24px}
-  .setrow:not(.timed) .stp.r .num{font-size:15px}
-  /* Reserve a six-character value slot for decimal loads without widening the
-   row: the tighter gaps and timed-only buttons keep the action and completion tracks in view. */
-  .sethead.timed,.setrow.timed{
-    --set-grid-template:minmax(24px,24px) minmax(76px,.85fr) minmax(104px,1.35fr) 44px 44px;
-    column-gap:5px;
+  /* phones: single row everywhere — 4px column gaps, tighter row insets.
+     Headers mirror the row insets so PESO/REPS/RPE/check share one vertical
+     line; per-side rows slim the fixed badge/label rails (single-row, the
+     L-over-R side stacking is untouched). Painted key widths live in the
+     compact block below. */
+  .sethead,.setrow{column-gap:4px}
+  .sethead.timed,.setrow.timed{column-gap:4px}
+  .setrow.eff3,.sethead.eff3{column-gap:4px}
+  .setrow.per-side,.sethead.per-side{column-gap:4px}
+  .setrow{padding:7px 3px}
+  .sethead{padding:0 3px 6px}
+  .setrow.per-side{padding:8px 6px}
+  .sethead.per-side{padding:0 6px 6px}
+  .setrow.per-side,.sethead.per-side{
+    --set-grid-template:minmax(22px,22px) minmax(12px,16px) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px);
   }
-  .setrow.timed .stp button{width:23px}
-  .setrow.timed .stp.r .val{min-width:calc(6ch + 4px)}
-  .setrow.eff3,.sethead.eff3{
-    --set-grid-template:minmax(24px,24px) minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px;
-    column-gap:3px;
+  .setrow.per-side > .n{width:22px;height:22px;font-size:11px}
+  .setrow.per-side.eff3,.sethead.per-side.eff3{
+    --set-grid-template:minmax(22px,22px) minmax(12px,16px) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px);
   }
-  .setrow.eff3.no-col2,.sethead.eff3.no-col2{
-    --set-grid-template:minmax(24px,24px) minmax(70px,1.35fr) minmax(58px,.85fr) 44px 44px;
+  .setrow.per-side.eff3.has-info,.sethead.per-side.eff3.has-info{
+    --set-grid-template:minmax(22px,22px) minmax(12px,16px) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px) minmax(30px,32px);
   }
-  .setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}
-  .setrow.eff3 .stp .num{font-size:14px}
-  .setrow.per-side,.sethead.per-side{min-width:560px;column-gap:8px}
+  .setrow.per-side.eff3.no-col2,.sethead.per-side.eff3.no-col2{
+    --set-grid-template:minmax(22px,22px) minmax(12px,16px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px);
+  }
+  .setrow.per-side.eff3.no-col2.has-info,.sethead.per-side.eff3.no-col2.has-info{
+    --set-grid-template:minmax(22px,22px) minmax(12px,16px) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px) minmax(30px,32px);
+  }
 }
+/* (No ≤340px fallback: effort stays in the crowded first row at every width —
+   single-row contract. The ≤430px compact rules above already own gaps,
+   insets and slim rails for the narrowest phones.) */
+/* --- set-row compact: one single row at every width, worst cases legible ---
+   Every template above stays single-row (bilateral W/R/eff + check, per-side
+   L/R sides each inline) — no effort sub-row at any breakpoint. These later,
+   equal-or-higher-specificity rules win by source order so the contract pins
+   above stay verbatim:
+   · painted keys shrink to 24px (plain bilateral rows) / 22px (eff3, timed,
+     per-side) while the invisible ::after slop grows to match — 24+2×10 and
+     22+2×11 both offer a real 44×44 target (40px painted height + 2px slop
+     top/bottom). The touch token is unchanged; slop overlap between neighbours
+     resolves to the later (+/more) key, the same tradeoff as .iconbtn::after.
+   · 2px internal stepper gap, 4px column gaps (≤430px block above), 0-1px
+     value padding; the number goes fluid — clamp(12px→14px), tabular figures,
+     nowrap, min-width:0 flex:1 — so clipping can only degrade to "7…";
+   · empty effort inputs paint a dim "–" ghost (see cell/sideCell placeholder
+     in Workout.jsx + .stp .num::placeholder) so a vacant RPE reads as waiting
+     input in the same slot without collapsing it;
+   · row insets tighten to bilateral 7px 3px (7px 2px ≤360px) and per-side
+     8px 6px with headers mirroring both — one box model per kind, no
+     per-state margins, so .current's inset ring stays pure paint;
+   · no fixed minima anywhere — 320/360/390 cannot x-scroll, nothing overlaps:
+     every stepper track is minmax(0,1fr), every child min-width:0. */
+.setrow .stp{gap:2px}
+.setrow:not(.per-side) .stp button{width:24px}
+.setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:22px}
+.setrow:not(.per-side) .stp button::after{inset:-2px -10px}
+.setrow.eff3 .stp button::after,.setrow.timed .stp button::after,.setrow.per-side .stp button::after{inset:-2px -11px}
+.setrow .stp .val{padding:0 1px}
+.setrow .stp .num,.setrow.eff3 .stp .num,.setrow.timed .stp .num,.setrow.per-side .stp .num{
+  flex:1;font-size:clamp(12px,2.8vw + 3px,14px);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+}
+.stp .num::placeholder{color:var(--label-3);opacity:1}
+/* (No ≤430px effort sub-row: bilateral W/R/eff and per-side L/R sides each stay
+   on their own single row at every width — single-row contract. The compact
+   ≤430px rules above own gaps, insets and slim rails instead.) */
+/* ≤360px insets: bilateral rows shave one more px per side (header mirrors it).
+   Per-side rows keep the 8px 6px + slim rails from the ≤430px block above —
+   still single-row, zero x-scroll. */
+@media (max-width:360px){
+  .setrow{padding:7px 2px}
+  .sethead{padding:0 2px 6px}
+}
+/* --- set-row fluid: ONE single row from 280px phones to desktop, zero hard breakpoints ---
+   The compact pins above (24/22px keys, 2px gaps, 12-14px numbers) stay verbatim so
+   their contract tests keep passing; these later, equal-or-higher-specificity rules
+   win by source order and carry the fluid behaviour instead. No @media here on
+   purpose: every size below is a clamp()/vw continuum, so a 280px, 320px, 360px or
+   430px+ phone never hits a breakpoint cliff — it just resolves smaller numbers.
+
+   SPACE BUDGET (worst case per row: peso "200.75" + reps "10" + RPE "10", unilateral
+   L/R likewise). Scrollport S ≈ viewport − 80px (#app 2×16 + session-card 2×12 +
+   card 2×12; matches the measured 320px → ~240px scrollport):
+   · fixed chrome per bilateral row = badge 24 + check 30-32 + gaps + row padding.
+   · variable chrome per stepper = 2×key + 2×inner-gap; the value slot keeps the rest
+     (flex:1, min-width:0, nowrap + ellipsis INSIDE the input — a clipped value can
+     only degrade to "200…" and can never slide under the keys or x-scroll).
+   · fr BIAS (templates above, untouched — header mirrors row via the same
+     --set-grid-template, so W/R/eff columns share one vertical line):
+       bilateral W/R      = 1.35fr / 1fr        (weight owns 1.35/2.35 ≈ 57%)
+       bilateral W/R/eff  = 1.15fr / 1fr / .9fr (weight owns 1.15/3.05 ≈ 38%)
+       timed W/T          = .9fr / 1.3fr         (time owns the row, keys stay small)
+       per-side L/R sides = 1fr / 1fr symmetric on purpose: each sub-row holds a
+         single side's W+R, so there is no cross-side contest to bias; the bias
+     lives in the bilateral rows where "200.75"+"10"(+"10") actually coexist.
+   · measured budget (S, fixed, W-track, key, value-slot vs need ≈3.3×font):
+       280px: S=200, W=75.0, key=16.0, slot=36.2 vs need 37.6 → hairline micro-clip,
+         graceful (ellipsis inside input, keys untouched, no scroll)
+       320px: S=240, W=97.1, key=16.8, slot=56.3 vs need 41.6 → FITS (+14.7px)
+       360px: S=280, W=118.9, key=18.4, slot=74.5 vs need 45.5 → FITS (+29px)
+       430px: S=350, W=157.1, key=21.2, slot=106.4 vs need 49.5 → FITS (+57px)
+     eff3 bilateral at 320px: W-slot 23.9px shows "200…" while reps/RPE ("10" needs
+     ~15px, gets ~15.8px) still fit — the row stays single, nothing overlaps.
+     per-side L/R at 320px: each side slot ~35px shows "200.7…"; full fit ≥360px.
+   · 44px TOUCH TARGETS at every width: painted keys stay small (16-28px) while a
+     centred 44×44 ::after box (margin -22px trick, no dependency on painted size)
+     carries the real target — unlike fixed ±10/11px slop, this cannot shrink below
+     44px at the 280px floor nor balloon past it on desktop. Same for row checks.
+     Slop overlap between neighbours resolves to the later (+/more) key, the same
+     tradeoff the existing .iconbtn::after slop already makes.
+   · .current stays pure paint (inset box-shadow, untouched below); fused
+     .setgroup-done rows inherit all of this — fusion is background grouping only. */
+.setgrid-scroll .sethead,.setgrid-scroll .setrow{column-gap:clamp(2px,1vw + 1px,6px)}
+.setgrid-scroll .sethead{padding:0 clamp(2px,1vw - 1px,4px) 6px}
+.setgrid-scroll .setrow{padding:7px clamp(2px,1vw - 1px,4px)}
+.setgrid-scroll .sethead.per-side{padding:0 clamp(4px,1vw + 1px,8px) 6px}
+.setgrid-scroll .setrow.per-side{padding:8px clamp(4px,1vw + 1px,8px)}
+.setrow:not(.per-side) .stp button{width:clamp(16px,4vw + 4px,28px)}
+.setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:clamp(14px,3.6vw + 4px,24px)}
+.setrow .stp{gap:clamp(2px,0.5vw + 1px,4px)}
+.setrow .stp .num,.setrow.eff3 .stp .num,.setrow.timed .stp .num,.setrow.per-side .stp .num{
+  font-size:clamp(11px,3vw + 3px,15px);
+}
+.setrow .n{
+  width:clamp(20px,5vw + 6px,24px);height:clamp(20px,5vw + 6px,24px);
+  font-size:clamp(10px,2.4vw + 3px,12px);justify-self:center;
+}
+.setrow.per-side > .n{width:clamp(20px,5vw + 6px,22px);height:clamp(20px,5vw + 6px,22px)}
+.setrow .chk,.setrow .ck{width:clamp(28px,6vw + 9px,32px);height:clamp(28px,6vw + 9px,32px);justify-self:center}
+/* centred 44×44 slop: exact target at every width, independent of painted size */
+.setrow:not(.per-side) .stp button::after{left:50%;right:auto;top:50%;bottom:auto;width:44px;height:44px;margin:-22px 0 0 -22px}
+.setrow.eff3 .stp button::after,.setrow.timed .stp button::after,.setrow.per-side .stp button::after{left:50%;right:auto;top:50%;bottom:auto;width:44px;height:44px;margin:-22px 0 0 -22px}
+.setrow .chk::after,.setrow .ck::after{left:50%;right:auto;top:50%;bottom:auto;width:44px;height:44px;margin:-22px 0 0 -22px}
+/* --- per-side weight bias: fix truncated weight ("10…") on unilateral rows ---
+   Supersedes the symmetric 1fr/1fr per-side split pinned above (kept verbatim
+   for the contract tests): weight values run wider (decimals, "10.5"/"200.75")
+   than reps ("6") or RPE ("–"), so the W track owns ~57% of the value width —
+   the same bias bilateral rows already use. Header mirrors each row via the
+   same joint selector, so PESO/REPS/RPE share one vertical line with the
+   steppers. Bilateral/timed selectors untouched. Single-row contract kept: no
+   grid-row/column placement changes, every track minmax(0,…), every child
+   min-width:0 — no x-scroll. 44px targets still ride the centred ::after slop
+   above. .current stays paint-only; .setgroup-done rows inherit everything.
+   Budget (S ≈ viewport − 80px): 320px → W slot ~59px fits "200.75" (~49px);
+   eff3 → W ~35px fits "10.5" (~33px), RPE "–" fits; 360px → daylight. Below
+   ~300px the value ellipsis degrades honestly inside the input, never overlap. */
+.setrow.per-side,.sethead.per-side{
+  --set-grid-template:minmax(20px,22px) minmax(10px,14px) minmax(0,1.35fr) minmax(0,1fr) minmax(28px,30px);
+}
+.setrow.per-side.eff3,.sethead.per-side.eff3{
+  --set-grid-template:minmax(20px,22px) minmax(10px,14px) minmax(0,1.35fr) minmax(0,1fr) minmax(0,.85fr) minmax(28px,30px);
+}
+.setrow.per-side.eff3.has-info,.sethead.per-side.eff3.has-info{
+  --set-grid-template:minmax(20px,22px) minmax(10px,14px) minmax(0,1.35fr) minmax(0,1fr) minmax(0,.85fr) minmax(28px,30px) minmax(28px,30px);
+}
+.setrow.per-side.eff3.no-col2,.sethead.per-side.eff3.no-col2{
+  --set-grid-template:minmax(20px,22px) minmax(10px,14px) minmax(0,1.15fr) minmax(0,.85fr) minmax(28px,30px);
+}
+.setrow.per-side.eff3.no-col2.has-info,.sethead.per-side.eff3.no-col2.has-info{
+  --set-grid-template:minmax(20px,22px) minmax(10px,14px) minmax(0,1.15fr) minmax(0,.85fr) minmax(28px,30px) minmax(28px,30px);
+}
+/* squeeze per-side chrome only: fluid gaps/padding at their floor, narrower
+   L/R rail, smaller painted keys (slop above still carries the 44px target),
+   tighter stepper internals — the freed px stay in the value slots. */
+.setgrid-scroll .setrow.per-side,.setgrid-scroll .sethead.per-side{column-gap:clamp(2px,0.8vw + 1px,4px)}
+.setgrid-scroll .setrow.per-side{padding:8px clamp(4px,1vw + 1px,6px)}
+.setgrid-scroll .sethead.per-side{padding:0 clamp(4px,1vw + 1px,6px) 6px}
+.setrow.per-side .side-label{font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow.per-side .stp button{width:clamp(12px,3.2vw + 4px,22px)}
+.setrow.per-side .stp{gap:clamp(1px,0.5vw,2px)}
+.setrow.per-side .stp .val{padding:0}
+.setgrid-scroll .setrow.per-side .chk,.setgrid-scroll .setrow.per-side .ck{width:clamp(28px,6vw + 9px,30px);height:clamp(28px,6vw + 9px,30px)}
+.setrow.per-side > .setinfo{width:30px;height:30px;min-width:30px;min-height:30px}
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
-.setrow.done{opacity:.45}
+/* P0 set states — three visibly different rows, none of them "disabled":
+   · current: the next set to do — accent hairline box + dot, announced via aria-current
+   · done: completed — soft accent wash + filled number; the row stays full-contrast
+     (the old global .45 opacity read as disabled, which a finished set is not)
+   · pending: everything else — plain, but clearly not current */
+.setrow.done{background:var(--acc-soft);border-radius:var(--r-sm)}
+.setrow.done .stp{opacity:.82}
+/* Fused done runs: 2+ consecutive done .setrow merge into one .setgroup-done
+   card (JSX wraps the run; an isolated done row keeps its own wash above). The
+   group owns the single wash + radius and stacks its rows with gap:0 — rows
+   inside drop their individual wash/radius so the run reads as one piece.
+   Radius lives only on the group box; overflow:clip keeps inner corners square
+   while the outer corners round. Bilateral padding (7px 4px) and per-side
+   padding (10px 8px) are untouched — fusion is background grouping, never
+   layout — and the group is a plain block sibling, so its outer rhythm matches
+   a lone row exactly. Mobile-first: fluid block, min-width:0 throughout, no
+   fixed widths, so 320/360/390 cannot x-scroll or overlap. */
+.setgroup-done{background:var(--acc-soft);border-radius:var(--r-sm);
+  display:flex;flex-direction:column;gap:0;min-width:0;max-width:100%;overflow:clip;
+  animation:setfuse var(--med) var(--ease-exit)}
+.setgroup-done > .setrow{min-width:0;background:transparent;border-radius:0;box-shadow:none}
+.setgroup-done > .setrow.done{background:transparent;border-radius:0}
+/* Fusion feedback: opacity-only 220ms crossfade on the project ease — no height
+   or layout animation, so completing a set never jumps the grid. The key spans
+   the run length (see ExerciseBlock), so mounting/growing the group replays it
+   exactly at the fusion moment. prefers-reduced-motion is already honoured by
+   the global *{animation:none} rule — this degrades to an instant fuse. */
+@keyframes setfuse{from{opacity:.45}to{opacity:1}}
+/* current uses an INSET shadow (never outline/border/margin): it paints inside the
+   row box, so no ancestor can clip it — and .setgrid-scroll is overflow:visible
+   with zero x-overflow anyway, so the full hairline + radius always draw.
+   Every row shares ONE box model per kind — bilateral: padding:7px 4px,
+   per-side: padding:10px 8px, margin:0 everywhere — so selecting a set never moves the grid:
+   the ring is pure paint (inset box-shadow + background-clip), never layout.
+   The 4px inline air the old margin:-4px trick bought for the ring now lives in
+   the base padding itself, identical on all siblings. */
+.setrow.current{box-shadow:inset 0 0 0 1.5px var(--acc-line);border-radius:var(--r-sm);
+  background-clip:padding-box}
+.setrow.current .n{background:var(--acc-soft);color:var(--acc);position:relative}
+.setrow.current .n::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--acc);position:absolute;top:-1px;right:-1px}
+/* P0 optimistic complete (<100ms to first paint, never blocking input):
+   press scale .97 on the check, instant acc-soft fill, 180ms check stroke draw,
+   200ms number roll, 240ms progress sweep, one 400ms glow. The glow is cancelled
+   and re-armed if another set lands inside 400ms (see Check in ui.jsx). */
+.setrow{transition:background var(--fast) var(--ease)}
+.chk{transition:background var(--fast),box-shadow var(--fast),color var(--fast),transform 100ms var(--ease)}
+.chk:active{transform:scale(.97)}
+.chk .icn{stroke-dasharray:24;stroke-dashoffset:0}
+.chk.on .icn{animation:checkdraw 180ms var(--ease-exit)}
+@keyframes checkdraw{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
+.setrow.just-done{animation:setglow 400ms var(--ease-exit)}
+.setrow.just-done .n{animation:numroll 200ms var(--ease-exit)}
+@keyframes setglow{0%{box-shadow:inset 0 0 0 1.5px var(--acc)}100%{box-shadow:inset 0 0 0 0 transparent}}
+@keyframes numroll{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+.wprog i{transition:width var(--motion-push) var(--ease)}
+#timer{animation:timerin 160ms var(--ease-exit)}
+@keyframes timerin{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
 /* programmed target disclosure: keep the prescription prominent while the label and note
    remain compact. The fixed numeric track keeps 6 and 6,5 centred in the same place. */
 .setrow-info{
@@ -775,7 +1164,9 @@ h4.sec{
   font-size:13px;line-height:1.38;color:var(--acc);
 }
 .progline.warn{color:var(--yellow)}
-.progline svg{flex:none;margin-top:2px}
+/* icon rides the first text line: flex-start keeps multi-line wraps under the text,
+   align-self centers the glyph on that line instead of the 2px guess */
+.progline svg{flex:none;align-self:center}
 
 /* start a timed set (issue #16) — sits where you'd otherwise reach for the checkbox */
 .setrow .setgo{
@@ -833,27 +1224,62 @@ h4.sec{
   position:absolute;inset:0;background:rgba(0,0,0,.4);
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
   touch-action:none;overscroll-behavior:none;
+  animation:mbackin 160ms var(--ease-exit);
 }
+@keyframes mbackin{from{opacity:0}to{opacity:1}}
+.mback.leaving{animation:mbackout 160ms var(--ease-exit) forwards}
+@keyframes mbackout{from{opacity:1}to{opacity:0}}
 .sheet{
   position:absolute;left:0;right:0;bottom:0;background:var(--bg-el);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   padding:8px 18px calc(20px + var(--sab));
-  min-height:320px;max-height:90vh;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  animation:sheetup .34s var(--ease);
+  /* no min-height: a confirm is two buttons, not a 320px void — the sheet sizes
+     to its content and caps at 90dvh */
+  max-height:90vh;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  animation:sheetup var(--med) var(--ease);
   overscroll-behavior:contain;touch-action:pan-y;will-change:transform;
 }
+.sheet.leaving{animation:sheetdown 160ms var(--ease-exit) forwards}
+@keyframes sheetdown{from{transform:none}to{transform:translateY(40px);opacity:0}}
 .sheet.sheet-tall{height:75vh;height:75dvh}
 :root[data-theme="light"] .sheet{background:var(--bg)}
 @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
 .sheet .grab{width:44px;height:5px;border-radius:99px;background:var(--label-4);margin:6px auto 14px}
 .sheet h3{font-size:20px;font-weight:600;letter-spacing:-.021em;margin-bottom:14px}
+/* Sheet/center titles clear the absolute .modal-close X (36px visual, 48px hit
+   via ::after): bottom sheets reserve 48px on the right (36 + 12 gap, same as
+   the WorkoutDetail header row), centered dialogs keep symmetric 32px so
+   centered titles stay visually centered. Long titles wrap to two balanced
+   lines instead of sliding under the button. The X itself is untouched. */
+.sheet h3{padding-right:48px;min-width:0;overflow-wrap:anywhere;line-height:1.25;text-wrap:pretty}
+.center h3{padding-left:32px;padding-right:32px;min-width:0;overflow-wrap:anywhere;line-height:1.25;text-wrap:pretty}
+/* Icon-led sheet titles: the icon stays pinned while
+   the text takes every free pixel and wraps, so nothing reaches the X at
+   280–430px. Top-aligned so a two-line title reads cleanly. */
+.sheet h3.row,.center h3.row{align-items:flex-start}
+.sheet h3.row>.icn,.center h3.row>.icn{margin-top:3px}
+/* Split sheet titles (TopWeight and any future "name + Done" sheet): the name owns
+   the free space and clamps to two elegant lines; "Done" is a status chip reusing
+   .tag.acc (accent-soft pill, 12px) pinned to the first line when it fits, or to
+   its own row when the name is long. flex:none keeps the chip whole, wrap keeps it
+   clear of the 48px X reserve — it is never part of the title sentence. */
+.sheet h3.sheet-done-title{flex-wrap:wrap;gap:6px 8px}
+.sheet-done-name{
+  flex:1 1 8ch;min-width:0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  overflow:hidden;overflow-wrap:anywhere;text-wrap:pretty;
+}
+.done-chip{flex:none;align-self:flex-start;margin-top:3px}
+.done-chip .icn{font-size:13px}
 .center{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:min(calc(100vw - 32px),340px);background:var(--bg-el);border-radius:var(--r-lg);padding:20px;
   box-shadow:0 20px 60px -12px rgba(0,0,0,.5);
-  animation:pop .28s var(--ease);
+  animation:pop var(--med) var(--ease);
 }
-:root[data-theme="light"] .center{background:#fff}
+.center.leaving{animation:popout 160ms var(--ease-exit) forwards}
+@keyframes popout{from{transform:translate(-50%,-50%) scale(1);opacity:1}to{transform:translate(-50%,-50%) scale(.96);opacity:0}}
+:root[data-theme="light"] .center{background:var(--surface)}
 .modal-close{
   position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;z-index:1;
   display:flex;align-items:center;justify-content:center;color:var(--label-2);font-size:28px;
@@ -862,7 +1288,14 @@ h4.sec{
 .modal-close:active{background:var(--surface-2);color:var(--label)}
 .sheet>.modal-close{top:12px;right:14px}
 .center .modal-close{top:8px;right:8px}
-.calendar-nav{padding-inline:44px}
+/* Month-calendar nav: the row keeps a 44px reserve on the right so the
+   next-month arrow never slides under the absolute .modal-close X (36px at
+   right:14px); the left side needs no reserve. The title owns the free space
+   and stays on one line at every width — "Septiembre 2026" fits 320px via a
+   fluid 16–18px size, with nowrap + ellipsis as the backstop. Arrows stay 44px. */
+.calendar-nav{padding-right:44px;gap:8px}
+.calendar-nav .iconbtn{flex:none}
+.calendar-nav h3{flex:1;min-width:0;margin:0;padding-right:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(16px,5vw,18px);line-height:1.25}
 @keyframes pop{from{transform:translate(-50%,-50%) scale(.94);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
 /* --- RIR/RPE conversion table (effort help sheet) ---
@@ -901,8 +1334,15 @@ h4.sec{
 .glyph-cell:active{transform:scale(.92)}
 .glyph-cell.on{background:var(--acc);color:var(--on-acc)}
 
-/* --- big weight readout --- */
-.bwstep{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;min-width:0;margin:14px 0 6px}
+/* --- big weight readout ---
+   Fixed side tracks (56px) + flexible centre: the stepper buttons stay pinned
+   in place no matter how wide the number gets ("70,0" vs "92,5" vs "120,0").
+   The old 1fr auto 1fr hugged the buttons to the centre track, so every digit
+   change pushed them apart. The centre track is minmax(0,1fr) with the readout
+   centred inside it; tabular figures keep decimals steady. */
+.bwstep{display:grid;grid-template-columns:56px minmax(0,1fr) 56px;align-items:center;gap:12px;width:100%;min-width:0;margin:14px 0 6px}
+.bwstep > .bw-pm:first-child{justify-self:center}
+.bwstep > .bw-pm:last-child{justify-self:center}
 .bw-pm{
   width:46px;height:46px;border-radius:50%;background:var(--surface);flex:none;
   color:var(--label);display:flex;align-items:center;justify-content:center;font-size:19px;
@@ -910,14 +1350,25 @@ h4.sec{
 }
 .bw-pm:active{background:var(--surface-2);transform:scale(.92)}
 .bw-read{
-  font-size:clamp(34px,13vw,52px);font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
+  font-size:clamp(34px,13vw,52px);font-weight:600;letter-spacing:-.035em;min-width:0;max-width:100%;
+  justify-self:center;text-align:center;
   font-variant-numeric:tabular-nums;line-height:1;
 }
 .workout-session .iconbtn,.workout-session .setgo,.workout-session .setinfo{min-width:44px;min-height:44px}
 .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}
 .workout-session .session-card:focus-visible{box-shadow:0 0 0 2px var(--acc);outline-offset:4px}
 .workout-session .session-card{padding:12px;margin-bottom:8px}
+.workout-session .session-card{min-width:0}
 .workout-session .session-card .card{padding:12px}
+.workout-session .session-card .card{min-width:0}
+/* Exercise x/y head: the title ellipsises, the move group never shrinks, so the
+   chevrons stay fully visible at 320–393px with zero x-scroll. */
+.workout-session .session-card-head{gap:8px}
+.workout-session .session-card-head > h2{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workout-session .session-card-head > .row{flex:none}
+/* The TabBar floats over content: #app already reserves 100px + safe-area, and
+   the workout keeps its own 40px spacer above it — nothing actionable hides. */
+.workout-session{min-width:0;overflow-x:clip}
 .workout-session-nav{align-items:stretch;justify-content:space-between;gap:6px}
 .workout-session-nav > button{flex:1 1 0;width:auto}
 @media (prefers-reduced-motion: reduce){
@@ -925,17 +1376,17 @@ h4.sec{
   .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat))}
   .workout-session .wprog{scroll-behavior:auto}
 }
-.bw-read.editable{display:flex;align-items:baseline;justify-content:center;gap:7px;min-width:0;flex:1 1 auto}
+.bw-read.editable{display:flex;align-items:baseline;justify-content:center;gap:4px;min-width:0}
 .bw-read-input{
-  flex:1 1 150px;width:150px;min-width:0;max-width:150px;background:none;border:none;outline:none;
-  text-align:right;color:var(--label);font:inherit;letter-spacing:inherit;padding:0;
-  font-variant-numeric:tabular-nums;
+  flex:0 1 auto;width:auto;min-width:2ch;max-width:100%;background:none;border:none;outline:none;
+  text-align:center;color:var(--label);font:inherit;letter-spacing:inherit;padding:0;
+  font-variant-numeric:tabular-nums;field-sizing:content;
 }
 .bw-read-input:focus{box-shadow:0 2px 0 var(--acc)}
-.bw-read .u{font-size:clamp(16px,5vw,19px);color:var(--label-2);font-weight:400;letter-spacing:-.01em;white-space:nowrap}
+.bw-read .u{font-size:clamp(16px,5vw,19px);color:var(--label-2);font-weight:400;letter-spacing:-.01em;white-space:nowrap;flex:none}
 .bwin{display:flex;align-items:baseline;justify-content:center;gap:7px;margin:16px 0}
 .bwin input{
-  width:150px;background:none;border:none;outline:none;text-align:right;
+  width:150px;background:none;border:none;outline:none;text-align:center;
   font-size:52px;font-weight:600;letter-spacing:-.035em;color:var(--label);
 }
 .bwin span{color:var(--label-2);font-size:19px}
@@ -944,17 +1395,21 @@ h4.sec{
    row. Let the input take only the space left by the unit instead of preserving its desktop
    150px basis; the responsive readout size keeps the complete decimal value visible. */
 @media (max-width:360px){
-  .bwstep{gap:6px}
+  .bwstep{grid-template-columns:52px minmax(0,1fr) 52px;gap:6px}
   .bw-pm{width:44px;height:44px}
   .bw-read{min-width:0}
   .bw-read.editable{gap:3px}
-  .bw-read-input{flex:1 1 0;width:0;max-width:none}
 }
 
-/* --------------------------------------------------------------- charts -- */
-.chart{width:100%;overflow:hidden}
-.chart svg{display:block;width:100%;height:auto}
-.chart-i{position:relative;touch-action:pan-y}
+/* --------------------------------------------------------------- charts --
+   Full-bleed inside the card: the chart and every ancestor shrink (min-w-0) so
+   the fluid SVG (width:100%) never gets clipped on the right; symmetric card
+   padding keeps both edges even. No ResizeObserver needed — the viewBox scales
+   with CSS alone and the tooltip already reads live widths. */
+.chart{width:100%;min-width:0;max-width:100%;overflow:hidden}
+.chart svg{display:block;width:100%;max-width:100%;height:auto}
+.chart-i{position:relative;touch-action:pan-y;width:100%;min-width:0;max-width:100%}
+.card,.sect-b{min-width:0}
 /* left/top are written by LineChart after measuring the label, so it can never be
    pushed under the `.chart` clip at either edge — hence no offset here. */
 .ctip{
@@ -1017,12 +1472,26 @@ h4.sec{
 .mrow .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mrow .bar{width:74px;height:5px;border-radius:3px;background:var(--surface-2);flex:none;overflow:hidden}
 .mrow .bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
-.mrow .v{font-size:12px;color:var(--label-2);min-width:52px;text-align:right;flex:none}
+.mrow .v{font-size:12px;color:var(--label-2);min-width:52px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+/* --- effort histogram: fixed label | flexible bar (shared baseline) | tabular value ---
+   Mobile-first: label column is fixed so every bar starts at the same x; the bar
+   flexes, the value keeps a fixed right-aligned tabular slot. No x-scroll at 320px. */
+.mrow.effort .nm{flex:none;width:64px;min-width:64px}
+.mrow.effort .bar{flex:1 1 auto;width:auto;min-width:0}
+.mrow.effort .v{min-width:88px}
+/* --- exercise history rows (Stats): date left, sets as wrapping chips ---
+   Replaces the old join('  ') single-line span that overflowed at 320-430px. */
+.ex-hist-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}
+.ex-hist-date{flex:none;min-width:0}
+.ex-sets{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 8px;min-width:0;max-width:100%;text-align:right;font-variant-numeric:tabular-nums}
+.ex-set{overflow-wrap:anywhere;min-width:0}
+.ex-note{line-height:1.5;overflow-wrap:anywhere;min-width:0}
 /* A headline number inside a card — tile weight without a tile around it, for the pair of
    readings at the top of the effort card. */
 .stat-v{font-size:26px;font-weight:600;letter-spacing:-.026em;line-height:1.1}
 .mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.mchip{font-size:12px;padding:4px 9px;border-radius:99px;background:var(--surface-2);color:var(--label-2)}
+/* non-interactive by default, but sized like .chip so any future tap target is real */
+.mchip{font-size:12px;padding:4px 9px;border-radius:99px;background:var(--surface-2);color:var(--label-2);display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
 .mchip.miss{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
 
 /* --- stat tiles --- */
@@ -1067,6 +1536,40 @@ h4.sec{
   width:max-content;max-width:calc(100% - 2 * var(--pad));text-align:center;overflow-wrap:anywhere;
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* P0 toast variants: a 3px leading edge carries the kind (icon-free, no emoji),
+   the action is a real ≥44px button, never a bare text tap */
+#toast.has-action{display:flex;align-items:center;gap:12px;padding:7px 8px 7px 20px;text-align:left}
+#toast .toast-msg{flex:1;min-width:0}
+#toast .toast-act{
+  flex:none;min-width:44px;min-height:44px;padding:8px 14px;border-radius:10px;
+  background:var(--acc-soft);color:var(--acc);font-size:15px;font-weight:600;
+}
+#toast.toast-success{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--acc)}
+#toast.toast-warning{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--orange)}
+#toast.toast-error{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--red)}
+
+/* ------------------------------------------------------- P0 skeletons --- */
+/* Loading rule: <300ms nothing · 300ms–1s inline spinner · >1s skeleton (see
+   loadingStage in ui.jsx). Every placeholder reserves the exact height of the
+   content it stands in for — zero layout shift when data lands. Shimmer runs
+   1.4s and only with reduced-motion off (blanket kill covers the rest). */
+.skel{
+  background:var(--surface);border-radius:var(--r-card);position:relative;overflow:hidden;
+  min-height:44px;
+}
+.skel::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--label) 7%,transparent) 50%,transparent 80%);
+  animation:shimmer 1.4s linear infinite;
+}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.skel-week{height:118px;border-radius:var(--r-lg)}
+.skel-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.skel-tiles .skel{height:86px}
+.skel-row{height:60px;margin-bottom:8px}
+.skel-chart{height:160px}
+.skel-thumb{width:50px;height:50px;border-radius:9px;min-height:0;flex:none}
+.skel-hdr{height:40px;width:55%;margin:8px 0 18px}
 
 /* ---------------------------------------------------------------- misc --- */
 .empty{text-align:center;color:var(--label-2);padding:44px 20px;font-size:15px;line-height:1.45}
@@ -1103,11 +1606,22 @@ h4.sec{
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
 .export-calendar-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 
-/* --- accent swatches --- */
-.swatches{display:flex;gap:12px;flex-wrap:wrap}
-.swatch{width:44px;height:44px;border-radius:50%;flex:none;position:relative;transition:transform var(--fast)}
+/* --- accent swatches ---
+   One row, always: 8 accents in a nowrap flex strip, never scroll-x, never a
+   second row. Painted circle is 26px; the 44px touch target survives via the
+   ::before slop (inset -9px), not painted size. Gap is fluid so the 320px
+   budget holds: 8×26 + 7×6.4 ≈ 253px inside ~260px usable.
+   The selected ring (.swatch.on::after at inset -3px + 2px shadow = 5px past
+   the painted edge) needs 5px of breathing room: padding:5px gives it a home
+   so neither the first nor the last ring is clipped, margin:-5px compensates
+   so card/row spacing is unchanged, and overflow:visible (was hidden, which
+   sliced the rings at the strip edges) lets the ring paint into that padding.
+   Page-level overflow-x:clip still guards against horizontal scroll. */
+.swatches{display:flex;flex-wrap:nowrap;gap:clamp(6px,2vw,10px);justify-content:flex-start;align-items:center;overflow:visible;min-width:0;padding:5px;margin:-5px}
+.swatch{width:26px;height:26px;flex:none;border-radius:50%;position:relative;transition:transform var(--fast)}
+.swatch::before{content:'';position:absolute;inset:-9px;border-radius:50%}
 .swatch:active{transform:scale(.9)}
-.swatch.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px var(--label)}
+.swatch.on::after{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 0 2px var(--label)}
 
 /* --- supersets --- */
 .ss-label{
@@ -1164,6 +1678,8 @@ h4.sec{
   .lrow{flex-wrap:wrap;row-gap:8px}
   .lrow-m{flex:1 1 140px}
   .seg-inline{flex:1 1 100%;min-width:0}
+  /* stacked mode wins over the shared Appearance column above */
+  .sect-b .seg-inline{width:auto}
 }
 /* intermediate tablet: 3-column tiles under a 700px shell */
 @media (min-width:700px) and (max-width:999px){

@@ -11,6 +11,9 @@ const pushRestTimer = sec => { if (useStore.getState().user) api('/api/push/rest
 const cancelPushRestTimer = () => { if (useStore.getState().user) api('/api/push/rest-timer/cancel', { method: 'POST', body: '{}' }).catch(() => {}) }
 
 let toastTm = null
+let toastQueued = null   // max 1 waiting: a burst shows the latest, never a stack
+const TOAST_PLAIN_MS = 2600
+const TOAST_ACTION_MS = 4500
 let timerInt = null
 let timerTick = null
 let workInt = null
@@ -20,6 +23,9 @@ let workDone = null
 export const useUI = create((set, get) => ({
   sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked, tall }
   toastMsg: '',
+  toastKind: 'neutral',   // neutral | success | warning | error
+  toastAction: null,      // { label, onClick } — e.g. Undo, 4–5s on screen
+  toastKey: 0,
   timer: null,         // rest countdown between sets — { left, total, endsAt, sid }
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
 
@@ -33,10 +39,27 @@ export const useUI = create((set, get) => ({
   closeSheet(id) { set(s => ({ sheets: s.sheets.filter(x => x.id !== id) })) },
   closeAll() { set({ sheets: [] }) },
 
-  toast(msg) {
-    set({ toastMsg: msg })
+  // toast(msg, { kind, action:{label,onClick}, duration }): one toast on screen, max
+  // one queued. An action toast (Undo) stays 4–5s; plain toasts keep the old 2.6s.
+  toast(msg, opts = {}) {
+    if (get().toastMsg) { toastQueued = { msg, opts }; return }
+    get().showToast(msg, opts)
+  },
+  showToast(msg, opts = {}) {
+    const action = opts.action || null
+    set(s => ({ toastMsg: msg, toastKind: opts.kind || 'neutral', toastAction: action, toastKey: s.toastKey + 1 }))
     clearTimeout(toastTm)
-    toastTm = setTimeout(() => set({ toastMsg: '' }), 2200)
+    toastTm = setTimeout(() => get().dismissToast(), opts.duration || (action ? TOAST_ACTION_MS : TOAST_PLAIN_MS))
+  },
+  dismissToast() {
+    clearTimeout(toastTm)
+    set({ toastMsg: '', toastAction: null })
+    if (toastQueued) { const next = toastQueued; toastQueued = null; get().showToast(next.msg, next.opts) }
+  },
+  runToastAction() {
+    const fn = get().toastAction?.onClick
+    get().dismissToast()
+    if (fn) fn()
   },
 
   startRest(sec, sid = null) {

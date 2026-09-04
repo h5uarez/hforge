@@ -11,7 +11,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, TextArea } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, TextArea, SearchField } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
@@ -113,8 +113,7 @@ export function ConfirmDialog({ title, message, confirmText, cancelText, danger,
     {title && <h3 style={{ marginBottom: 8, paddingLeft: 32, paddingRight: 32, overflowWrap: 'anywhere' }}>{title}</h3>}
     <div className="muted" style={{ marginBottom: 18, lineHeight: 1.5 }}>{message}</div>
     <button className={'btn ' + (danger ? 'danger' : 'primary')} onClick={() => { close(); onConfirm && onConfirm() }}>{confirmText || t('Confirm')}</button>
-    <div style={{ height: 8 }} />
-    <Button variant="ghost" className="dim" onClick={close}>{cancelText || t('Cancel')}</Button>
+    <Button variant="ghost" className="dim" style={{ marginTop: 8 }} onClick={close}>{cancelText || t('Cancel')}</Button>
   </div>
 }
 // Themed replacement for window.confirm — callback-based (no blocking).
@@ -183,18 +182,19 @@ function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight 
       <div className={'bw-read' + (allowDecimals ? ' editable' : '')}>
         {allowDecimals
           ? <NumberField value={sv} displayValue={fmtWeight(sv, true)} decimal={true}
+              size={Math.max(2, String(fmtWeight(sv, true)).length)}
               aria-label={t('Confirm the weight you worked with — your highest becomes the default next time.')}
               className="bw-read-input" onChange={v => setValue(clampWeight(v, unit, true))} />
           : fmtWeight(sv)}
-        <span className="u"> {unit}</span>
+        <span className="u">{unit}</span>
       </div>
       <button className="bw-pm" onClick={() => onAdjust(primary)} aria-label={bodyweight ? t('Increase {0}', quickAmount + ' ' + unit) : t('Increase')}>
         {bodyweight ? '+' + quickAmount : <Icon name="plus" />}
       </button>
     </div>
-    <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
+    {chips.length > 0 && <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
       {chips.map(delta => <button key={delta} className="chip" onClick={() => onAdjust(delta)} aria-label={t(delta < 0 ? 'Decrease {0}' : 'Increase {0}', fmtWeight(Math.abs(delta), allowDecimals) + ' ' + unit)}>{delta < 0 ? '−' : '+'}{fmtWeight(Math.abs(delta), allowDecimals)}</button>)}
-    </div>
+    </div>}
       <Slider value={sv} min={min} max={max} step={step} onChange={onSlide} />
   </>
 }
@@ -235,7 +235,7 @@ function BwSheet({ required, onDone, close }) {
         {recent.map(b => <div key={b.d} className="row between" style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}>
           <span className="small muted">{fmtDate(b.d, true)}</span>
           <span className="row" style={{ gap: 12 }}><b>{fmtNum(b.w)} {unit}</b>
-            <button className="iconbtn" style={{ width: 32, height: 30, borderRadius: 8, fontSize: 15, color: 'var(--red)' }} onClick={() => delEntry(b.d)} aria-label={t('delete')}><Icon name="trash" /></button></span>
+            <button className="iconbtn" style={{ width: 44, height: 44, borderRadius: 10, fontSize: 15, color: 'var(--red)' }} onClick={() => delEntry(b.d)} aria-label={t('delete')}><Icon name="trash" /></button></span>
         </div>)}
       </div>
     </>}
@@ -543,8 +543,8 @@ function ExercisePicker({ onPick, close }) {
   const chosenCount = Object.keys(usage).length
   return <>
     <h3>{t('Add exercise')}</h3>
-    <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} /></div>
+    <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(50) }} onClear={() => { setQ(''); setShown(50) }}
+      placeholder={t('Search {0} exercises…', all.length)} aria-label={t('Search {0} exercises…', all.length)} />
     <div className="chips" style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
       {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
       <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
@@ -581,11 +581,17 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit }) {
   const inherited = policyFor({ id: ex.id }, routine, mode)
   const active = policyFor({ ...c, id: ex.id }, routine, mode)
   const inc = c.inc > 0 ? c.inc : (mode === 'time' ? 5 : defaultIncrement(ex.id, unit))
+  // The closed row is one line (Regla | value | chevron), so the follow label shows
+  // short ("Seguir la rutina") while the full policy name stays reachable: as the
+  // value's title tooltip and as the sheet option's subtitle. Stripping the trailing
+  // "(…)" works in every locale — all of them render this key as Name ({0}).
+  const followFull = t('Follow the routine ({0})', t(POLICY_NAME[inherited]))
+  const followShort = followFull.replace(/\s*[（(][^)）]*[)）]\s*$/, '')
   return <>
     <h4 className="sec">{t('Progression')}</h4>
-    <div className="sect-b" style={{ marginBottom: 8 }}>
-      <SelectRow title={t('Rule')} sheetTitle={t('Progression')} value={c.prog || ''} onChange={v => setC(x => ({ ...x, prog: v || undefined }))}
-        options={[{ value: '', label: t('Follow the routine ({0})', t(POLICY_NAME[inherited])) },
+    <div className="sect-b prog-setting" style={{ marginBottom: 8 }}>
+      <SelectRow title={t('Rule')} sheetTitle={t('Progression')} value={c.prog || ''} valueTitle={(c.prog || '') === '' ? followFull : undefined} onChange={v => setC(x => ({ ...x, prog: v || undefined }))}
+        options={[{ value: '', label: followShort, subtitle: t(POLICY_NAME[inherited]) },
           ...options.map(p => ({ value: p, label: t(POLICY_NAME[p]) }))]} />
     </div>
     <div className="small dim" style={{ marginBottom: active === 'off' ? 18 : 10 }}>{t(POLICY_DESC[active])}</div>
@@ -1250,7 +1256,10 @@ function TopWeight({ entryIdx, close }) {
     } else toast(t('Tracked — next time starts at {0}', fmtWeight(S().exWeights[entry.id].w, true) + ' ' + st.unit))
   }
   return <>
-    <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" className="acc-ink" />{t('{0} done', exerciseName(ex))}</h3>
+    {/* Split title: the exercise name owns the text (elegant 2-line clamp) and
+        "Done" is a status chip — never one sentence, so long names like
+        "Elevación de gemelos…" stay readable at 320px. */}
+    <h3 className="capitalize row sheet-done-title"><span className="sheet-done-name">{exerciseName(ex)}</span><span className="tag acc done-chip"><Icon name="checkCircle" />{t('Done')}</span></h3>
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
     <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals />
     <div style={{ height: 10 }} />

@@ -10,6 +10,7 @@ import Home1RM from '../components/Home1RM.jsx'
 import HomeWarmup from '../components/HomeWarmup.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
+import { useScrolled } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
@@ -47,9 +48,10 @@ export default function Home() {
 
   // today's session shown right under the week strip
   const onToday = () => { if (S.active) nav('/workout'); else if (routine) startFlow(routine.id); else dayOverrideSheet(todayISO()) }
+  const scrolled = useScrolled()
 
   return <div className="narrow">
-    <div className="hdr">
+    <div className={'hdr page' + (scrolled ? ' scrolled' : '')}>
       <div><h1>{user ? t('Hi {0}', user.name) : 'Hforge'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
       <div className="row" style={{ gap: 8 }}>
         <button type="button" className="iconbtn" onClick={() => workoutExportSheet()} aria-label={t('Export')}><Icon name="download" /></button>

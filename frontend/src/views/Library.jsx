@@ -7,7 +7,7 @@ import { t } from '../lib/i18n.js'
 import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button } from '../components/ui.jsx'
+import { Button, SearchField } from '../components/ui.jsx'
 
 export default function Library() {
   const S = useStore(s => s.S)
@@ -26,8 +26,8 @@ export default function Library() {
   return <>
     <div className="hdr"><div><h1>{t('Exercises')}</h1><div className="sub">{t('{0} exercises with animations', EXDB.length)}</div></div></div>
     <div className="library-search">
-      <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-        <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
+      <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(40) }} onClear={() => { setQ(''); setShown(40) }}
+        placeholder={t('Search…')} aria-label={t('Search…')} />
       <Button type="button" size="sm" variant="tinted" className="filter-toggle"
         trailingIcon={filtersOpen ? 'chevronUp' : 'chevronDown'}
         aria-label={t('Filters') + (activeFilterCount ? ` (${activeFilterCount})` : '')}
@@ -60,7 +60,7 @@ export default function Library() {
           <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
         </div>
       })}
-      {f.length === 0 && <div className="empty"><div className="ico"><Icon name="magnifier" /></div>{t('No match')}</div>}
+      {f.length === 0 && <div className="empty"><div className="ico"><Icon name="magnifier" /></div><div>{t('No match')}</div><div className="small dim" style={{ marginTop: 6 }}>{t('Try a shorter name — “press” finds every press there is.')}</div><Button variant="tinted" size="sm" style={{ marginTop: 14 }} onClick={() => { setQ(''); setBp(''); setEq(''); setShown(40) }}>{t('Clear')}</Button></div>}
     </div>
     {f.length > shown && <><div style={{ height: 10 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
   </>

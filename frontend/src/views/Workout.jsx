@@ -120,17 +120,22 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
   const cell = (s, i, col, cls) => (
     <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
-      {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
-      <span className="val"><NumberField aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
+      {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
+          Vacant effort paints a dim "–" ghost so the slot reads as waiting input
+          in the same full-width track (see .stp .num::placeholder). */}
+      <span className="val"><NumberField aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.opt ? '–' : undefined} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   )
+  // Effort steps on its own scale (see stepEffort) — routing col.eff through it keeps
+  // the per-side RPE/RIR cells honest: + on empty starts at the scale floor (RPE 5),
+  // − on empty stays empty, stepping off the floor clears the cell (null drops the key).
   const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
-    <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-   <span className="val"><NumberField className="side-input" aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
-   <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
-   </div>
+    <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
+   <span className="val"><NumberField className="side-input" aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.opt ? '–' : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+   <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+    </div>
   // Disclosure: which set rows have their immutable planned target revealed. A new Set on
   // every change so React notices — disclosure is local UI state, never persisted.
   const [disclosed, setDisclosed] = useState(() => new Set())
@@ -148,6 +153,10 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
   const perSide = isPerSide(cfg) && !cardio && !timed
   const gridClass = (col3 ? ' eff3' : '') + (perSide ? ' per-side' : '') + (!col2 ? ' no-col2' : '') + (timed ? ' timed' : '')
+  // The info track only exists when at least one set has a compatible target —
+  // otherwise rows collapse it and the check moves up (no empty 44px track).
+  const anyTarget = !!col3 && entry.sets.some(s => setTarget(s))
+  const headClass = 'sethead' + gridClass + (anyTarget ? ' has-info' : '')
   const startLongPress = i => {
     cancelLongPress()
     lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
@@ -198,17 +207,28 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className="setgrid-scroll">
-      <div className={'sethead' + gridClass}>
+      <div className={headClass}>
         <span className="n-sp" />{perSide ? <>
-          <span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>
-          <span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>{col3 && <span className="info-sp" />}
-        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{col3 && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+          {/* per-side rows always stack L/R, so one shared W/R pair + check */}
+          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{anyTarget && <span className="info-sp" />}<span className="ck-sp" />
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{anyTarget && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
       </div>
-      {entry.sets.map((s, i) => {
-        const target = setTarget(s)
-        const isOpen = disclosed.has(i)
-        return <Fragment key={i}>
-           <div className={'setrow' + (projectSideSet(s).done ? ' done' : '') + gridClass}
+      {(() => {
+        // Done-run fusion: 2+ consecutive done rows render inside one .setgroup-done
+        // card (single wash/border/radius); an isolated done row renders bare as before.
+        // setDoneAt reuses entry.sets.map so the composition contract below still holds.
+        const setDoneAt = entry.sets.map(s => projectSideSet(s).done)
+        const firstPending = entry.sets.findIndex((s, i) => !setDoneAt[i])
+        const renderSetRow = (s, i) => {
+          const target = setTarget(s)
+          const isOpen = disclosed.has(i)
+          // P0: the first unfinished set is "current" (accent box + dot + aria-current);
+          // finished sets are "done" (soft wash, full contrast); the rest are pending.
+          const sDone = setDoneAt[i]
+          const isCurrent = !sDone && firstPending === i
+          return <Fragment key={i}>
+           <div className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass + (target ? ' has-info' : '')}
+            aria-current={isCurrent ? 'true' : undefined}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
               // stepper would fight with the stepper's own tap, so the row's long-press
@@ -221,8 +241,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
             onPointerLeave={cancelLongPress}>
             <div className="n">{i + 1}</div>
             {perSide ? <>
-              <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}
-              <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}
+              <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
+              <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}{col3 && sideCell(s, i, 'right', col3, 'eff')}
             </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
             {/* A timed set is started, not typed: the timer counts the hold down and checks the
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
@@ -248,7 +268,25 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
             <span className="dim small note">{t('read-only')}</span>
           </div>}
         </Fragment>
-      })}
+        }
+        const out = []
+        let k = 0
+        while (k < entry.sets.length) {
+          if (setDoneAt[k] && setDoneAt[k + 1]) {
+            let j = k + 2
+            while (j < entry.sets.length && setDoneAt[j]) j++
+            // Key spans the run end so growing the run remounts the group and the
+            // setfuse animation replays exactly at the fusion moment — no FLIP, no
+            // height animation, opacity only, so there is no layout jump.
+            out.push(<div key={'g' + k + '-' + j} className="setgroup-done">{entry.sets.slice(k, j).map((s, t) => renderSetRow(s, k + t))}</div>)
+            k = j
+          } else {
+            out.push(renderSetRow(entry.sets[k], k))
+            k++
+          }
+        }
+        return out
+      })()}
       </div>
       <div style={{ height: 8 }} />
       <div className="row">
@@ -393,7 +431,15 @@ function ActiveWorkout() {
     else if (isPerSide(e.target)) e.sets.push({ left: { w: l?.left?.w ?? 0, r: l?.left?.r ?? sideReps(e.target.reps), done: false }, right: { w: l?.right?.w ?? 0, r: l?.right?.r ?? sideReps(e.target.reps), done: false }, w: e.target.weight || 0, r: e.target.reps, done: false })
     else e.sets.push({ w: l ? l.w : 0, r: l ? l.r : e.target.reps, done: false })
   })
-  const removeSet = idx => mutEntry(idx, e => { if (e.sets.length > 1) e.sets.pop() })
+  const removeSet = idx => {
+    const sets = A.entries[idx]?.sets || []
+    if (sets.length <= 1) return
+    const removed = sets[sets.length - 1]
+    mutEntry(idx, e => { if (e.sets.length > 1) e.sets.pop() })
+    // P0 Undo: the popped set snapshot is restored verbatim, same position
+    useUI.getState().toast(t('Set removed'), { kind: 'neutral',
+      action: { label: t('Undo'), onClick: () => mutEntry(idx, e => { e.sets.push(removed) }) } })
+  }
 
   // A timed set is held, not typed. The work timer records what was actually held — an early
   // finish logs 0:38 of a 0:45 target rather than crediting the full prescription — and then
@@ -542,7 +588,7 @@ function ActiveWorkout() {
     {(() => {
        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
       const allDone = A.entries.length > 0 && exDone === A.entries.length
-      return <button className={allDone ? 'btn primary' : 'btn ghost dim'} onClick={finishWorkout}>
+      return <button className={allDone ? 'btn primary' : 'btn tinted'} onClick={finishWorkout}>
         {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
       </button>
     })()}

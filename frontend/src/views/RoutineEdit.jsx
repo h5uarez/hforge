@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore.js'
+import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
 import { uid } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
@@ -68,11 +69,11 @@ export default function RoutineEdit() {
         }}>
           <Thumb ex={ex} />
           <div className="grow"><div className="tt capitalize">{exerciseName(ex)}</div><div className="ss">{exLine(e, S.unit)}</div></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
-            {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 32, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
-            <div style={{ display: 'flex', gap: 2 }}>
-              <button className="iconbtn" aria-label={t('Move up')} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
-              <button className="iconbtn" aria-label={t('Move down')} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, 1) }}><Icon name="chevronDown" /></button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 'none', alignItems: 'center' }}>
+            {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 44, height: 44, borderRadius: 10, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="iconbtn" aria-label={t('Move up')} style={{ width: 44, height: 44, borderRadius: 10, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
+              <button className="iconbtn" aria-label={t('Move down')} style={{ width: 44, height: 44, borderRadius: 10, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, 1) }}><Icon name="chevronDown" /></button>
             </div>
           </div>
         </div>
@@ -99,12 +100,23 @@ export default function RoutineEdit() {
     <Button variant="danger" onClick={() => confirmSheet({
       title: t('Delete routine?'), message: t('“{0}” and its exercises will be removed.', r.name), confirmText: t('Delete'), danger: true,
       onConfirm: () => {
+        // P0 Undo: snapshot the routine, its slot, and every schedule reference
+        const snap = JSON.parse(JSON.stringify(r))
+        const at = S.routines.findIndex(x => x.id === id)
+        const weekRefs = Object.entries(S.week).filter(([, v]) => v === id)
+        const dayRefs = Object.entries(S.dayPlan).filter(([, v]) => v === id)
         update(s => {
           s.routines = s.routines.filter(x => x.id !== id)
           Object.keys(s.week).forEach(k => { if (s.week[k] === id) delete s.week[k] })
           Object.keys(s.dayPlan).forEach(k => { if (s.dayPlan[k] === id) delete s.dayPlan[k] })
         })
         nav('/plan')
+        useUI.getState().toast(t('Routine deleted'), { kind: 'neutral',
+          action: { label: t('Undo'), onClick: () => update(s => {
+            s.routines.splice(Math.min(at, s.routines.length), 0, snap)
+            weekRefs.forEach(([k]) => { s.week[k] = id })
+            dayRefs.forEach(([k]) => { s.dayPlan[k] = id })
+          }) } })
       }
     })}>{t('Delete routine')}</Button>
   </div>
