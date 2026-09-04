@@ -218,6 +218,7 @@ export default {
   'Delete routine?': 'Routine löschen?',
   '“{0}” and its exercises will be removed.': '„{0}“ und ihre Übungen werden entfernt.',
   'Delete routine': 'Routine löschen',
+  'Routine deleted': 'Routine gelöscht',
   // --- library / history ---
   '{0} exercises with animations': '{0} Übungen mit Animationen',
   'Search…': 'Suchen…',
@@ -679,5 +680,11 @@ export default {
   'no such code': 'no such code',
    'already used — cannot revoke': 'already used — cannot revoke',
    'not found': 'not found',
-   'server error': 'server error',
+    'server error': 'server error',
+    'invalid request': 'Ungültige Anfrage',
+    'session id required': 'Sitzungs-ID erforderlich',
+    'deadline required': 'Frist erforderlich',
+    'unsupported locale': 'Sprache nicht unterstützt',
+    'active workout push requires HTTPS or localhost': 'Push für das aktive Training erfordert HTTPS oder localhost',
+    'active push subscription required': 'Aktives Push-Abo erforderlich',
 }
