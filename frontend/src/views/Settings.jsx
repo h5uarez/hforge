@@ -221,7 +221,7 @@ export default function Settings() {
       onChange={ev => { const f = ev.target.files[0]; if (f) importFromApp(f); ev.target.value = '' }} />
 
     <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-      <AppVersion /> · <a href="https://github.com/h5uarez/hforge" target="_blank" rel="noopener">{t('source code')}</a>
+      <AppVersion />
     </div>
   </div>
 }
