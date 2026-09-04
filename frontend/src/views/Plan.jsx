@@ -38,7 +38,7 @@ export default function Plan() {
 
     <div className="cols"><div>
       <h4 className="sec">{t('Week schedule')}</h4>
-      <div className="list" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="list">
           {[1, 2, 3, 4, 5, 6, 0].map(d => {
            // Explicit date overrides win over the recurring weekly assignment.
           const routineId = effectiveRoutineId(S, isoFor(d))

@@ -17,7 +17,7 @@ import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
-import { Button, Segmented, SelectRow } from '../components/ui.jsx'
+import { Button, Segmented, SelectRow, useScrolled } from '../components/ui.jsx'
 
 const sentenceCaseFirst = value => String(value ?? '').replace(/\p{L}/u, char => char.toUpperCase())
 
@@ -120,10 +120,10 @@ function EffortCard({ S }) {
         <div className="chart"><LineChart points={pts} h={140} unit={hd} color="var(--yellow)" invert={kind === 'rir'} /></div>
       </>}
       <h4 className="sec" style={{ marginTop: 12 }}>{t('Where the sets land')}</h4>
-      {hist.map(b => <div key={b.rir} className="mrow">
-        <span className="nm">{hd} {binLabel(b)}</span>
-        <span className="bar"><i style={{ width: Math.round(b.n / maxBin * 100) + '%', background: b.rir <= HARD_RIR ? 'var(--yellow)' : 'var(--label-3)' }} /></span>
-        <span className="v">{b.n ? b.n + ' · ' + Math.round(b.pct * 100) + '%' : '—'}</span>
+      {hist.map(b => <div key={b.rir} className="mrow effort">
+        <span className="nm tnum">{hd} {binLabel(b)}</span>
+        <span className="bar" aria-hidden="true"><i style={{ width: Math.round(b.n / maxBin * 100) + '%', background: b.rir <= HARD_RIR ? 'var(--yellow)' : 'var(--label-3)' }} /></span>
+        <span className="v tnum">{b.n ? b.n + ' · ' + Math.round(b.pct * 100) + '%' : '—'}</span>
       </div>)}
       <div className="small dim" style={{ marginTop: 8 }}>
         {t('Most working sets belong close to failure without living there — half at the floor and half at the top average out to a healthy-looking middle.')}
@@ -187,6 +187,7 @@ export default function Stats() {
   const effPts = exPts.map((p, i) => (exRir[i] == null ? null : { t: p.t, y: toScale(kind, exRir[i]), d: p.d })).filter(Boolean)
   const onE1 = showE1 && exMetric === 'e1rm'
   const onEff = showEff && exMetric === 'effort'
+  const scrolled = useScrolled()
   const topPts = exPts.map((p, i) => ({
     t: p.t, y: p.y, d: p.d,
     // 0 RIR (nothing left) is a full dot, 4+ a faint one; unrated sessions keep the plain line.
@@ -198,7 +199,7 @@ export default function Stats() {
   if (showEff) exOpts.push({ value: 'effort', label: t('Effort') })
 
   return <>
-    <div className="hdr"><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
+    <div className={'hdr page' + (scrolled ? ' scrolled' : '')}><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
       <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button></div>
 
     <div className="tiles">
@@ -243,19 +244,20 @@ export default function Stats() {
               ? <LineChart points={effPts} h={150} unit={hd} color="var(--yellow)" invert={kind === 'rir'} />
               : <LineChart points={onE1 ? e1Pts.map(p => ({ t: p.t, y: p.y, d: p.d })) : topPts} h={150} unit={exUnit} color="var(--blue)" />}
           </div>
-          <div style={{ marginTop: 8 }}>{exList.map((p, i) => <div key={i} className="row between small" style={{ padding: '6px 0', borderBottom: 'var(--hair) solid var(--sep)' }}>
-            <span className="muted">{fmtDate(p.d, true)}</span><span>{p.sets.map(s => setLabel(curEx, s, p.target)).join('  ')}</span></div>)}</div>
-          <div className="small dim" style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 8 }}>{exList.map((p, i) => <div key={i} className="ex-hist-row small" style={{ padding: '6px 0', borderBottom: 'var(--hair) solid var(--sep)' }}>
+            <span className="muted ex-hist-date tnum">{fmtDate(p.d, true)}</span><span className="ex-sets tnum">{p.sets.map((s, j) => <span key={j} className="ex-set">{setLabel(curEx, s, p.target)}</span>)}</span></div>)}</div>
+          <div className="small dim ex-note" style={{ marginTop: 8 }}>
             {onEff ? t('Average effort per workout') : onE1 ? t('Estimated 1RM per workout') : curCardio ? t('Top speed per workout') : curTimed ? t('Longest hold per workout') : t('Best set weight per workout')}
             {onEff ? '' : <> · {t('Best:')}{' '}<b className="accent">{fmtNum(onE1 ? e1Best.est : exBest)} {onE1 ? S.unit : exUnit}</b></>}
           </div>
-          {onE1 && <div className="small dim" style={{ marginTop: 4 }}>
+          {onE1 && <div className="small dim ex-note" style={{ marginTop: 4 }}>
             {t('Best estimate from {0} on {1} — an estimate, not a tested max.', fmtNum(e1Best.w) + ' ' + S.unit + ' × ' + e1Best.r, fmtDate(e1Best.d, true))}
           </div>}
-          {!onEff && !onE1 && showEff && <div className="small dim" style={{ marginTop: 4 }}>
+          {!onEff && !onE1 && showEff && <div className="small dim ex-note" style={{ marginTop: 4 }}>
             {t('A fuller dot means less left in the tank — the same weight at a lower {0} is progress the line alone does not show.', hd)}
           </div>}
-        </> : <div className="muted small">{t('Finish your first workout to see progress curves here.')}</div>}
+        </> : <><div className="muted small">{t('Finish your first workout to see progress curves here.')}</div>
+          <Button variant="tinted" size="sm" icon="play" style={{ marginTop: 12 }} onClick={() => nav('/workout')}>{t('Start your first workout')}</Button></>}
       </div>
     </div>
 

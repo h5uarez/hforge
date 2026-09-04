@@ -3,12 +3,12 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'r
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
+import { Skeleton } from './components/ui.jsx'
 import { ACCENTS } from './lib/format.js'
 import { getLang, setLang, useLang } from './lib/i18n.js'
 import { setNav } from './lib/nav.js'
 import { useWakeLock } from './lib/wakelock.js'
 import { startFlow } from './sheets.jsx'
-import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Modals from './components/Modals.jsx'
@@ -53,11 +53,16 @@ function Shell() {
   useWakeLock(!!S.active && S.keepAwake !== false)
 
   const authed = user || isGuest
+  // P0 boot skeleton: same heights as the real home (title band, week strip,
+  // tiles, rows), so first paint never shifts when the store lands. The store
+  // hydrates synchronously after this, so this is the >1s branch of the rule.
   if (!ready && !authed) return (
-    <div id="app">
-      <div style={{ paddingTop: '40dvh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
-        <Icon name="dumbbell" />
-      </div>
+    <div id="app" aria-busy="true">
+      <Skeleton className="skel-hdr" />
+      <Skeleton className="skel-week" />
+      <div style={{ height: 12 }} />
+      <div className="skel-tiles"><Skeleton /><Skeleton /><Skeleton /><Skeleton /></div>
+      <Skeleton className="skel-row" /><Skeleton className="skel-row" />
     </div>
   )
 

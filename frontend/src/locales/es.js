@@ -528,6 +528,9 @@ export default {
   'Added weight ({0})': 'Peso añadido ({0})',
   'Save your strength for the top set.': 'Guarda tus fuerzas para la serie principal.',
   'No warmup needed — go straight to the top set.': 'Sin aproximación — ve directo a la serie principal.',
+  'A grinding top set (RPE 9+) earns a shorter runway.': 'Una serie principal exigente (RPE 9+) merece una aproximación más corta.',
+  'Percentages are of your planned top set, not of your 1RM. For a top single this ≈ %1RM.': 'Los porcentajes son de tu serie principal planeada, no de tu 1RM. Para una repetición máxima, esto ≈ %1RM.',
+  'Set removed': 'Serie eliminada',
   'Time': 'Tiempo',
   'Seconds': 'Segundos',
   'A timer runs while you hold the set. Leave the weight at 0 for bodyweight holds.': 'Un temporizador corre mientras aguantas la serie. Deja el peso en 0 para isométricos con tu propio peso.',
@@ -598,9 +601,9 @@ export default {
   'Effort per set is switched off — turn it on in Settings to keep rating.': 'El esfuerzo por serie está desactivado — actívalo en Ajustes para seguir valorando.',
   'Week by week': 'Semana a semana',
   'Where the sets land': 'Dónde caen las series',
-  'Most working sets belong close to failure without living there — half at the floor and half at the top average out to a healthy-looking middle.': 'La mayoría de las series efectivas van cerca del fallo sin vivir allí — la mitad abajo y la mitad arriba dan una media que solo parece sana.',
+  'Most working sets belong close to failure without living there — half at the floor and half at the top average out to a healthy-looking middle.': 'El grueso va a RPE 7 o más, sin acumular series suaves lejos del fallo: mezclar extremos deja una media que parece sana y no lo es.',
   'Average effort per workout': 'Esfuerzo medio por entrenamiento',
-  'A fuller dot means less left in the tank — the same weight at a lower {0} is progress the line alone does not show.': 'Un punto más lleno significa menos reserva — el mismo peso con un {0} más bajo es progreso que la línea por sí sola no muestra.',
+  'A fuller dot means less left in the tank — the same weight at a lower {0} is progress the line alone does not show.': 'Punto más lleno = apuraste más (menos RIR). Mover el mismo peso con menos {0} también es progreso, aunque la línea no suba.',
 
   // --- bodyweight & per side ---
   'Bodyweight': 'Peso corporal',

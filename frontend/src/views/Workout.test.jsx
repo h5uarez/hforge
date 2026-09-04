@@ -60,39 +60,61 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toContain('jumpTo(Number(e.target.value))')
   })
 
-  it('keeps timed decimal weights and effort rows inside 393/430px mobile scrollports', () => {
+  it('keeps every set grid inside narrow scrollports with zero x-scroll', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
-    const mobileMaxWidth = Number(css.match(/@media \(max-width:(\d+)px\)\{/)?.[1])
     expect(source).toContain('const gridClass =')
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
+    expect(source).toContain('has-info')
+    expect(source).toContain('anyTarget')
     expect(source).toContain("const loadCol = { f: 'w', step: 2.5, dec: true")
     expect(source).toContain('decimal={col.dec}')
-    expect(source).toContain('className="info-sp"')
-    expect(css).toContain(' 44px 44px;')
-    expect(css).toContain('minmax(76px,.85fr) minmax(104px,1.35fr) 44px 44px')
-    expect(css).toContain('.setrow.timed .stp button{width:23px}')
-    expect(css).toContain('.setrow.timed .stp.r .val{min-width:calc(6ch + 4px)}')
-    expect(css).toContain('.sethead.no-col2.timed,.setrow.no-col2.timed')
+    // the wrapper is a plain full-width box: visible overflow, never a scrollport
+    // (other components like .hm-wrap keep their own legitimate scroll strips)
+    expect(css).toContain('.setgrid-scroll{width:100%;max-width:100%;overflow:visible}')
+    const scrollRule = css.match(/\.setgrid-scroll\{[^}]*\}/)?.[0] || ''
+    expect(scrollRule).not.toContain('overflow-x')
+    expect(scrollRule).not.toContain('scrollbar')
+    // one fluid system: every stepper track is minmax(0,1fr), 32px check track
+    expect(css).toContain('minmax(0,1.35fr) minmax(0,1fr) minmax(30px,32px)')
+    expect(css).toContain('minmax(0,.9fr) minmax(0,1.3fr) minmax(30px,32px) minmax(30px,32px)')
     expect(css).toContain('--set-go-col:3;--set-check-col:4')
     expect(css).toContain('.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}')
     expect(css).toContain('.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}')
     expect(css).toContain('.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}')
-    expect(css).toContain('.setrow.per-side > .side-checks{grid-column:8;')
-    expect(css).toContain('grid-template-columns:44px 44px')
+    expect(css).not.toContain('minmax(104px')
+    expect(css).not.toContain('minmax(76px')
     expect(css).not.toContain('min-width:340px')
     expect(css).not.toContain('min-width:386px')
-    expect(mobileMaxWidth).toBeGreaterThanOrEqual(430)
+    expect(css).not.toContain('min-width:560px')
+    expect(css).toContain('@media (max-width:430px)')
     expect(css).not.toContain('@media (max-width:420px)')
-    expect(css).toContain('minmax(70px,1.2fr) minmax(54px,1fr) minmax(58px,.85fr) 44px 44px')
-    expect(css).toContain('.setrow.eff3 .stp button,.setrow.eff3 .stp.eff button{width:16px}')
+    // RIR rows: compact 28px keys + tabular values, info track only with target
+    expect(css).toContain('minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px)')
+    expect(css).toContain('.setrow.eff3.has-info,.sethead.eff3.has-info')
+    expect(css).toContain('--set-info-col:5;--set-check-col:6')
+    expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button{width:28px}')
+    expect(css).not.toContain('inset:-2px -14px')
+    // single-row contract: effort never leaves the crowded first row — no
+    // ≤430px/≤340px effort sub-row, bilateral or per-side, headers included.
+    // Compact sizing (24px keys, 22px on eff3/timed/per-side, 44px slop,
+    // 4px gaps, fluid 12-14px tabular numbers) owns the fit instead.
+    expect(css).not.toContain('@media (max-width:340px)')
+    expect(css).not.toContain('.stp.eff{grid-column:2 / 4;grid-row:2}')
+    expect(css).not.toContain('.side-left-eff{grid-column:2 / 5;grid-row:2}')
+    expect(css).not.toContain('.side-left-eff{grid-column:2 / 4;grid-row:2}')
+    expect(css).not.toContain('.eff-sp{grid-column:2 / 4;grid-row:2}')
+    expect(css).not.toContain('.eff-sp{grid-column:2 / 5;grid-row:2}')
+    expect(css).toContain('.setrow:not(.per-side) .stp button{width:24px}')
+    expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:22px}')
+    expect(css).toContain('.setrow .stp{gap:2px}')
+    expect(css).toContain('font-size:clamp(12px,2.8vw + 3px,14px)')
+    // fixed minima are only n + action tracks: every layout fits a 240px scrollport (320px phone)
     const gridWidth = (tracks, gap) => tracks.reduce((sum, track) => sum + track, 0) + (tracks.length - 1) * gap
-    for (const [viewport, scrollport] of [[393, 313], [430, 350]]) {
-      expect(mobileMaxWidth).toBeGreaterThanOrEqual(viewport)
-      expect(gridWidth([24, 104, 72, 44], 8)).toBeLessThanOrEqual(scrollport)
-      expect(gridWidth([24, 76, 104, 44, 44], 5)).toBeLessThanOrEqual(scrollport)
-      expect(gridWidth([24, 70, 54, 58, 44, 44], 3)).toBeLessThanOrEqual(scrollport)
-    }
+    expect(gridWidth([24, 0, 0, 32], 8)).toBeLessThanOrEqual(240)
+    expect(gridWidth([24, 0, 0, 32, 32], 8)).toBeLessThanOrEqual(240)
+    expect(gridWidth([24, 0, 0, 0, 32], 6)).toBeLessThanOrEqual(240)
+    expect(gridWidth([24, 20, 0, 0, 32], 6)).toBeLessThanOrEqual(240)
   })
 
   it('renders visible persistence recovery actions without clearing the active draft', () => {
@@ -150,32 +172,30 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('restoreFocusedEntry(target, pendingFocus.scroll)')
   })
 
-  it('gives unilateral controls explicit narrow-width geometry', () => {
+  it('stacks unilateral sides with fluid sub-rows at every width', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
-    expect(css).toContain('.setrow.per-side{min-width:560px}')
-    expect(css).toContain('.setrow.per-side .stp.w{min-width:120px}')
-    expect(css).toContain('.setrow.per-side .stp.r{min-width:84px}')
+    expect(css).not.toContain('min-width:560px')
+    expect(css).toContain('.setrow.per-side > .side-checks{display:contents}')
+    expect(css).toContain('.setrow.per-side .side-input{width:100%;min-width:0}')
     expect(css).toContain('.setrow .stp button{width:32px;height:40px}')
-    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 88px')
-    expect(css).toContain('--set-grid-template:minmax(24px,24px) 18px minmax(120px,1.35fr) minmax(84px,1fr) 18px minmax(120px,1.35fr) minmax(84px,1fr) 44px 88px')
-    expect(css).toContain('.setrow.per-side > .side-left-label{grid-column:2}')
-    expect(css).toContain('.setrow.per-side > .side-right-label{grid-column:5}')
-    expect(css).toContain('.setrow.per-side > .side-left-r{grid-column:4}')
-    expect(css).toContain('.setrow.per-side > .side-right-w{grid-column:6}')
-    expect(css).toContain('.setrow.per-side > .side-right-r{grid-column:7}')
-    expect(css).toContain('.setrow.per-side > .side-checks{grid-column:8;')
-    expect(css).toContain('.setrow.per-side.eff3 > .setinfo{grid-column:8;')
-    expect(css).toContain('.setrow.per-side.eff3 > .side-checks{grid-column:9}')
+    expect(css).toContain('--set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px)')
+    expect(css).toContain('.setrow.per-side > .side-left-label{grid-column:2;grid-row:1;align-self:center}')
+    expect(css).toContain('.setrow.per-side > .side-right-label{grid-column:2;grid-row:2;align-self:center}')
+    expect(css).toContain('.setrow.per-side > .side-left-r{grid-column:4;grid-row:1}')
+    expect(css).toContain('.setrow.per-side > .side-right-w{grid-column:3;grid-row:2}')
+    expect(css).toContain('.setrow.per-side > .side-right-r{grid-column:4;grid-row:2}')
+    expect(css).toContain('.setrow.per-side > .side-checks > .chk:first-child{grid-column:5;grid-row:1;justify-self:center}')
+    expect(css).toContain('.setrow.per-side.eff3.has-info > .setinfo{grid-column:7;grid-row:1 / 3;align-self:center;justify-self:center}')
+    // no side-by-side desktop grid, no fixed stepper minima, no ghost tracks
+    expect(css).not.toContain('minmax(120px')
+    expect(css).not.toContain('minmax(84px')
+    expect(css).not.toContain('.setrow.per-side .stp.w{min-width:120px}')
+    expect(css).not.toContain('.setrow.per-side .stp.r{min-width:84px}')
+    expect(css).not.toContain('grid-template-columns:44px 44px')
     expect(css).not.toContain('side-label:nth-of-type')
     expect(source).toContain('side-left-label')
     expect(source).toContain('side-right-label')
-    expect(source).toContain('<span className="side-sp">L</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>')
-    expect(source).toContain('<span className="side-sp">R</span><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>')
-    expect(css).toContain('.setrow.per-side .side-input{width:6ch;min-width:6ch;flex:0 0 6ch}')
-    const perSideValueWidth = 120 - (2 * 32) - 4
-    expect(perSideValueWidth).toBeGreaterThanOrEqual(41)
-    const perSideGridWidth = [24, 18, 120, 84, 18, 120, 84, 88].reduce((sum, track) => sum + track, 0) + (7 * 8)
-    expect(perSideGridWidth).toBeGreaterThan(393)
+    expect(source).not.toContain('side-sp')
     expect(source).toContain('className="side-input"')
   })
 
@@ -223,5 +243,41 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toMatch(/s\.routines\s*=/)
     expect(source).not.toMatch(/s\.dayPlan\s*=/)
     expect(source).not.toContain('delete s.dayPlan')
+  })
+
+  it('fuses consecutive done sets into one card while loners stay bare', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    // JSX groups runs of 2+ done rows; isolated/current rows render unwrapped.
+    expect(source).toContain('setgroup-done')
+    expect(source).toContain("entry.sets.map(s => projectSideSet(s).done)")
+    // The group owns the single wash + radius; inner rows drop theirs.
+    expect(css).toContain('.setgroup-done{background:var(--acc-soft)')
+    expect(css).toContain('.setgroup-done > .setrow.done{background:transparent')
+    // Fusion feedback is opacity-only on the project ease; per-row states untouched.
+    expect(css).toContain('@keyframes setfuse{from{opacity:.45}to{opacity:1}}')
+    expect(css).toContain('.setrow.done{background:var(--acc-soft);border-radius:var(--r-sm)}')
+    expect(css).toContain('.setrow.current{box-shadow:inset 0 0 0 1.5px var(--acc-line)')
+  })
+
+  it('keeps series steppers fluid single-row with real touch targets', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    // fluid painted keys (bilateral + compact), fluid inner/column gaps, fluid numbers
+    expect(css).toContain('.setrow:not(.per-side) .stp button{width:clamp(16px,4vw + 4px,28px)}')
+    expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:clamp(14px,3.6vw + 4px,24px)}')
+    expect(css).toContain('.setrow .stp{gap:clamp(2px,0.5vw + 1px,4px)}')
+    expect(css).toContain('column-gap:clamp(2px,1vw + 1px,6px)')
+    expect(css).toContain('font-size:clamp(11px,3vw + 3px,15px)')
+    // fluid badge/check/padding, header mirroring the row insets
+    expect(css).toContain('.setrow .n{')
+    expect(css).toContain('width:clamp(20px,5vw + 6px,24px)')
+    expect(css).toContain('width:clamp(28px,6vw + 9px,32px)')
+    expect(css).toContain('.setgrid-scroll .sethead{padding:0 clamp(2px,1vw - 1px,4px) 6px}')
+    // exact 44px targets via centred slop, independent of painted size
+    expect(css).toContain('width:44px;height:44px;margin:-22px 0 0 -22px')
+    // weight-biased fr split documented and present; no hard breakpoints added
+    expect(css).toContain('minmax(0,1.35fr) minmax(0,1fr)')
+    expect(css).toContain('minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr)')
+    expect(css).not.toContain('@media (max-width:340px)')
+    expect(css).not.toContain('inset:-2px -14px')
   })
 })

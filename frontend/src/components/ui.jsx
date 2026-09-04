@@ -134,12 +134,13 @@ export function Stepper({ value, step = 1, onChange, onRawChange, onStep, decima
   const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
   const inner = (
     <div className={'stp ' + className}>
-      <button onClick={() => { const v = (+value || 0) - step; onStep && onStep(v); set(v) }} aria-label={t('Decrease')}><Icon name="minus" /></button>
-      <span className="val">
-        <NumberField value={value} decimal={decimal} onChange={onChange} onRawChange={onRawChange} />
+      <button onClick={() => { const v = (+value || 0) - step; onStep && onStep(v); set(v) }} aria-label={t('Decrease') + (label ? ' ' + label : '')}><Icon name="minus" /></button>
+      {/* polite live region: screen readers hear the stepped value without a focus jump */}
+      <span className="val" aria-live="polite">
+        <NumberField value={value} decimal={decimal} onChange={onChange} onRawChange={onRawChange} aria-label={label} />
         {unit && <i>{unit}</i>}
       </span>
-      <button onClick={() => { const v = (+value || 0) + step; onStep && onStep(v); set(v) }} aria-label={t('Increase')}><Icon name="plus" /></button>
+      <button onClick={() => { const v = (+value || 0) + step; onStep && onStep(v); set(v) }} aria-label={t('Increase') + (label ? ' ' + label : '')}><Icon name="plus" /></button>
     </div>
   )
   if (!label) return inner
@@ -211,19 +212,88 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange, classNam
 
 /* ============================ checkbox ============================ */
 
+// One glow at a time: completing a set flashes its row for 400ms; landing another
+// set inside that window cancels the old flash and re-arms it on the new row, so
+// fast tappers never stack translucent boxes.
+let lastGlow = null
+export function flashSetRow(el) {
+  if (!el || !el.animate) return
+  if (lastGlow) { try { lastGlow.anim.cancel() } catch { /* replaced */ } lastGlow.el?.classList.remove('just-done'); lastGlow = null }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  el.classList.add('just-done')
+  const anim = el.animate(
+    [{ boxShadow: 'inset 0 0 0 1.5px var(--acc)' }, { boxShadow: 'inset 0 0 0 0 transparent' }],
+    { duration: 400, easing: 'cubic-bezier(.32,.72,0,1)' })
+  lastGlow = { el, anim }
+  anim.onfinish = () => { el.classList.remove('just-done'); if (lastGlow?.el === el) lastGlow = null }
+  // the CSS keyframes are the fallback when WAAPI is unavailable; both are
+  // transform/opacity-only and both die under prefers-reduced-motion
+  setTimeout(() => { el.classList.remove('just-done'); if (lastGlow?.el === el) lastGlow = null }, 450)
+}
+
 export function Check({ checked, onChange, className = '', size, ...rest }) {
+  const ref = useRef(null)
+  const press = () => {
+    // optimistic press: scale .97 inside the same frame as the tap, never waiting
+    // for the store round-trip — input is never blocked.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      ref.current?.animate(
+        [{ transform: 'scale(.97)' }, { transform: 'scale(1)' }],
+        { duration: 100, easing: 'cubic-bezier(.32,.72,0,1)' })
+    }
+  }
   return (
     <button
       role="checkbox"
       aria-checked={!!checked}
       {...rest}
+      ref={ref}
       className={'chk' + (checked ? ' on' : '') + ' ' + className}
       style={size ? { width: size, height: size } : null}
-      onClick={() => onChange(!checked)}
+      onClick={e => {
+        press()
+        // the row flash arms on completion; unchecking never glows
+        if (!checked) setTimeout(() => flashSetRow(e.currentTarget.closest('.setrow')), 0)
+        onChange(!checked)
+      }}
     >
       <Icon name="check" />
     </button>
   )
+}
+
+/* ============================ loading ============================ */
+
+// P0 loading rule: under 300ms show nothing (avoids flicker), 300ms–1s an inline
+// spinner, over 1s a same-height skeleton. elapsedMs is measured from request start.
+export const loadingStage = elapsedMs => elapsedMs < 300 ? 'none' : elapsedMs <= 1000 ? 'inline' : 'skeleton'
+
+// Same-height placeholder — pair with .skel-week/.skel-tiles/.skel-row/.skel-chart
+// so the layout never jumps when content lands.
+export function Skeleton({ className = '', label, ...rest }) {
+  return <div className={'skel ' + className} role="status" aria-label={label || t('Loading')} {...rest} />
+}
+
+/* ============================ header scroll ============================ */
+
+// P0 shadow-on-scroll: passive listener + rAF, writes one boolean. Only
+// transform/opacity animate on the header itself (see .hdr.page in index.css).
+export function useScrolled(threshold = 0) {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    let ticking = false
+    const read = () => {
+      ticking = false
+      setScrolled((window.scrollY || 0) > threshold)
+    }
+    const onScroll = () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(read) }
+    }
+    read()
+    document.addEventListener('scroll', onScroll, { passive: true })
+    return () => document.removeEventListener('scroll', onScroll)
+  }, [threshold])
+  return scrolled
 }
 
 /* ============================ grouped list ============================ */
@@ -241,7 +311,7 @@ export function Section({ title, footer, children, className = '' }) {
   )
 }
 
-export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none', onClick, danger, children, className = '' }) {
+export function Row({ icon, iconTint, title, subtitle, value, valueTitle, accessory = 'none', onClick, danger, children, className = '' }) {
   const Tag = onClick ? 'button' : 'div'
   return (
     <Tag className={'lrow' + (onClick ? ' tap' : '') + (danger ? ' danger' : '') + ' ' + className} onClick={onClick}>
@@ -251,7 +321,7 @@ export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none'
         {subtitle && <span className="lrow-s">{subtitle}</span>}
       </span>
       {children}
-      {value != null && <span className="lrow-v">{value}</span>}
+      {value != null && <span className="lrow-v" title={valueTitle || undefined}>{value}</span>}
       {accessory === 'chevron' && <Icon name="chevronRight" className="lrow-c" />}
       {accessory === 'check' && <Icon name="check" className="lrow-k" />}
     </Tag>
@@ -264,7 +334,7 @@ export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none'
 // theme entirely — on dark mode it flashes a white sheet — and can't show more
 // than a bare label per option. This opens our own sheet with a checkmark on the
 // current value, which is also how iOS itself handles a long option list.
-export function SelectRow({ icon, iconTint, title, value, options, onChange, sheetTitle }) {
+export function SelectRow({ icon, iconTint, title, value, valueTitle, options, onChange, sheetTitle }) {
   const cur = options.find(o => o.value === value)
   const open = () => {
     const { openSheet } = require_ui()
@@ -286,7 +356,7 @@ export function SelectRow({ icon, iconTint, title, value, options, onChange, she
     return h
   }
   return (
-    <Row icon={icon} iconTint={iconTint} title={title} value={cur ? cur.label : value} accessory="chevron" onClick={open} />
+    <Row icon={icon} iconTint={iconTint} title={title} value={cur ? cur.label : value} valueTitle={valueTitle} accessory="chevron" onClick={open} />
   )
 }
 

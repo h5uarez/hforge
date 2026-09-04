@@ -5,6 +5,16 @@ import { todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
 
+// Per-tab scroll memory: leaving a tab stores window.scrollY under its route key,
+// entering a tab restores it on the next frame. Same app, same flow — just no more
+// losing your place when you peek at Stats mid-plan. App.jsx still scrolls to top
+// on a *fresh* route and on every pathname change; tabs restore afterwards, so a
+// revisited tab wins over that reset while a never-visited one still starts at top.
+const scrollMem = new Map()
+// The bar holds five equal slots (Start sits in the middle); the dot spans one
+// slot, so route tabs map to slot indexes 0/1/3/4.
+const TAB_INDEX = { home: 0, plan: 1, stats: 3, library: 4 }
+
 export default function TabBar({ onStart }) {
   const nav = useNavigate()
   const loc = useLocation()
@@ -24,14 +34,25 @@ export default function TabBar({ onStart }) {
     }
     nav('/workout')
   }
+  const go = to => {
+    const from = loc.pathname
+    if (from !== to) scrollMem.set(from, window.scrollY || 0)
+    nav(to)
+    // restore after the new view mounts; 0 when the tab was never visited
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.scrollTo(0, scrollMem.get(to) || 0)
+    }))
+  }
   const Tab = ({ k, icon, to, label }) => (
-    <button className={on(k) ? 'on' : ''} aria-current={on(k) ? 'page' : undefined} onClick={() => nav(to)}>
+    <button className={on(k) ? 'on' : ''} aria-current={on(k) ? 'page' : undefined} onClick={() => go(to)}>
       <Icon name={icon} /><span>{label}</span>
     </button>
   )
 
+  const ind = TAB_INDEX[cur]
   return (
-    <nav id="tabbar" aria-label={t('Home')}>
+    <nav id="tabbar" aria-label={t('Home')} className={ind !== undefined ? 'has-ind' : ''} style={ind !== undefined ? { '--tab-i': ind } : null}>
+      <span className="tab-ind" aria-hidden="true"><i /></span>
       <Tab k="home" icon="house" to="/home" label={t('Home')} />
       <Tab k="plan" icon="calendar" to="/plan" label={t('Plan')} />
       <button className={'start' + (S.active ? ' rec' : '')} aria-label={S.active ? t('Resume') : t('Start workout')} onClick={startWorkout}>

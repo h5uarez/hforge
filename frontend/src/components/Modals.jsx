@@ -16,7 +16,17 @@ function Sheet({ sheet }) {
     const target = opener && typeof opener.focus === 'function' ? opener : returnFocus.current
     if (target?.isConnected && typeof target.focus === 'function') setTimeout(() => target.focus(), 0)
   }
-  const close = () => {
+  const close = (fast) => {
+    // P0 exit: 160ms fade+settle on the dialog and backdrop fade, transform/opacity
+    // only. `fast` skips it when the swipe gesture already animated the dismissal.
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    const box = ref.current
+    if (!fast && box && !reduced) {
+      box.classList.add('leaving')
+      box.parentElement?.querySelector('.mback')?.classList.add('leaving')
+      setTimeout(() => { closeSheet(sheet.id); restoreFocus() }, 160)
+      return
+    }
     closeSheet(sheet.id)
     restoreFocus()
   }
@@ -40,6 +50,8 @@ function Sheet({ sheet }) {
 
   const onTouchStart = e => {
     const el = ref.current
+    // centered dialogs are not swipeable — the gesture belongs to bottom sheets only
+    if (!el || !el.classList.contains('sheet')) { drag.current = { startY: null, delta: 0 }; return }
     // a gesture that begins on a slider (or opted-out control) belongs to that control,
     // not to the sheet's swipe-to-dismiss — so it keeps working while you drag
     if (e.target.closest && e.target.closest('input[type=range], [data-nodrag]')) {
@@ -62,7 +74,7 @@ function Sheet({ sheet }) {
     const el = ref.current, d = drag.current
     if (d.startY === null) return
     el.style.transition = 'transform .2s'
-    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => close(), 180) }
+    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => close(true), 180) }
     else el.style.transform = ''
     d.startY = null
   }
@@ -70,7 +82,7 @@ function Sheet({ sheet }) {
   // non-passive touchmove so preventDefault works (bottom sheets only; centered dialogs have no ref)
   useEffect(() => {
     const el = ref.current
-    if (!el) return
+    if (!el || !el.classList.contains('sheet')) return
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     return () => el.removeEventListener('touchmove', onTouchMove)
   }, [])
@@ -79,7 +91,7 @@ function Sheet({ sheet }) {
     return (
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center" role="dialog" aria-modal="true">
+        <div className="center" ref={ref} role="dialog" aria-modal="true">
           {!sheet.locked && <button type="button" className="iconbtn modal-close" ref={closeRef} onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>}
           {sheet.render(close)}
         </div>
