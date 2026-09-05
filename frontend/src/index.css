@@ -228,8 +228,12 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
    fades in (opacity only) with a shadow, and the title compacts (transform only).
    No layout animation, no scroll listener cost beyond passive+rAF (see useScrolled). */
 .hdr.page{
-  position:sticky;top:var(--sat);z-index:30;
-  margin:0 calc(-1 * var(--pad)) 18px;padding:10px var(--pad) 12px;
+  /* Start at the viewport edge so the header also paints the device's safe-area
+     band. The compensating top margin/padding keeps the title in its previous
+     position while preventing content behind it from showing above the header. */
+  position:sticky;top:0;z-index:30;
+  margin:calc(-1 * var(--sat) - 8px) calc(-1 * var(--pad)) 18px;
+  padding:calc(var(--sat) + 18px) var(--pad) 12px;
   background:color-mix(in srgb,var(--bg) 86%,transparent);
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
 }
