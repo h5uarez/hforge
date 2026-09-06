@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, normalizeTargets, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -610,6 +610,13 @@ describe('buildSets', () => {
       { w: 50, r: 8, done: false },                                       // null slot → no plannedEffort
       { w: 50, r: 8, done: false, plannedEffort: { metric: 'rir', value: 1 } },
     ])
+  })
+
+  it('resolves only matching planned effort snapshots for actionable disclosures', () => {
+    const target = { plannedEffort: { metric: 'rir', value: 2 } }
+    expect(plannedEffortForSet(target, 'rir')).toEqual(target.plannedEffort)
+    expect(plannedEffortForSet(target, 'rpe')).toBeNull()
+    expect(plannedEffortForSet({}, 'rir')).toBeNull()
   })
 
   it('omits plannedEffort when Settings is on a different metric than the saved targets', () => {

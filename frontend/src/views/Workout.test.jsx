@@ -66,7 +66,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
     expect(source).toContain('has-info')
-    expect(source).toContain('anyTarget')
+    expect(source).toContain('hasInfoTrack')
     expect(source).toContain("const loadCol = { f: 'w', step: 2.5, dec: true")
     expect(source).toContain('decimal={col.dec}')
     // the wrapper is a plain full-width box: visible overflow, never a scrollport
@@ -90,7 +90,7 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('@media (max-width:430px)')
     expect(css).not.toContain('@media (max-width:420px)')
     // RIR rows: compact 28px keys + tabular values, info track only with target
-    expect(css).toContain('minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px)')
+    expect(css).toContain('repeat(3,minmax(0,1fr))')
     expect(css).toContain('.setrow.eff3.has-info,.sethead.eff3.has-info')
     expect(css).toContain('--set-info-col:5;--set-check-col:6')
     expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button{width:28px}')
@@ -274,9 +274,8 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('.setgrid-scroll .sethead{padding:0 clamp(2px,1vw - 1px,4px) 6px}')
     // exact 44px targets via centred slop, independent of painted size
     expect(css).toContain('width:44px;height:44px;margin:-22px 0 0 -22px')
-    // weight-biased fr split documented and present; no hard breakpoints added
-    expect(css).toContain('minmax(0,1.35fr) minmax(0,1fr)')
-    expect(css).toContain('minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr)')
+    // weight/reps/effort fields share equal tracks; no hard breakpoints added
+    expect(css).toContain('repeat(3,minmax(0,1fr))')
     expect(css).not.toContain('@media (max-width:340px)')
     expect(css).not.toContain('inset:-2px -14px')
   })

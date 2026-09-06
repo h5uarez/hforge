@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur } from './session.js'
+import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur, removeSessionEntry } from './session.js'
 import { copyHistoryEntry } from './history.js'
 import { isBw, isTimed, modeOf } from './history.js'
 
@@ -53,6 +53,37 @@ describe('active session identity and units', () => {
     const after = [before[1], before[0]]
     expect(remapCur(before, 0, after)).toBe(1)
     expect(remapCur(before, 99, after)).toBe(1)
+  })
+
+  it('removes a normal entry without mutating the source and keeps the selected SID focused', () => {
+    const before = [entry('a', { sid: 'a' }), entry('b', { sid: 'b' }), entry('c', { sid: 'c' })]
+    const result = removeSessionEntry(before, 2, 0)
+    expect(result.changed).toBe(true)
+    expect(result.entries.map(e => e.sid)).toEqual(['b', 'c'])
+    expect(result.cur).toBe(1)
+    expect(result.focusSid).toBe('c')
+    expect(before.map(e => e.sid)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('clamps focus when removing the current or only entry', () => {
+    const current = [entry('a', { sid: 'a' }), entry('b', { sid: 'b' })]
+    const last = removeSessionEntry(current, 1, 1)
+    expect(last.entries.map(e => e.sid)).toEqual(['a'])
+    expect(last.cur).toBe(0)
+    expect(last.focusSid).toBe('a')
+
+    const only = removeSessionEntry([entry('a', { sid: 'a' })], 0, 0)
+    expect(only.entries).toEqual([])
+    expect(only.cur).toBe(0)
+    expect(only.focusSid).toBeNull()
+  })
+
+  it('keeps a remaining superset together and clears a singleton marker', () => {
+    const pair = [entry('a', { sid: 'a', sg: 'pair' }), entry('b', { sid: 'b', sg: 'pair' })]
+    expect(removeSessionEntry(pair, 0, 0).entries[0]).not.toHaveProperty('sg')
+
+    const trio = [entry('a', { sid: 'a', sg: 'trio' }), entry('b', { sid: 'b', sg: 'trio' }), entry('c', { sid: 'c', sg: 'trio' })]
+    expect(removeSessionEntry(trio, 1, 1).entries.map(e => e.sg)).toEqual(['trio', 'trio'])
   })
 
   it('keeps sid out of history while retaining activity and rest fields in the active snapshot', () => {

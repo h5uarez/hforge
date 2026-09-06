@@ -123,11 +123,16 @@ describe('mobile accessibility and layout contracts', () => {
     // single-row contract (user requirement): no ≤340px effort sub-row —
     // effort stays inline at every width, compact sizing owns the fit.
     expect(css).not.toContain('@media (max-width:340px)')
-    expect(css).toContain('minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) minmax(30px,32px)')
+    expect(css).toContain('repeat(3,minmax(0,1fr)) minmax(30px,32px)')
     expect(css).toContain('scroll-margin-top')
     expect(workout).toContain('className="setgrid-scroll"')
     expect(workout).not.toContain('side-sp')
     expect(workout).toContain('has-info')
+    expect(workout).toContain("t('Remove exercise')")
+    expect(workout).toContain('onRemoveExercise')
+    expect(workout).toContain('disabled={!target}')
+    expect(workout).toContain("t('No programmed target')")
+    expect(css).toContain('repeat(3,minmax(0,1fr))')
     expect(workout).toContain('aria-live="polite"')
     expect(ui).toContain('parseNumberDraft')
     expect(ui).toContain('if (!result.valid) return')

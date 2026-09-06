@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
-import { moveSessionUnit, remapCur, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
+import { moveSessionUnit, remapCur, removeSessionEntry, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -60,7 +60,7 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemoveExercise, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -106,9 +106,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
   // shown on the row when the saved metric matches the active profile — a routine planned
   // on RIR renders no target here the moment Settings flips to RPE, with no conversion.
   const showTargetBtn = mode === 'reps' && !!eff
-  const setTarget = s => showTargetBtn && s && s.plannedEffort && s.plannedEffort.metric === kind
-    ? s.plannedEffort
-    : null
+  const setTarget = s => showTargetBtn ? plannedEffortForSet(s, kind) : null
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
@@ -153,10 +151,11 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
   const perSide = isPerSide(cfg) && !cardio && !timed
   const gridClass = (col3 ? ' eff3' : '') + (perSide ? ' per-side' : '') + (!col2 ? ' no-col2' : '') + (timed ? ' timed' : '')
-  // The info track only exists when at least one set has a compatible target —
-  // otherwise rows collapse it and the check moves up (no empty 44px track).
-  const anyTarget = !!col3 && entry.sets.some(s => setTarget(s))
-  const headClass = 'sethead' + gridClass + (anyTarget ? ' has-info' : '')
+  // Keep the info track whenever the effort column exists. Planned sets get an actionable
+  // disclosure; extra/unplanned sets get the same disabled empty marker, so the check column
+  // never shifts when a user adds a set.
+  const hasInfoTrack = !!col3
+  const headClass = 'sethead' + gridClass + (hasInfoTrack ? ' has-info' : '')
   const startLongPress = i => {
     cancelLongPress()
     lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
@@ -171,6 +170,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
       <div className="row" style={{ gap: 4 }}>
         <button className="iconbtn" aria-label={t('Edit')} onClick={onEdit}><Icon name="pencil" /></button>
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
+        <button type="button" className="iconbtn session-remove" aria-label={t('Remove exercise')} title={t('Remove exercise')} onClick={onRemoveExercise}><Icon name="trash" /></button>
       </div>
     </div>
     {entry.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{entry.target.planNote}</div>}
@@ -210,8 +210,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
       <div className={headClass}>
         <span className="n-sp" />{perSide ? <>
           {/* per-side rows always stack L/R, so one shared W/R pair + check */}
-          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{anyTarget && <span className="info-sp" />}<span className="ck-sp" />
-        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{anyTarget && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{hasInfoTrack && <span className="info-sp" />}<span className="ck-sp" />
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{hasInfoTrack && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
       </div>
       {(() => {
         // Done-run fusion: 2+ consecutive done rows render inside one .setgroup-done
@@ -227,7 +227,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
           const sDone = setDoneAt[i]
           const isCurrent = !sDone && firstPending === i
           return <Fragment key={i}>
-           <div className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass + (target ? ' has-info' : '')}
+           <div className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass + (hasInfoTrack ? ' has-info' : '')}
             aria-current={isCurrent ? 'true' : undefined}
             onPointerDown={e => {
               // The target info gesture is "info button OR long-press". A long-press on a
@@ -248,14 +248,15 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onToggl
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
             {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
               onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
-            {/* Per-set info button: only when this set actually has a compatible target.
-                The disclosure toggles on tap; on a row with no target the button is not
-                rendered at all, so the column never says "no information" for nothing. */}
-            {target && <button className={'iconbtn setinfo' + (isOpen ? ' on' : '')}
-              aria-label={isOpen ? t('Hide programmed target') : t('Show programmed target')}
-              aria-expanded={isOpen}
-              onClick={e => { e.stopPropagation(); toggleDisclosed(i) }}>
-              <Icon name={isOpen ? 'chevronUp' : 'info'} />
+            {/* Every effort row keeps an info slot. A planned set gets an actionable disclosure;
+                an extra set keeps a visible but disabled blank marker in the same grid column. */}
+            {hasInfoTrack && <button type="button" className={'iconbtn setinfo' + (isOpen ? ' on' : '') + (!target ? ' unavailable' : '')}
+              disabled={!target}
+              aria-label={target ? (isOpen ? t('Hide programmed target') : t('Show programmed target')) : t('No programmed target')}
+              title={target ? undefined : t('No programmed target')}
+              aria-expanded={target ? isOpen : undefined}
+              onClick={target ? e => { e.stopPropagation(); toggleDisclosed(i) } : undefined}>
+              <Icon name={target && isOpen ? 'chevronUp' : 'info'} />
             </button>}
             {perSide ? <div className="side-checks">
               <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
@@ -423,6 +424,40 @@ function ActiveWorkout() {
       }, true)
     }, null, routine)
   }
+  const removeExercise = idx => {
+    const entry = A.entries[idx]
+    if (!entry) return
+    const sid = entry.sid
+    const name = exerciseName(exOr(entry.id))
+    confirmSheet({
+      title: t('Remove exercise?'),
+      message: t('Remove “{0}” from this active workout? The saved routine will not change.', name),
+      confirmText: t('Remove exercise'), danger: true,
+      onConfirm: () => {
+        const timer = useUI.getState().timer
+        const hasRemovedRest = timer?.sid === sid || useStore.getState().S.active?.restResume?.sid === sid
+        let focusSid = null
+        let removed = false
+        update(s => {
+          const active = s.active
+          const liveIdx = active?.entries?.findIndex(e => e.sid === sid) ?? -1
+          if (!active || liveIdx < 0) return
+          const result = removeSessionEntry(active.entries, active.cur, liveIdx)
+          if (!result.changed) return
+          active.entries = result.entries
+          active.cur = result.cur
+          if (active.restResume?.sid === sid) delete active.restResume
+          focusSid = result.focusSid
+          removed = true
+          touchActiveRecord(active)
+        })
+        if (!removed) return
+        if (hasRemovedRest) stopRest()
+        if (focusSid) focusEntry(focusSid)
+        useUI.getState().toast(t('Exercise removed from workout'))
+      }
+    })
+  }
   const addSet = idx => mutEntry(idx, e => {
     const l = e.sets[e.sets.length - 1]
     const m = modeOf({ ...(e.target || {}), id: e.id })
@@ -537,7 +572,7 @@ function ActiveWorkout() {
       {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
         {superset && k > 0 && <div className="ss-amp">+</div>}
         <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
-          onEdit={() => editExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+          onEdit={() => editExercise(idx)} onRemoveExercise={() => removeExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
       </div>)}
     </article>
   }

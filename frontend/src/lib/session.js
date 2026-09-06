@@ -46,6 +46,34 @@ export function remapCur(before, cur, after) {
   return next >= 0 ? next : Math.max(0, Math.min(cur || 0, Math.max(0, (after?.length || 1) - 1)))
 }
 
+// Removing an active entry must not leave a singleton superset marker behind. The saved
+// routine owns its own exercise array, so this only cleans the new active-session snapshot.
+const cleanupSessionSupersets = entries => entries.map((entry, index) => {
+  if (!entry?.sg || entries[index - 1]?.sg === entry.sg || entries[index + 1]?.sg === entry.sg) return entry
+  const copy = { ...entry }
+  delete copy.sg
+  return copy
+})
+
+// Remove one entry from an active session without mutating the input. `cur` is an entry index,
+// not a superset-unit index; stable SIDs keep the same exercise selected when an earlier entry
+// is removed, while deleting the selected/last entry clamps focus to the nearest survivor.
+export function removeSessionEntry(entries, cur, entryIndex) {
+  if (!Array.isArray(entries) || !Number.isInteger(entryIndex) || entryIndex < 0 || entryIndex >= entries.length) {
+    return { changed: false, entries, cur, removed: null, focusSid: null }
+  }
+  const removed = entries[entryIndex]
+  const nextEntries = cleanupSessionSupersets(entries.filter((_, index) => index !== entryIndex))
+  const nextCur = remapCur(entries, Number.isInteger(cur) ? cur : 0, nextEntries)
+  return {
+    changed: true,
+    entries: nextEntries,
+    cur: nextCur,
+    removed,
+    focusSid: nextEntries[nextCur]?.sid || null,
+  }
+}
+
 // unitIndex addresses the projected sessionUnits list, not an entry index.
 export function moveSessionUnit(entries, unitIndex, delta) {
   const units = sessionUnits(entries)
