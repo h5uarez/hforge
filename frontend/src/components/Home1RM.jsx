@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore.js'
-import { estimateWithEffort, REP_CAP } from '../lib/onerm.js'
+import { useUI } from '../store/useUI.js'
+import { HOME_1RM_STORAGE_KEY, loadCalculatorState, saveCalculatorState, sanitizeHome1RMState } from '../lib/calculator-storage.js'
+import { estimateRMTable, estimateWithEffort, REP_CAP } from '../lib/onerm.js'
 import { effortOf } from '../lib/history.js'
 import { rirOf, toScale } from '../lib/effort.js'
 import { fmtNum } from '../lib/format.js'
@@ -29,15 +31,68 @@ const clampUiReps = v => Math.max(0, Math.min(UI_REPS_MAX, Math.round(Number(v) 
 // labels live here; every other language comes from its locale file (e.g. es.js).
 const TIER_LABEL = { HIGH: 'High', MEDIUM: 'Medium', unreliable: 'Unreliable' }
 const tierLabel = tier => (t(tier) === tier ? (TIER_LABEL[tier] || tier) : t(tier))
+
+function OneRMTableDialog({ result, weight, reps, unit }) {
+  const table = result ? estimateRMTable(result.est) : []
+
+  return (
+    <div className="onerm-dialog">
+      <h3 className="onerm-dialog-title">{t('Estimated 1RM')}</h3>
+      {table.length
+        ? <>
+            <div className="onerm-source">
+              <div className="onerm-source-set">
+                <span className="muted">{t('Weight ({0})', unit)}</span>
+                <b>{fmtNum(weight)}</b>
+                <span aria-hidden="true">×</span>
+                <span className="muted">{t('Reps')}</span>
+                <b>{fmtNum(reps)}</b>
+              </div>
+              <div className="onerm-source-est">
+                <span>{t('Estimated 1RM')}</span>
+                <strong>≈ {fmtNum(result.est)} {unit}</strong>
+              </div>
+            </div>
+            <table className="onerm-rm-table" aria-label={t('Estimated 1RM')}>
+              <tbody>
+                {Array.from({ length: Math.ceil(table.length / 4) }, (_, row) => (
+                  <tr key={row}>
+                    {table.slice(row * 4, row * 4 + 4).map(item => (
+                      <td key={item.reps} className={item.reps === 1 ? 'is-primary' : ''}
+                        aria-label={`${t('{0}RM', item.reps)} ${fmtNum(item.weight)} ${unit}`}>
+                        <span className="onerm-rm-label">{t('{0}RM', item.reps)}</span>
+                        <strong className="onerm-rm-value">{fmtNum(item.weight)} <small>{unit}</small></strong>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        : <div className="onerm-empty">
+            <div className="onerm-empty-icon"><Icon name="info" /></div>
+            <div>{t('Enter a valid weight and reps.')}</div>
+          </div>}
+    </div>
+  )
+}
+
 export default function Home1RM() {
   const S = useStore(s => s.S)
-  const [open, setOpen] = useState(false)
-  const [kg, setKg] = useState(0)
-  const [reps, setReps] = useState(0)
+  const openSheet = useUI(s => s.openSheet)
+  const [initial] = useState(() => loadCalculatorState(HOME_1RM_STORAGE_KEY,
+    { open: false, kg: 0, reps: 0, rir: null, res: null }, sanitizeHome1RMState))
+  const [open, setOpen] = useState(initial.open)
+  const [kg, setKg] = useState(initial.kg)
+  const [reps, setReps] = useState(initial.reps)
   // Effort is stored in RIR, the scale with a real zero; RPE is converted on display
   // (RPE 8 = RIR 2), so switching the profile scale never discards the entered value.
-  const [rir, setRir] = useState(null)
-  const [res, setRes] = useState(null)   // { est, tier, failureAssumed } | null
+  const [rir, setRir] = useState(initial.rir)
+  const [res, setRes] = useState(initial.res)   // { est, tier, failureAssumed } | null
+
+  useEffect(() => {
+    saveCalculatorState(HOME_1RM_STORAGE_KEY, { open, kg, reps, rir, res })
+  }, [open, kg, reps, rir, res])
 
   const kind = effortOf(S)
   const showEffort = kind === 'rir' || kind === 'rpe'
@@ -65,6 +120,11 @@ export default function Home1RM() {
     return Math.max(0, Math.min(UI_RIR_MAX, Number(converted)))
   }
 
+  const openTable = () => {
+    if (!res) return
+    openSheet(() => <OneRMTableDialog result={res} weight={kg} reps={reps} unit={S.unit} />, { kind: 'center' })
+  }
+
   return (
     <div className="card">
       <button type="button" className="row between" style={{ width: '100%', border: 0, background: 'none', textAlign: 'left' }}
@@ -85,12 +145,18 @@ export default function Home1RM() {
           )}
         </div>
         <Button size="sm" variant="primary" onClick={calc} style={{ display: 'block', width: '100%', marginTop: 10 }}>{t('Calcular')}</Button>
-        <div className="row between" style={{ marginTop: 10, gap: 8 }}>
+        <div className="home1rm-result row between" style={{ marginTop: 10, gap: 8 }}>
           {res
-            ? <span className="row" style={{ gap: 8 }}>
-                <span className="big">≈ {fmtNum(res.est)} <span className="muted" style={{ fontSize: '1rem' }}>{S.unit}</span></span>
-                <span className={'tag' + (res.tier === 'unreliable' ? '' : ' acc')}>{tierLabel(res.tier)}</span>
-              </span>
+            ? <>
+                <span className="home1rm-result-value row" style={{ gap: 8 }}>
+                  <span className="big">≈ {fmtNum(res.est)} <span className="muted" style={{ fontSize: '1rem' }}>{S.unit}</span></span>
+                  <span className={'tag' + (res.tier === 'unreliable' ? '' : ' acc')}>{tierLabel(res.tier)}</span>
+                </span>
+                <button type="button" className="iconbtn home1rm-info" onClick={openTable} disabled={!res}
+                  aria-label={t('Show estimated 1RM table')}>
+                  <Icon name="info" />
+                </button>
+              </>
             : <span className="muted small">{t('Enter a valid weight and reps.')}</span>}
         </div>
         {res?.failureAssumed && <div className="muted small" style={{ marginTop: 6 }}>{t('Assuming set to failure. Add RPE/RIR for a better estimate.')}</div>}

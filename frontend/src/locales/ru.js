@@ -486,7 +486,7 @@ export default {
   'Best estimated 1RM:': 'Лучший расчётный 1ПМ:',
   // --- Home 1RM card ---
   '1RM calculator': 'Калькулятор 1ПМ',
-  'Show 1RM calculator': 'Показывать калькулятор 1ПМ',
+  'Show 1RM calculator': 'Показывать калькулятор 1ПМ', 'Show estimated 1RM table': 'Показать таблицу расчетного 1ПМ',
   'Estimate one-rep max on the Home screen.': 'Оценивай одноповторный максимум на главном экране.',
   'Enter a valid weight and reps.': 'Введи корректные вес и повторы.',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': 'Сет принят за отказной. Добавь RPE/RIR для более точной оценки.',

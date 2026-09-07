@@ -486,7 +486,7 @@ export default {
   'Best estimated 1RM:': 'सर्वश्रेष्ठ अनुमानित 1RM:',
   // --- Home 1RM card ---
   '1RM calculator': '1RM कैलकुलेटर',
-  'Show 1RM calculator': '1RM कैलकुलेटर दिखाएँ',
+  'Show 1RM calculator': '1RM कैलकुलेटर दिखाएँ', 'Show estimated 1RM table': 'अनुमानित 1RM तालिका दिखाएँ',
   'Estimate one-rep max on the Home screen.': 'होम स्क्रीन पर अपना एक-रेप अधिकतम अनुमानित करें।',
   'Enter a valid weight and reps.': 'सही वज़न और रेप्स दर्ज करें।',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': 'सेट को फेलियर तक माना गया है। बेहतर अनुमान के लिए RPE/RIR जोड़ें।',

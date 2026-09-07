@@ -486,7 +486,7 @@ export default {
   'Best estimated 1RM:': '최고 추정 1RM:',
   // --- Home 1RM card ---
   '1RM calculator': '1RM 계산기',
-  'Show 1RM calculator': '1RM 계산기 표시',
+  'Show 1RM calculator': '1RM 계산기 표시', 'Show estimated 1RM table': '추정 1RM 표 표시',
   'Estimate one-rep max on the Home screen.': '홈 화면에서 1회 최대 중량을 추정하세요.',
   'Enter a valid weight and reps.': '올바른 무게와 횟수를 입력하세요.',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': '실패 지점까지 한 세트로 가정합니다. RPE/RIR를 추가하면 더 정확해집니다.',

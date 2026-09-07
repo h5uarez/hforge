@@ -499,7 +499,7 @@ export default {
   'Best estimated 1RM:': 'Mejor 1RM estimado:',
   // --- Home 1RM card ---
   '1RM calculator': 'Calculadora 1RM',
-  'Show 1RM calculator': 'Mostrar calculadora 1RM',
+  'Show 1RM calculator': 'Mostrar calculadora 1RM', 'Show estimated 1RM table': 'Mostrar tabla de 1RM estimado',
   'Estimate one-rep max on the Home screen.': 'Estima tu repetición máxima en la pantalla de inicio.',
   'Enter a valid weight and reps.': 'Introduce un peso y unas repeticiones válidos.',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': 'Asumiendo serie al fallo. Añade RPE/RIR para una mejor estimación.',

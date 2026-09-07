@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore.js'
+import { HOME_WARMUP_STORAGE_KEY, loadCalculatorState, saveCalculatorState, sanitizeHomeWarmupState } from '../lib/calculator-storage.js'
 import { buildWarmup, DEFAULT_WARMUP_CONFIG, WARMUP_OPTIONS, resolveKind, isBodyweightKind } from '../lib/warmup.js'
 import { effortOf } from '../lib/history.js'
 import { rirOf, toScale } from '../lib/effort.js'
@@ -25,15 +26,21 @@ const UI_RIR_MAX = 5
 
 export default function HomeWarmup() {
   const S = useStore(s => s.S)
-  const [open, setOpen] = useState(false)
-  const [exerciseId, setExerciseId] = useState(WARMUP_OPTIONS[0].id)
-  const [kg, setKg] = useState(0)
-  const [reps, setReps] = useState(0)
-  const [addedKg, setAddedKg] = useState(0)
+  const [initial] = useState(() => loadCalculatorState(HOME_WARMUP_STORAGE_KEY,
+    { open: false, exerciseId: WARMUP_OPTIONS[0].id, kg: 0, reps: 0, addedKg: 0, rir: null, res: null }, sanitizeHomeWarmupState))
+  const [open, setOpen] = useState(initial.open)
+  const [exerciseId, setExerciseId] = useState(initial.exerciseId)
+  const [kg, setKg] = useState(initial.kg)
+  const [reps, setReps] = useState(initial.reps)
+  const [addedKg, setAddedKg] = useState(initial.addedKg)
   // Effort is stored in RIR, the scale with a real zero; buildWarmup takes an
   // RPE fatigue guard, so the value is converted back on the way in.
-  const [rir, setRir] = useState(null)
-  const [res, setRes] = useState(null)   // { sets, topLine } | null
+  const [rir, setRir] = useState(initial.rir)
+  const [res, setRes] = useState(initial.res)   // { sets, topLine } | null
+
+  useEffect(() => {
+    saveCalculatorState(HOME_WARMUP_STORAGE_KEY, { open, exerciseId, kg, reps, addedKg, rir, res })
+  }, [open, exerciseId, kg, reps, addedKg, rir, res])
 
   const kind = effortOf(S)
   const showEffort = kind === 'rir' || kind === 'rpe'

@@ -207,6 +207,7 @@ describe('mobile accessibility and layout contracts', () => {
     expect(workout).toContain("aria-label={t('Move up')}")
     expect(workout).toContain("aria-label={t('Move down')}")
     expect(css).toContain('.workout-session .wprog{position:sticky')
+    expect(css).toContain('transform:translateZ(0);backface-visibility:hidden;will-change:transform')
     expect(css).toContain('bottom:calc(96px + var(--sab))')
     expect(css).toContain('calc(100px + var(--sab))')
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')

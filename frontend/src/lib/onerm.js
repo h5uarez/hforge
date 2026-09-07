@@ -59,6 +59,19 @@ export function estimateWithEffort(w, reps, rir) {
   return { est, effReps, failureAssumed: rir == null }
 }
 
+// Project an estimated one-rep max back into the corresponding 1RM–12RM loads using the
+// inverse of the Epley convention above. The one-rep value is the supplied estimate; all other
+// rows are rounded the same way as estimate1RM so the table never implies extra precision.
+export function estimateRMTable(oneRm) {
+  const max = Number(oneRm)
+  if (!Number.isFinite(max) || max <= 0) return []
+  return Array.from({ length: REP_CAP }, (_, index) => {
+    const reps = index + 1
+    const weight = reps === 1 ? max : max / (1 + reps / 30)
+    return { reps, weight: Math.round(weight * 10) / 10 }
+  })
+}
+
 // Best estimate out of one workout entry's completed sets.
 // `topW` is ignored on purpose: it records the working weight a user confirmed after the
 // exercise, with no rep count attached, so it cannot produce an estimate.

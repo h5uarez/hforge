@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, estimateWithEffort, bestSetOf, e1rmSeries, best1RM, is1RMRecord, REP_CAP, FORMULAS } from './onerm.js'
+import { estimate1RM, estimateRMTable, estimateWithEffort, bestSetOf, e1rmSeries, best1RM, is1RMRecord, REP_CAP, FORMULAS } from './onerm.js'
 import { rirOf } from './effort.js'
 
 describe('estimate1RM', () => {
@@ -114,6 +114,23 @@ describe('estimateWithEffort', () => {
     expect(at7.est).toBe(126.7)   // 100 · (1 + 8/30)
     expect(at75.est).toBe(125)    // 100 · (1 + 7.5/30)
     expect(at7.est).not.toBe(at75.est)
+  })
+})
+
+describe('estimateRMTable', () => {
+  it('projects the estimated oneRM back through the inverse Epley convention', () => {
+    const table = estimateRMTable(149.3)
+
+    expect(table).toHaveLength(REP_CAP)
+    expect(table[0]).toEqual({ reps: 1, weight: 149.3 })
+    expect(table.find(row => row.reps === 2)).toEqual({ reps: 2, weight: 140 })
+    expect(table.every(row => Number.isInteger(row.weight * 10))).toBe(true)
+  })
+
+  it('returns no rows for an invalid oneRM', () => {
+    expect(estimateRMTable(0)).toEqual([])
+    expect(estimateRMTable('nope')).toEqual([])
+    expect(estimateRMTable(Infinity)).toEqual([])
   })
 })
 

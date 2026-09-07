@@ -8,7 +8,8 @@ const settings = readFileSync(resolve(process.cwd(), 'src/views/Settings.jsx'), 
 
 describe('HomeWarmup source contracts', () => {
   it('renders collapsed by default with an expandable headline', () => {
-    expect(src).toContain('useState(false)')
+    expect(src).toContain('open: false')
+    expect(src).toContain('useState(initial.open)')
     expect(src).toContain('aria-expanded={open}')
     expect(src).toContain('aria-controls="homewarmup-body"')
     expect(src).toContain('id="homewarmup-body"')
@@ -61,6 +62,15 @@ describe('HomeWarmup source contracts', () => {
     expect(src).toContain('rirOf')
     expect(src).toContain('toScale')
     expect(src).toContain('step={0.5}')
+  })
+
+  it('hydrates and persists the draft and result outside the server-synced store', () => {
+    expect(src).toContain('HOME_WARMUP_STORAGE_KEY')
+    expect(src).toContain('loadCalculatorState')
+    expect(src).toContain('saveCalculatorState')
+    expect(src).toContain('sanitizeHomeWarmupState')
+    expect(src).toContain('useEffect(() =>')
+    expect(src).toContain('exerciseId, kg, reps, addedKg, rir, res')
   })
 
   it('delegates the ladder to buildWarmup and renders sets, rests and the main set', () => {

@@ -486,7 +486,7 @@ export default {
   'Best estimated 1RM:': 'En iyi tahmini 1RM:',
   // --- Home 1RM card ---
   '1RM calculator': '1RM hesaplayıcı',
-  'Show 1RM calculator': '1RM hesaplayıcıyı göster',
+  'Show 1RM calculator': '1RM hesaplayıcıyı göster', 'Show estimated 1RM table': 'Tahmini 1RM tablosunu göster',
   'Estimate one-rep max on the Home screen.': 'Ana ekranda tek tekrar maksimumunu tahmin et.',
   'Enter a valid weight and reps.': 'Geçerli bir ağırlık ve tekrar gir.',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': 'Setin tükenişe gittiği varsayılıyor. Daha iyi tahmin için RPE/RIR ekle.',

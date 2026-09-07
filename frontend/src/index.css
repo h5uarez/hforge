@@ -715,7 +715,7 @@ h4.sec{
 
 /* ------------------------------------------------------------- workout --- */
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
-.workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat))}
+.workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat));transform:translateZ(0);backface-visibility:hidden;will-change:transform}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2);margin-bottom:12px}
 .exmedia img,.exmedia .exmedia-x{width:100%;height:clamp(200px,60vw,320px)}
@@ -1336,6 +1336,39 @@ h4.sec{
 .modal-close:active{background:var(--surface-2);color:var(--label)}
 .sheet>.modal-close{top:12px;right:14px}
 .center .modal-close{top:8px;right:8px}
+.home1rm-result{min-width:0}
+.home1rm-result-value{flex:1;min-width:0;flex-wrap:wrap}
+.home1rm-result-value .big{min-width:0;overflow-wrap:anywhere}
+.home1rm-info{background:var(--acc-soft);color:var(--acc)}
+.home1rm-info:active{background:var(--acc-line);color:var(--acc)}
+.onerm-dialog{padding-top:12px}
+.onerm-dialog-title{
+  padding:0 32px;margin:0 0 14px;text-align:center;
+  font-size:clamp(19px,5.5vw,22px);line-height:1.2;font-weight:600;letter-spacing:-.021em;
+  overflow-wrap:anywhere;text-wrap:pretty;
+}
+.onerm-source{display:grid;gap:8px;margin-bottom:10px}
+.onerm-source-set,.onerm-source-est{
+  display:flex;align-items:center;justify-content:center;gap:clamp(4px,2vw,8px);
+  min-width:0;border-radius:var(--r);padding:10px 8px;
+}
+.onerm-source-set{background:var(--surface);font-size:clamp(13px,3.6vw,15px)}
+.onerm-source-set b{font-variant-numeric:tabular-nums}
+.onerm-source-est{justify-content:space-between;gap:8px;background:var(--acc-soft);color:var(--acc);font-size:clamp(13px,3.6vw,15px)}
+.onerm-source-est strong{white-space:nowrap;font-size:clamp(16px,5vw,19px);font-weight:600;letter-spacing:-.026em}
+.onerm-rm-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px;margin:0}
+.onerm-rm-table td{
+  width:25%;min-width:0;padding:8px 3px;text-align:center;vertical-align:middle;
+  background:var(--surface-2);border-radius:var(--r-sm);overflow:hidden;
+}
+.onerm-rm-table td.is-primary{background:var(--acc-soft);color:var(--acc)}
+.onerm-rm-label{display:block;color:var(--label-2);font-size:clamp(11px,3.3vw,13px);font-weight:600;letter-spacing:-.01em}
+.onerm-rm-table td.is-primary .onerm-rm-label{color:inherit}
+.onerm-rm-value{display:block;margin-top:3px;white-space:nowrap;font-size:clamp(12px,3.7vw,15px);font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.onerm-rm-value small{font-size:.8em;color:var(--label-2);font-weight:400;letter-spacing:-.01em}
+.onerm-rm-table td.is-primary .onerm-rm-value small{color:inherit}
+.onerm-empty{text-align:center;color:var(--label-2);padding:30px 8px 18px;font-size:15px;line-height:1.45}
+.onerm-empty-icon{display:flex;justify-content:center;margin-bottom:10px;font-size:30px;color:var(--acc)}
 /* Month-calendar nav: the row keeps a 44px reserve on the right so the
    next-month arrow never slides under the absolute .modal-close X (36px at
    right:14px); the left side needs no reserve. The title owns the free space

@@ -486,7 +486,7 @@ export default {
   'Best estimated 1RM:': '最佳预估 1RM：',
   // --- Home 1RM card ---
   '1RM calculator': '1RM 计算器',
-  'Show 1RM calculator': '显示 1RM 计算器',
+  'Show 1RM calculator': '显示 1RM 计算器', 'Show estimated 1RM table': '显示预估 1RM 表',
   'Estimate one-rep max on the Home screen.': '在首页预估你的单次最大重量。',
   'Enter a valid weight and reps.': '请输入有效的重量和次数。',
   'Assuming set to failure. Add RPE/RIR for a better estimate.': '假设该组做到力竭。添加 RPE/RIR 可获得更准的预估。',
