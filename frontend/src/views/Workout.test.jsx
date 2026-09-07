@@ -107,7 +107,7 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('.setrow.per-side + .setrow-info')
     expect(css).toContain('.setgroup-done > .setrow-info')
     expect(css).toContain('.setrow .eff .num:placeholder-shown,.setrow .eff .num:not(:placeholder-shown){background:transparent;border-radius:0}')
-    expect(css).toContain('.setrow .eff .num::placeholder,.setrow .eff .num.planned-effort-placeholder::placeholder{color:var(--label-3);opacity:1}')
+    expect(css).toContain('.setrow .eff .num::placeholder,.setrow .eff .num.planned-effort-placeholder::placeholder{color:var(--label-4);opacity:1}')
     expect(css).not.toContain('background:var(--surface-3);border-radius:4px;color:var(--label-3)')
     expect(css).not.toContain('setinfo')
     expect(css).not.toContain('minmax(104px')

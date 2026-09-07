@@ -1171,7 +1171,7 @@ h4.sec{
 .sethead .eff-toggle.unavailable .eff-toggle-surface,.sethead .eff-toggle.unavailable:disabled .eff-toggle-surface{background:var(--surface-2);color:var(--label)}
 .sethead .eff-toggle.unavailable,.sethead .eff-toggle.unavailable:disabled{color:var(--label);opacity:.42;cursor:default}
 .setrow .eff .num:placeholder-shown,.setrow .eff .num:not(:placeholder-shown){background:transparent;border-radius:0}
-.setrow .eff .num::placeholder,.setrow .eff .num.planned-effort-placeholder::placeholder{color:var(--label-3);opacity:1}
+.setrow .eff .num::placeholder,.setrow .eff .num.planned-effort-placeholder::placeholder{color:var(--label-4);opacity:1}
 .setrow .eff .num:not(:placeholder-shown){background:transparent;color:var(--label)}
 /* Programmed target disclosure: this is a read-only region below each matching set, restored
    from the former per-set info interaction. Its inline rails mirror the set number and check
