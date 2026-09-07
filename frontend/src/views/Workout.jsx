@@ -117,12 +117,17 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   }
   // Uses the shared stepper markup so a set row picks up the same control styling
   // as every other +/- field in the app.
-  // The effort field always keeps its neutral empty-state placeholder. Programmed targets are
-  // read separately in the per-set disclosure below, so opening the header never disguises the
-  // editable field as a target value.
-  const effortInputProps = () => ({ placeholder: col3 ? '–' : undefined, className: '' })
+  // An empty effort field shows its matching programmed target as a hint. Sets without a target
+  // keep the neutral dash, while entered values remain the user's editable value.
+  const effortInputProps = s => {
+    const target = setTarget(s)
+    return {
+      placeholder: target ? fmtNum(target.value) : col3 ? '–' : undefined,
+      className: target ? 'planned-effort-placeholder' : ''
+    }
+  }
   const cell = (s, i, col, cls) => {
-    const effortProps = col.eff ? effortInputProps() : { placeholder: undefined, className: '' }
+    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
     return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
@@ -136,7 +141,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   // the per-side RPE/RIR cells honest: + on empty starts at the scale floor (RPE 5),
   // − on empty stays empty, stepping off the floor clears the cell (null drops the key).
   const sideCell = (s, i, side, col, cls) => {
-    const effortProps = col.eff ? effortInputProps() : { placeholder: undefined, className: '' }
+    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
     return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
       <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
       <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
@@ -151,6 +156,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   const headClass = 'sethead' + gridClass
   const effortHeader = col3 && <span className="eff-sp">
     <span className="eff-title">{col3.hd}</span>
+  </span>
+  const effortToggle = col3 && <span className="eff-info-sp">
     <button type="button" className={'eff-toggle' + (targetAvailable && targetOpen ? ' on' : '') + (!targetAvailable ? ' unavailable' : '')}
       disabled={!targetAvailable}
       aria-label={targetAvailable ? t(targetOpen ? 'Hide programmed target' : 'Show programmed target') : t('No programmed target')}
@@ -210,8 +217,8 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
       <div className={headClass}>
           <span className="n-sp" />{perSide ? <>
           {/* per-side rows always stack L/R, so one shared W/R pair + check */}
-          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}<span className="ck-sp" />
-        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}{col3 ? effortToggle : <span className="ck-sp" />}
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}{col3 ? effortToggle : <>{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}</>}
       </div>
       {(() => {
         // Done-run fusion: 2+ consecutive done rows render inside one .setgroup-done

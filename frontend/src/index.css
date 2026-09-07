@@ -842,8 +842,12 @@ h4.sec{
 .setrow.per-side.eff3 > .side-right-eff{grid-column:5;grid-row:2}
 .setrow.per-side.eff3 > .side-checks > .chk:first-child{grid-column:6;grid-row:1}
 .setrow.per-side.eff3 > .side-checks > .chk:last-child{grid-column:6;grid-row:2}
+.sethead.eff3 > .eff-sp{grid-column:4}
+.sethead.eff3 > .eff-info-sp{grid-column:5;justify-self:stretch}
+.sethead.eff3.no-col2 > .eff-sp{grid-column:3}
+.sethead.eff3.no-col2 > .eff-info-sp{grid-column:4;justify-self:stretch}
 .sethead.per-side.eff3 > .eff-sp{grid-column:5}
-.sethead.per-side.eff3 > .ck-sp{grid-column:6;justify-self:center}
+.sethead.per-side.eff3 > .eff-info-sp{grid-column:6;justify-self:stretch}
 /* bodyweight unilateral + effort: reps in col 3, effort in col 4 (overrides the
    col 3/5 span from the plain no-col2 rule below via higher specificity). */
  .setrow.per-side.eff3.no-col2,.sethead.per-side.eff3.no-col2{
@@ -858,7 +862,7 @@ h4.sec{
 .setrow.per-side.eff3.no-col2 > .side-checks > .chk:last-child{grid-column:5;grid-row:2}
 .sethead.per-side.eff3.no-col2 > .w-sp{grid-column:3}
 .sethead.per-side.eff3.no-col2 > .eff-sp{grid-column:4}
-.sethead.per-side.eff3.no-col2 > .ck-sp{grid-column:5;justify-self:center}
+.sethead.per-side.eff3.no-col2 > .eff-info-sp{grid-column:5;justify-self:stretch}
 .sethead.per-side > :nth-child(1){grid-column:1}
 .sethead.per-side > .w-sp{grid-column:3}
 .sethead.per-side > .r-sp{grid-column:4}
@@ -1154,18 +1158,20 @@ h4.sec{
 .wprog i{transition:width var(--motion-push) var(--ease)}
 #timer{animation:timerin 160ms var(--ease-exit)}
 @keyframes timerin{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-/* The effort header owns the only programmed-target control. The compact painted surface stays
-   inside the effort column, while the actual button is a real 44px target that can overlap the
-   gap by a few pixels without adding a grid track or painting over the check spacer. */
-.sethead .eff-sp{--eff-toggle-paint-width:clamp(20px,2vw + 12px,28px);position:relative;display:block;min-height:44px;overflow:visible}
-.sethead .eff-title{position:absolute;inset:0 calc(var(--eff-toggle-paint-width) + 4px) 0 0;display:flex;align-items:center;justify-content:center;width:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;pointer-events:none}
-.sethead .eff-toggle{position:absolute;right:-8px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0;border-radius:7px;background:transparent;color:var(--label-2);font-size:13px;z-index:1}
-.sethead .eff-toggle-surface{display:flex;align-items:center;justify-content:center;width:var(--eff-toggle-paint-width);height:28px;border-radius:7px;background:var(--surface-2)}
+/* The effort header owns the only programmed-target control. The title and control have
+   separate grid items: the title is centered over the editable effort track, while the
+   control is centered in the existing final action rail shared with the row check. */
+.sethead .eff-sp,.sethead .eff-info-sp{min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center}
+.sethead .eff-sp{overflow:hidden;text-align:center}
+.sethead .eff-info-sp{overflow:visible}
+.sethead .eff-title{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.sethead .eff-toggle{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;flex:none;padding:0;border-radius:7px;background:transparent;color:var(--label-2);font-size:13px}
+.sethead .eff-toggle-surface{--eff-toggle-paint-width:clamp(20px,2vw + 12px,28px);display:flex;align-items:center;justify-content:center;width:var(--eff-toggle-paint-width);height:28px;border-radius:7px;background:var(--surface-2)}
 .sethead .eff-toggle.on .eff-toggle-surface{background:var(--acc-soft);color:var(--acc)}
 .sethead .eff-toggle.unavailable .eff-toggle-surface,.sethead .eff-toggle.unavailable:disabled .eff-toggle-surface{background:var(--surface-2);color:var(--label)}
 .sethead .eff-toggle.unavailable,.sethead .eff-toggle.unavailable:disabled{color:var(--label);opacity:.42;cursor:default}
-.setrow .eff .num:placeholder-shown{background:var(--surface-3);border-radius:4px;color:var(--label-3)}
-.setrow .eff .num::placeholder{color:var(--label-3);opacity:1}
+.setrow .eff .num:placeholder-shown,.setrow .eff .num:not(:placeholder-shown){background:transparent;border-radius:0}
+.setrow .eff .num::placeholder,.setrow .eff .num.planned-effort-placeholder::placeholder{color:var(--label-3);opacity:1}
 .setrow .eff .num:not(:placeholder-shown){background:transparent;color:var(--label)}
 /* Programmed target disclosure: this is a read-only region below each matching set, restored
    from the former per-set info interaction. Its inline rails mirror the set number and check
@@ -1178,6 +1184,7 @@ h4.sec{
   margin:0 calc(var(--set-info-inline) + var(--set-info-action) + var(--set-info-gap)) 4px calc(var(--set-info-inline) + var(--set-info-number) + var(--set-info-side) + var(--set-info-gap));
   padding:9px 10px;background:var(--surface-2);border-radius:var(--r-sm);
 }
+.setrow-info[hidden]{display:none}
 .setrow.per-side + .setrow-info{--set-info-side:12px}
 .setgroup-done > .setrow-info{align-self:stretch;min-width:0}
 .setrow-info .lbl{
