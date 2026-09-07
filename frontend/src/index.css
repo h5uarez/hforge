@@ -408,6 +408,13 @@ h4.sec{
 #tabbar .tab-ind i{width:4px;height:4px;border-radius:50%;background:var(--acc)}
 #tabbar.has-ind .tab-ind{opacity:1}
 #tabbar button.on{font-weight:600}
+/* Software keyboard open (body.kb-open is set from the visualViewport in
+   TabBar.jsx): park the bar below the fold instead of floating it mid-screen
+   over the content. `translate` composes with the desktop `transform`
+   centering instead of overriding it; visibility drops it from the
+   accessibility tree while hidden. Transform/opacity only. */
+#tabbar{transition:translate var(--fast) var(--ease),opacity var(--fast) var(--ease),visibility var(--fast)}
+body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;pointer-events:none}
 
 /* ------------------------------------------------------------ week strip -- */
 .week{display:flex;justify-content:space-between;gap:4px}

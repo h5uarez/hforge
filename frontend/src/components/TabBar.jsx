@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { effectiveRoutine } from '../lib/history.js'
@@ -18,6 +19,25 @@ const TAB_INDEX = { home: 0, plan: 1, stats: 3, library: 4 }
 export default function TabBar({ onStart }) {
   const nav = useNavigate()
   const loc = useLocation()
+  // While the software keyboard is open the visual viewport shrinks above it
+  // and a fixed bottom bar would float mid-screen over the content, so park
+  // the bar off-screen until the keyboard closes. Navigation is unreachable
+  // behind the keyboard anyway; the bar stays in the DOM and comes back
+  // untouched. The 120px gate ignores minor resizes (URL bar, split view).
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () => {
+      const kb = window.innerHeight - vv.height - vv.offsetTop
+      document.body.classList.toggle('kb-open', kb > 120)
+    }
+    onResize()
+    vv.addEventListener('resize', onResize)
+    return () => {
+      vv.removeEventListener('resize', onResize)
+      document.body.classList.remove('kb-open')
+    }
+  }, [])
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
   const isGuest = useStore(s => s.isGuest())

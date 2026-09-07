@@ -113,15 +113,28 @@ function Sheet({ sheet }) {
 export default function Modals() {
   const sheets = useUI(s => s.sheets)
 
-  // lock the page behind any open sheet (iOS-safe)
+  // lock the page behind any open sheet without moving it: overflow hidden
+  // freezes scroll in place (scrollY is preserved, nothing jumps), and a
+  // padding-right top-up compensates a disappearing classic scrollbar so
+  // content never shifts sideways. Never position:fixed the body — that
+  // resets the visual scroll to 0, which reads as a white stripe plus a
+  // background jump on mobile. iOS rubber-banding stays off via the
+  // overscroll-behavior already set on html/body.
   useEffect(() => {
     if (!sheets.length) return
-    const y = window.scrollY || 0
-    const b = document.body.style
-    b.position = 'fixed'; b.top = -y + 'px'; b.left = '0'; b.right = '0'; b.width = '100%'
+    const de = document.documentElement
+    const b = document.body
+    const sb = window.innerWidth - de.clientWidth
+    const prevDeOverflow = de.style.overflow
+    const prevBodyOverflow = b.style.overflow
+    const prevPadRight = b.style.paddingRight
+    de.style.overflow = 'hidden'
+    b.style.overflow = 'hidden'
+    if (sb > 0) b.style.paddingRight = ((parseFloat(getComputedStyle(b).paddingRight) || 0) + sb) + 'px'
     return () => {
-      b.position = b.top = b.left = b.right = b.width = ''
-      window.scrollTo(0, y)
+      de.style.overflow = prevDeOverflow
+      b.style.overflow = prevBodyOverflow
+      b.style.paddingRight = prevPadRight
     }
   }, [sheets.length > 0])
 

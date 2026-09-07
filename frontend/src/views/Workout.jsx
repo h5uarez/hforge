@@ -328,11 +328,13 @@ function ActiveWorkout() {
         }
         return
       }
+      // Single pass: one scroll request, then release. Re-framing a successful
+      // restore re-centers the card on every frame and fights the browser's
+      // own scroll-into-view while the software keyboard is open. Refs that
+      // attach a frame late are still covered by the retry branch above;
+      // focus itself always lands, so keyboard and screen-reader users lose
+      // nothing.
       restoreFocusedEntry(target, pendingFocus.scroll)
-      if (pendingFocus.scroll && attempts++ < 3) {
-        frame = requestAnimationFrame(restore)
-        return
-      }
       setPendingFocus(null)
     }
     restore()

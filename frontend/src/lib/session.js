@@ -103,10 +103,13 @@ export function focusRefRetryDecision(attempts, fallbackUsed, hasTarget) {
 
 // Embedded browsers can move focus back to the document while applying a scroll.
 // Reassert focus after the one-shot visibility request without passive scrolling.
+// `nearest` keeps the move minimal: with the software keyboard open the browser
+// has already scrolled the field into view, and re-centering would yank content
+// (and the fixed tab bar) from under the keyboard.
 export function restoreFocusedEntry(target, scroll = true) {
   if (!target) return false
   target.focus?.({ preventScroll: true })
-  if (scroll) target.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: 'auto' })
+  if (scroll) target.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
   target.focus?.({ preventScroll: true })
   return true
 }

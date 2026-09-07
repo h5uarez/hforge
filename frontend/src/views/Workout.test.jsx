@@ -192,10 +192,16 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('requestAnimationFrame(restore)')
     expect(source).toContain('if (!target)')
     expect(session).toContain('scrollIntoView')
-    expect(session).toContain("block: 'center'")
+    // single-pass nearest: re-centering fights the browser scroll-into-view
+    // while the software keyboard is open (fixed tab bar floats mid-screen)
+    expect(session).toContain("block: 'nearest'")
+    expect(session).not.toContain("block: 'center'")
     expect(session).toContain("inline: 'nearest'")
     expect(session).toContain("behavior: 'auto'")
-    expect(source).toContain('attempts++ < 3')
+    // single pass on success: late refs retry above, a landed restore never
+    // re-frames (that loop fights the keyboard scroll and is the mid-screen
+    // tab bar). Focus + aria-live stay intact.
+    expect(source).not.toContain('attempts++ < 3')
     expect(source).toContain('window.setTimeout')
     expect(source).toContain('window.clearTimeout')
     expect(source).toContain('embedded runtimes')
