@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -104,6 +104,11 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   const setTarget = s => showTarget ? plannedEffortForSet(s, kind) : null
   const [targetOpen, setTargetOpen] = useState(false)
   const targetAvailable = !!col3 && entry.sets.some(s => !!setTarget(s))
+  const targetId = i => 'programmed-target-' + entryIdx + '-' + i
+  const targetRegionIds = entry.sets.reduce((ids, s, i) => {
+    if (setTarget(s)) ids.push(targetId(i))
+    return ids
+  }, []).join(' ')
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
@@ -112,20 +117,16 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   }
   // Uses the shared stepper markup so a set row picks up the same control styling
   // as every other +/- field in the app.
-  const effortInputProps = s => {
-    if (!s || !col3 || !targetOpen) return { placeholder: col3 ? '–' : undefined, className: '' }
-    const target = setTarget(s)
-    return target
-      ? { placeholder: fmtNum(target.value), className: 'target-placeholder' }
-      : { placeholder: '–', className: '' }
-  }
+  // The effort field always keeps its neutral empty-state placeholder. Programmed targets are
+  // read separately in the per-set disclosure below, so opening the header never disguises the
+  // editable field as a target value.
+  const effortInputProps = () => ({ placeholder: col3 ? '–' : undefined, className: '' })
   const cell = (s, i, col, cls) => {
-    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    const effortProps = col.eff ? effortInputProps() : { placeholder: undefined, className: '' }
     return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
-          Vacant effort paints a dim "–" ghost, or the programmed target when the header toggle
-          is open, in the same full-width track (see .stp .num::placeholder). */}
+          Vacant effort keeps a neutral "–" ghost in the same full-width track. */}
       <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
@@ -135,7 +136,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   // the per-side RPE/RIR cells honest: + on empty starts at the scale floor (RPE 5),
   // − on empty stays empty, stepping off the floor clears the cell (null drops the key).
   const sideCell = (s, i, side, col, cls) => {
-    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    const effortProps = col.eff ? effortInputProps() : { placeholder: undefined, className: '' }
     return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
       <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
       <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
@@ -155,8 +156,11 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
       aria-label={targetAvailable ? t(targetOpen ? 'Hide programmed target' : 'Show programmed target') : t('No programmed target')}
       title={targetAvailable ? undefined : t('No programmed target')}
       aria-expanded={targetAvailable ? targetOpen : false}
+      aria-controls={targetAvailable ? targetRegionIds : undefined}
       onClick={targetAvailable ? () => setTargetOpen(open => !open) : undefined}>
-      <Icon name={targetAvailable && targetOpen ? 'chevronUp' : 'info'} />
+      <span className="eff-toggle-surface" aria-hidden="true">
+        <Icon name={targetAvailable && targetOpen ? 'chevronUp' : 'info'} />
+      </span>
     </button>
   </span>
   return <>
@@ -216,26 +220,35 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
         const setDoneAt = entry.sets.map(s => projectSideSet(s).done)
         const firstPending = entry.sets.findIndex((s, i) => !setDoneAt[i])
         const renderSetRow = (s, i) => {
+          const target = setTarget(s)
           // P0: the first unfinished set is "current" (accent box + dot + aria-current);
           // finished sets are "done" (soft wash, full contrast); the rest are pending.
           const sDone = setDoneAt[i]
           const isCurrent = !sDone && firstPending === i
-          return <div key={i} className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass}
-            aria-current={isCurrent ? 'true' : undefined}>
-            <div className="n">{i + 1}</div>
-            {perSide ? <>
-              <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
-              <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}{col3 && sideCell(s, i, 'right', col3, 'eff')}
-            </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
-            {/* A timed set is started, not typed: the timer counts the hold down and checks the
-                set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-            {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
-              onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
-            {perSide ? <div className="side-checks">
-              <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
-              <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
-            </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
-          </div>
+          return <Fragment key={i}>
+            <div className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass}
+              aria-current={isCurrent ? 'true' : undefined}>
+              <div className="n">{i + 1}</div>
+              {perSide ? <>
+                <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
+                <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}{col3 && sideCell(s, i, 'right', col3, 'eff')}
+              </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
+              {/* A timed set is started, not typed: the timer counts the hold down and checks the
+                  set off itself. The checkbox stays for anyone who timed it on their own watch. */}
+              {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
+                onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
+              {perSide ? <div className="side-checks">
+                <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
+                <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
+              </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
+            </div>
+            {target && <div id={targetId(i)} className="setrow-info" role="region" hidden={!targetOpen}
+              aria-label={t('Set {0}', i + 1) + ': ' + t('Programmed target')}>
+              <span className="lbl">{t('Target')}</span>
+              <span className="target"><span className="num">{fmtNum(target.value)}</span><span className="metric">{t(EFFORT[target.metric].hd)}</span></span>
+              <span className="dim small note">{t('read-only')}</span>
+            </div>}
+          </Fragment>
         }
         const out = []
         let k = 0

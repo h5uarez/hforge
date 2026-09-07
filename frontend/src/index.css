@@ -751,7 +751,7 @@ h4.sec{
 }
 .sethead>*,.setrow>*{min-width:0}
 .sethead{
-  --set-grid-template:minmax(24px,24px) minmax(0,1.35fr) minmax(0,1fr) minmax(30px,32px);
+  --set-grid-template:minmax(24px,24px) minmax(0,1.35fr) minmax(0,1fr) minmax(36px,40px);
   /* same inline inset as .setrow below: header columns resolve over the same
      content-box width as every row, current or not, so PESO/REPS/RPE/check
      share one vertical line. Vertical rhythm (0 top / 6px bottom) untouched. */
@@ -759,7 +759,7 @@ h4.sec{
   font-size:11px;color:var(--label-2);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
 }
 .sethead .w-sp,.sethead .r-sp,.sethead .eff-sp{text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sethead .ck-sp{min-width:36px}
+.sethead .ck-sp{width:100%;min-width:0}
 .setrow{--set-grid-template:minmax(24px,24px) minmax(0,1.35fr) minmax(0,1fr) minmax(36px,40px);padding:7px 4px;position:relative}
 .sethead.timed,.setrow.timed{
   --set-grid-template:minmax(24px,24px) minmax(0,.9fr) minmax(0,1.3fr) minmax(36px,40px) minmax(36px,40px);
@@ -919,9 +919,9 @@ h4.sec{
    · 2px internal stepper gap, 4px column gaps (≤430px block above), 0-1px
      value padding; the number goes fluid — clamp(12px→14px), tabular figures,
      nowrap, min-width:0 flex:1 — so clipping can only degrade to "7…";
-   · empty effort inputs paint a dim "–" ghost (see cell/sideCell placeholder
-     in Workout.jsx + .stp .num::placeholder) so a vacant RPE reads as waiting
-     input in the same slot without collapsing it;
+    · empty effort inputs paint a neutral "–" ghost and surface (see
+      cell/sideCell placeholder in Workout.jsx + .stp .num::placeholder) so a
+      vacant RPE reads as waiting input in the same slot without collapsing it;
    · row insets tighten to bilateral 7px 3px (7px 2px ≤360px) and per-side
      8px 6px with headers mirroring both — one box model per kind, no
      per-state margins, so .current's inset ring stays pure paint;
@@ -1078,7 +1078,7 @@ h4.sec{
   .setgrid-scroll .setrow.eff3 .stp{gap:1px}
   .setgrid-scroll .setrow.eff3 .stp .val{padding:0}
   .setgrid-scroll .setrow.eff3 .stp button{width:clamp(12px,5vw - 4px,14px);font-size:14px}
-  .setgrid-scroll .setrow.eff3 .stp .num{font-size:clamp(10px,6.25vw - 9.5px,13px)}
+  .setgrid-scroll .setrow.eff3 .stp .num{font-size:clamp(12px,6.25vw - 8px,13px)}
 
   .setgrid-scroll .setrow.per-side.eff3,.setgrid-scroll .sethead.per-side.eff3{
     --set-grid-template:minmax(18px,18px) minmax(12px,12px) repeat(3,minmax(0,1fr)) minmax(32px,36px);
@@ -1094,7 +1094,7 @@ h4.sec{
   .setgrid-scroll .setrow.per-side.eff3 .stp{gap:1px}
   .setgrid-scroll .setrow.per-side.eff3 .stp .val{padding:0}
   .setgrid-scroll .setrow.per-side.eff3 .stp button{width:clamp(12px,5vw - 4px,14px);font-size:14px}
-  .setgrid-scroll .setrow.per-side.eff3 .stp .num{font-size:clamp(10px,6.25vw - 9.5px,13px)}
+  .setgrid-scroll .setrow.per-side.eff3 .stp .num{font-size:clamp(12px,6.25vw - 8px,13px)}
 }
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 /* P0 set states — three visibly different rows, none of them "disabled":
@@ -1154,17 +1154,51 @@ h4.sec{
 .wprog i{transition:width var(--motion-push) var(--ease)}
 #timer{animation:timerin 160ms var(--ease-exit)}
 @keyframes timerin{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-/* The effort header owns the only programmed-target control. It stays inside the existing
-   effort track; its centred pseudo-element preserves the shared 44px touch convention without
-   adding a grid column. The icon changes with state so color is never the only cue. */
-.sethead .eff-sp{display:flex;align-items:center;justify-content:center;gap:3px;overflow:visible}
-.sethead .eff-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sethead .eff-toggle{position:relative;display:flex;align-items:center;justify-content:center;width:28px;height:28px;min-width:28px;border-radius:7px;background:var(--surface-2);color:var(--label-2);font-size:13px;z-index:1}
-.sethead .eff-toggle::after{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px}
-.sethead .eff-toggle.on{background:var(--acc-soft);color:var(--acc)}
-.sethead .eff-toggle.unavailable,.sethead .eff-toggle.unavailable:disabled{background:var(--surface-2);color:var(--label);opacity:.42;cursor:default}
-.setrow .target-placeholder:placeholder-shown{background:var(--acc-soft);border-radius:4px;color:var(--acc)}
-.setrow .target-placeholder::placeholder{color:var(--acc);opacity:1;font-weight:600}
+/* The effort header owns the only programmed-target control. The compact painted surface stays
+   inside the effort column, while the actual button is a real 44px target that can overlap the
+   gap by a few pixels without adding a grid track or painting over the check spacer. */
+.sethead .eff-sp{--eff-toggle-paint-width:clamp(20px,2vw + 12px,28px);position:relative;display:block;min-height:44px;overflow:visible}
+.sethead .eff-title{position:absolute;inset:0 calc(var(--eff-toggle-paint-width) + 4px) 0 0;display:flex;align-items:center;justify-content:center;width:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;pointer-events:none}
+.sethead .eff-toggle{position:absolute;right:-8px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0;border-radius:7px;background:transparent;color:var(--label-2);font-size:13px;z-index:1}
+.sethead .eff-toggle-surface{display:flex;align-items:center;justify-content:center;width:var(--eff-toggle-paint-width);height:28px;border-radius:7px;background:var(--surface-2)}
+.sethead .eff-toggle.on .eff-toggle-surface{background:var(--acc-soft);color:var(--acc)}
+.sethead .eff-toggle.unavailable .eff-toggle-surface,.sethead .eff-toggle.unavailable:disabled .eff-toggle-surface{background:var(--surface-2);color:var(--label)}
+.sethead .eff-toggle.unavailable,.sethead .eff-toggle.unavailable:disabled{color:var(--label);opacity:.42;cursor:default}
+.setrow .eff .num:placeholder-shown{background:var(--surface-3);border-radius:4px;color:var(--label-3)}
+.setrow .eff .num::placeholder{color:var(--label-3);opacity:1}
+.setrow .eff .num:not(:placeholder-shown){background:transparent;color:var(--label)}
+/* Programmed target disclosure: this is a read-only region below each matching set, restored
+   from the former per-set info interaction. Its inline rails mirror the set number and check
+   tracks, keeping the readable panel inside fused done groups without clipping. */
+.setrow-info{
+  --set-info-inline:clamp(2px,1vw - 1px,4px);--set-info-gap:clamp(2px,1vw + 1px,6px);
+  --set-info-number:20px;--set-info-side:0px;--set-info-action:36px;
+  display:grid;grid-template-columns:minmax(0,max-content) 4ch minmax(0,max-content) minmax(0,1fr);
+  align-items:baseline;column-gap:8px;row-gap:4px;min-width:0;max-width:none;width:auto;
+  margin:0 calc(var(--set-info-inline) + var(--set-info-action) + var(--set-info-gap)) 4px calc(var(--set-info-inline) + var(--set-info-number) + var(--set-info-side) + var(--set-info-gap));
+  padding:9px 10px;background:var(--surface-2);border-radius:var(--r-sm);
+}
+.setrow.per-side + .setrow-info{--set-info-side:12px}
+.setgroup-done > .setrow-info{align-self:stretch;min-width:0}
+.setrow-info .lbl{
+  grid-column:1;min-width:0;color:var(--label-2);font-size:11px;font-weight:500;letter-spacing:.045em;text-transform:uppercase;overflow-wrap:anywhere;
+}
+.setrow-info .target{display:contents}
+.setrow-info .num{
+  grid-column:2;min-width:4ch;text-align:center;color:var(--label);font-size:18px;font-weight:600;line-height:1.1;letter-spacing:-.02em;
+}
+.setrow-info .metric{grid-column:3;min-width:0;color:var(--acc);font-size:12px;font-weight:600;letter-spacing:.035em;text-transform:uppercase;overflow-wrap:anywhere}
+.setrow-info .note{
+  grid-column:4;min-width:0;padding-left:8px;border-left:var(--hair) solid var(--sep);
+  color:var(--label-2);font-size:12px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;
+}
+@media (max-width:360px){
+  .setrow-info{grid-template-columns:minmax(0,max-content) 4ch minmax(0,max-content)}
+  .setrow-info .note{grid-column:1 / -1;justify-self:stretch;margin-top:1px}
+}
+@media (max-width:430px){
+  .setrow-info{--set-info-inline:2px;--set-info-gap:2px;--set-info-number:18px;--set-info-action:32px}
+}
 /* why the next target is what it is (issue #17) */
 .progline{
   display:flex;align-items:flex-start;gap:7px;margin:6px 0 2px;
