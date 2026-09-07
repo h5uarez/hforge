@@ -51,6 +51,8 @@ describe('scrollable workout composition contracts', () => {
     expect(css).not.toContain('.session-selector')
     expect(css).toContain('.workout-session .session-card{padding:12px')
     expect(css).toContain('.workout-session .session-card .card{padding:12px}')
+    expect(css).toContain('.workout-session .session-card:focus,.workout-session .session-card:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;box-shadow:none}')
+    expect(css).not.toContain('.workout-session .session-card:focus-visible{box-shadow:0 0 0 2px var(--acc);outline-offset:4px}')
     expect(css).toContain('.workout-session-nav > button{flex:1 1 0;width:auto}')
   })
 
@@ -65,8 +67,6 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('const gridClass =')
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
-    expect(source).toContain('has-info')
-    expect(source).toContain('hasInfoTrack')
     expect(source).toContain("const loadCol = { f: 'w', step: 2.5, dec: true")
     expect(source).toContain('decimal={col.dec}')
     // the wrapper is a plain full-width box: visible overflow, never a scrollport
@@ -76,12 +76,15 @@ describe('scrollable workout composition contracts', () => {
     expect(scrollRule).not.toContain('overflow-x')
     expect(scrollRule).not.toContain('scrollbar')
     // one fluid system: every stepper track is minmax(0,1fr), 32px check track
-    expect(css).toContain('minmax(0,1.35fr) minmax(0,1fr) minmax(30px,32px)')
-    expect(css).toContain('minmax(0,.9fr) minmax(0,1.3fr) minmax(30px,32px) minmax(30px,32px)')
+    expect(css).toContain('minmax(0,1.35fr) minmax(0,1fr) minmax(36px,40px)')
+    expect(css).toContain('minmax(0,.9fr) minmax(0,1.3fr) minmax(36px,40px) minmax(36px,40px)')
     expect(css).toContain('--set-go-col:3;--set-check-col:4')
     expect(css).toContain('.setrow:not(.per-side) > .setgo{grid-column:var(--set-go-col,4);justify-self:center}')
-    expect(css).toContain('.setrow:not(.per-side) > .setinfo{grid-column:var(--set-info-col);justify-self:center}')
     expect(css).toContain('.setrow:not(.per-side) > .chk{grid-column:var(--set-check-col);justify-self:center}')
+    expect(css).toContain('.sethead .eff-toggle')
+    expect(css).toContain('.setrow .target-placeholder::placeholder')
+    expect(css).not.toContain('setinfo')
+    expect(css).not.toContain('setrow-info')
     expect(css).not.toContain('minmax(104px')
     expect(css).not.toContain('minmax(76px')
     expect(css).not.toContain('min-width:340px')
@@ -89,10 +92,9 @@ describe('scrollable workout composition contracts', () => {
     expect(css).not.toContain('min-width:560px')
     expect(css).toContain('@media (max-width:430px)')
     expect(css).not.toContain('@media (max-width:420px)')
-    // RIR rows: compact 28px keys + tabular values, info track only with target
+    // RIR rows: compact keys + tabular values, with the target control inside the effort header
     expect(css).toContain('repeat(3,minmax(0,1fr))')
-    expect(css).toContain('.setrow.eff3.has-info,.sethead.eff3.has-info')
-    expect(css).toContain('--set-info-col:5;--set-check-col:6')
+    expect(css).toContain('repeat(3,minmax(0,1fr)) minmax(36px,40px)')
     expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button{width:28px}')
     expect(css).not.toContain('inset:-2px -14px')
     // single-row contract: effort never leaves the crowded first row — no
@@ -115,6 +117,15 @@ describe('scrollable workout composition contracts', () => {
     expect(gridWidth([24, 0, 0, 32, 32], 8)).toBeLessThanOrEqual(240)
     expect(gridWidth([24, 0, 0, 0, 32], 6)).toBeLessThanOrEqual(240)
     expect(gridWidth([24, 20, 0, 0, 32], 6)).toBeLessThanOrEqual(240)
+    expect(source).toContain('const [targetOpen, setTargetOpen] = useState(false)')
+    expect(source).toContain('targetAvailable = !!col3 && entry.sets.some')
+    expect(source).toContain('aria-expanded={targetAvailable ? targetOpen : false}')
+    expect(source).toContain('disabled={!targetAvailable}')
+    expect(source).toContain("className: 'target-placeholder'")
+    expect(source).not.toContain('hasInfoTrack')
+    expect(source).not.toContain('setinfo')
+    expect(source).not.toContain('setrow-info')
+    expect(source).not.toContain('onPointerDown')
   })
 
   it('renders visible persistence recovery actions without clearing the active draft', () => {
@@ -178,14 +189,16 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('.setrow.per-side > .side-checks{display:contents}')
     expect(css).toContain('.setrow.per-side .side-input{width:100%;min-width:0}')
     expect(css).toContain('.setrow .stp button{width:32px;height:40px}')
-    expect(css).toContain('--set-grid-template:minmax(24px,24px) minmax(14px,20px) minmax(0,1fr) minmax(0,1fr) minmax(30px,32px)')
+    expect(css).toContain('--set-grid-template:minmax(20px,22px) minmax(10px,14px) repeat(2,minmax(0,1fr)) minmax(36px,40px)')
     expect(css).toContain('.setrow.per-side > .side-left-label{grid-column:2;grid-row:1;align-self:center}')
     expect(css).toContain('.setrow.per-side > .side-right-label{grid-column:2;grid-row:2;align-self:center}')
     expect(css).toContain('.setrow.per-side > .side-left-r{grid-column:4;grid-row:1}')
     expect(css).toContain('.setrow.per-side > .side-right-w{grid-column:3;grid-row:2}')
     expect(css).toContain('.setrow.per-side > .side-right-r{grid-column:4;grid-row:2}')
     expect(css).toContain('.setrow.per-side > .side-checks > .chk:first-child{grid-column:5;grid-row:1;justify-self:center}')
-    expect(css).toContain('.setrow.per-side.eff3.has-info > .setinfo{grid-column:7;grid-row:1 / 3;align-self:center;justify-self:center}')
+     expect(css).toContain('.setrow.per-side.eff3 > .side-left-eff{grid-column:5;grid-row:1}')
+     expect(css).toContain('.setrow.per-side.eff3 > .side-right-eff{grid-column:5;grid-row:2}')
+     expect(css).toContain('.setrow.per-side.eff3 > .side-checks > .chk:first-child{grid-column:6;grid-row:1}')
     // no side-by-side desktop grid, no fixed stepper minima, no ghost tracks
     expect(css).not.toContain('minmax(120px')
     expect(css).not.toContain('minmax(84px')
@@ -196,7 +209,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('side-left-label')
     expect(source).toContain('side-right-label')
     expect(source).not.toContain('side-sp')
-    expect(source).toContain('className="side-input"')
+    expect(source).toContain("className={'side-input ' + effortProps.className}")
   })
 
   it('terminates missing-ref restoration after frames and one fallback', () => {

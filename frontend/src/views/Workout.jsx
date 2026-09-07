@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -15,11 +15,6 @@ import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeigh
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
-
-// Long-press threshold in milliseconds. Long enough to be a deliberate gesture, short
-// enough to feel snappy. The handler is reset on any pointer move, so scrolling through
-// the row never accidentally opens a target.
-const LONG_PRESS_MS = 500
 
 /* ---------- start chooser (no active workout) ---------- */
 function StartChooser() {
@@ -103,10 +98,12 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   const eff = EFFORT[kind]
   const col3 = mode === 'reps' && eff ? { ...eff, eff: kind, dec: true, opt: true, hd: t(eff.hd) } : null
   // Programmed-effort targets ride alongside the actual `rir`/`rpe` stepper. They are only
-  // shown on the row when the saved metric matches the active profile — a routine planned
-  // on RIR renders no target here the moment Settings flips to RPE, with no conversion.
-  const showTargetBtn = mode === 'reps' && !!eff
-  const setTarget = s => showTargetBtn ? plannedEffortForSet(s, kind) : null
+  // shown when the saved metric matches the active profile — a routine planned on RIR renders
+  // no target here the moment Settings flips to RPE, with no conversion.
+  const showTarget = mode === 'reps' && !!eff
+  const setTarget = s => showTarget ? plannedEffortForSet(s, kind) : null
+  const [targetOpen, setTargetOpen] = useState(false)
+  const targetAvailable = !!col3 && entry.sets.some(s => !!setTarget(s))
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
@@ -115,54 +112,53 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
   }
   // Uses the shared stepper markup so a set row picks up the same control styling
   // as every other +/- field in the app.
-  const cell = (s, i, col, cls) => (
-    <div className={'stp ' + cls}>
+  const effortInputProps = s => {
+    if (!s || !col3 || !targetOpen) return { placeholder: col3 ? '–' : undefined, className: '' }
+    const target = setTarget(s)
+    return target
+      ? { placeholder: fmtNum(target.value), className: 'target-placeholder' }
+      : { placeholder: '–', className: '' }
+  }
+  const cell = (s, i, col, cls) => {
+    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
-      {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
-          Vacant effort paints a dim "–" ghost so the slot reads as waiting input
-          in the same full-width track (see .stp .num::placeholder). */}
-      <span className="val"><NumberField aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.opt ? '–' : undefined} value={s[col.f] ?? ''}
+      {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
+          Vacant effort paints a dim "–" ghost, or the programmed target when the header toggle
+          is open, in the same full-width track (see .stp .num::placeholder). */}
+      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
-  )
+  }
   // Effort steps on its own scale (see stepEffort) — routing col.eff through it keeps
   // the per-side RPE/RIR cells honest: + on empty starts at the scale floor (RPE 5),
   // − on empty stays empty, stepping off the floor clears the cell (null drops the key).
-  const sideCell = (s, i, side, col, cls) => <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
-    <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-   <span className="val"><NumberField className="side-input" aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.opt ? '–' : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
-   <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+  const sideCell = (s, i, side, col, cls) => {
+    const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
+      <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
+      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+      <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
     </div>
-  // Disclosure: which set rows have their immutable planned target revealed. A new Set on
-  // every change so React notices — disclosure is local UI state, never persisted.
-  const [disclosed, setDisclosed] = useState(() => new Set())
-  const toggleDisclosed = i => setDisclosed(s => {
-    const ns = new Set(s)
-    if (ns.has(i)) ns.delete(i); else ns.add(i)
-    return ns
-  })
-  // Long-press on the row also reveals the target (spec: "info button or long-press"). The
-  // timer is cancelled on any pointer move or release so a quick tap never opens a target,
-  // and a swipe through the row never opens one either.
-  const lpTimer = useRef(null)
+  }
   // Empty notes stay out of the way, while an existing note remains immediately readable. This
   // is local disclosure state and does not affect the note stored in the active workout.
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
   const perSide = isPerSide(cfg) && !cardio && !timed
   const gridClass = (col3 ? ' eff3' : '') + (perSide ? ' per-side' : '') + (!col2 ? ' no-col2' : '') + (timed ? ' timed' : '')
-  // Keep the info track whenever the effort column exists. Planned sets get an actionable
-  // disclosure; extra/unplanned sets get the same disabled empty marker, so the check column
-  // never shifts when a user adds a set.
-  const hasInfoTrack = !!col3
-  const headClass = 'sethead' + gridClass + (hasInfoTrack ? ' has-info' : '')
-  const startLongPress = i => {
-    cancelLongPress()
-    lpTimer.current = setTimeout(() => { lpTimer.current = null; toggleDisclosed(i) }, LONG_PRESS_MS)
-  }
-  const cancelLongPress = () => {
-    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null }
-  }
+  const headClass = 'sethead' + gridClass
+  const effortHeader = col3 && <span className="eff-sp">
+    <span className="eff-title">{col3.hd}</span>
+    <button type="button" className={'eff-toggle' + (targetAvailable && targetOpen ? ' on' : '') + (!targetAvailable ? ' unavailable' : '')}
+      disabled={!targetAvailable}
+      aria-label={targetAvailable ? t(targetOpen ? 'Hide programmed target' : 'Show programmed target') : t('No programmed target')}
+      title={targetAvailable ? undefined : t('No programmed target')}
+      aria-expanded={targetAvailable ? targetOpen : false}
+      onClick={targetAvailable ? () => setTargetOpen(open => !open) : undefined}>
+      <Icon name={targetAvailable && targetOpen ? 'chevronUp' : 'info'} />
+    </button>
+  </span>
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
     <div className="row between" style={{ marginBottom: 6 }}>
@@ -208,10 +204,10 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className="setgrid-scroll">
       <div className={headClass}>
-        <span className="n-sp" />{perSide ? <>
+          <span className="n-sp" />{perSide ? <>
           {/* per-side rows always stack L/R, so one shared W/R pair + check */}
-          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{hasInfoTrack && <span className="info-sp" />}<span className="ck-sp" />
-        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{hasInfoTrack && <span className="info-sp" />}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
+          <span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}<span className="ck-sp" />
+        </> : <><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{effortHeader}{timed && <span className="ck-sp" />}<span className="ck-sp" /></>}
       </div>
       {(() => {
         // Done-run fusion: 2+ consecutive done rows render inside one .setgroup-done
@@ -220,25 +216,12 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
         const setDoneAt = entry.sets.map(s => projectSideSet(s).done)
         const firstPending = entry.sets.findIndex((s, i) => !setDoneAt[i])
         const renderSetRow = (s, i) => {
-          const target = setTarget(s)
-          const isOpen = disclosed.has(i)
           // P0: the first unfinished set is "current" (accent box + dot + aria-current);
           // finished sets are "done" (soft wash, full contrast); the rest are pending.
           const sDone = setDoneAt[i]
           const isCurrent = !sDone && firstPending === i
-          return <Fragment key={i}>
-           <div className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass + (hasInfoTrack ? ' has-info' : '')}
-            aria-current={isCurrent ? 'true' : undefined}
-            onPointerDown={e => {
-              // The target info gesture is "info button OR long-press". A long-press on a
-              // stepper would fight with the stepper's own tap, so the row's long-press
-              // only fires when the touch starts on a non-interactive area.
-              if (e.target.closest('button, input, textarea')) return
-              startLongPress(i)
-            }}
-            onPointerUp={cancelLongPress}
-            onPointerCancel={cancelLongPress}
-            onPointerLeave={cancelLongPress}>
+          return <div key={i} className={'setrow' + (sDone ? ' done' : '') + (isCurrent ? ' current' : '') + gridClass}
+            aria-current={isCurrent ? 'true' : undefined}>
             <div className="n">{i + 1}</div>
             {perSide ? <>
               <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
@@ -248,27 +231,11 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
                 set off itself. The checkbox stays for anyone who timed it on their own watch. */}
             {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
               onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
-            {/* Every effort row keeps an info slot. A planned set gets an actionable disclosure;
-                an extra set keeps a visible but disabled blank marker in the same grid column. */}
-            {hasInfoTrack && <button type="button" className={'iconbtn setinfo' + (isOpen ? ' on' : '') + (!target ? ' unavailable' : '')}
-              disabled={!target}
-              aria-label={target ? (isOpen ? t('Hide programmed target') : t('Show programmed target')) : t('No programmed target')}
-              title={target ? undefined : t('No programmed target')}
-              aria-expanded={target ? isOpen : undefined}
-              onClick={target ? e => { e.stopPropagation(); toggleDisclosed(i) } : undefined}>
-              <Icon name={target && isOpen ? 'chevronUp' : 'info'} />
-            </button>}
             {perSide ? <div className="side-checks">
               <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
               <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
             </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
           </div>
-          {isOpen && target && <div className="setrow-info" role="region" aria-label={t('Programmed target')}>
-            <span className="lbl">{t('Target')}</span>
-            <span className="target"><span className="num">{fmtNum(target.value)}</span><span className="metric">{t(EFFORT[target.metric].hd)}</span></span>
-            <span className="dim small note">{t('read-only')}</span>
-          </div>}
-        </Fragment>
         }
         const out = []
         let k = 0

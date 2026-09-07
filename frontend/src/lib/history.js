@@ -284,7 +284,7 @@ export function validateProgrammedTargets(targets, metric) {
 
 // A workout set may carry a target snapshot from the routine, or no target when the user adds
 // an extra set. The workout UI uses this boundary so only matching programmed targets become
-// actionable disclosures; an empty result still reserves the same visual info column.
+// available to the exercise-level effort header; an empty result stays an ordinary empty input.
 export const plannedEffortForSet = (set, metric) => {
   const target = set?.plannedEffort
   return target && target.metric === metric ? target : null
