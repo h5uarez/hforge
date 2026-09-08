@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -483,6 +483,21 @@ describe('normalizeTargets', () => {
   })
 })
 
+describe('normalizeRepsBySet', () => {
+  it('preserves existing slots, extends with the last explicit target, and truncates', () => {
+    expect(normalizeRepsBySet([1, 4, 3], 5, 10)).toEqual([1, 4, 3, 3, 3])
+    expect(normalizeRepsBySet([1, null, 3], 5, 10)).toEqual([1, null, 3, 3, 3])
+    expect(normalizeRepsBySet([1, 4, 3], 2, 10)).toEqual([1, 4])
+  })
+
+  it('uses the generic target for an absent array without mutating source data', () => {
+    const source = [1, 4]
+    expect(normalizeRepsBySet(source, 4, 3)).toEqual([1, 4, 4, 4])
+    expect(source).toEqual([1, 4])
+    expect(normalizeRepsBySet(undefined, 3, 3)).toEqual([3, 3, 3])
+  })
+})
+
 /* ---------- bodyweight and per side (issues #31/#32/#33) ---------- */
 
 describe('isBw', () => {
@@ -549,6 +564,7 @@ describe('exLine', () => {
     expect(exLine({ id: LIFT, sets: 3, sec: 45, mode: 'time' }, 'kg')).toBe('3 × 0:45')
     expect(exLine({ id: LIFT, sets: 2, sec: 90, weight: 20, mode: 'time' }, 'kg')).toBe('2 × 1:30 · 20 kg')
     expect(exLine({ id: CARDIO, sets: 1, min: 20, speed: 8 }, 'kg')).toBe('1 × 20 min @ 8 km/h')
+    expect(exLine({ id: LIFT, sets: 5, reps: 3, repsBySet: [1, 4, 3, 3, 3] }, 'kg')).toBe('5 × 1/4/3/3/3')
   })
 })
 
@@ -635,6 +651,32 @@ describe('buildSets', () => {
   it('prefers the confirmed working weight without copying previous reps', () => {
     const S = { exWeights: { [LIFT]: { w: 75 } }, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }] }
     expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 75, r: 8, done: false }])
+  })
+
+  it('seeds exact per-set reps with the generic fallback while carrying only prior loads', () => {
+    const S = {
+      exWeights: {},
+      workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [
+        { w: 80, r: 1, done: true }, { w: 75, r: 1, done: true }, { w: 70, r: 1, done: true },
+      ] }] }],
+    }
+    const cfg = { id: LIFT, sets: 5, reps: 3, weight: 60, repsBySet: [1, 4, 3] }
+    expect(buildSets(S, cfg)).toEqual([
+      { w: 80, r: 1, done: false },
+      { w: 75, r: 4, done: false },
+      { w: 70, r: 3, done: false },
+      { w: 70, r: 3, done: false },
+      { w: 70, r: 3, done: false },
+    ])
+  })
+
+  it('projects each exact total target to both sides of a unilateral set', () => {
+    const S = { workouts: [], exWeights: {} }
+    const sets = buildSets(S, { id: '0739', sets: 2, reps: 12, repsBySet: [8, 10], weight: 20, side: true })
+    expect(sets).toMatchObject([
+      { r: 8, left: { r: 4 }, right: { r: 4 } },
+      { r: 10, left: { r: 5 }, right: { r: 5 } },
+    ])
   })
 
   /* ---- programmed-effort seeding (issue: programmed-rpe-rir, Phase 1) ----

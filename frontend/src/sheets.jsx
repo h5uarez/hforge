@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -619,46 +619,58 @@ function TargetStepper({ value, onChange, kind }) {
   </div>
 }
 
-// The per-set target section as a whole: heading, helper copy, and a wrapping flex row of
-// `TargetStepper` cells. Lives outside `ExConfig` so the editor body stays focused on the
-// shape of a routine entry and this concern is a self-contained block — its only contract is
-// `value` (the array under edit) and `onChange` (the new array). The metric mismatch rule
-// lives here too: a slot whose stored metric does not match the active profile renders empty,
-// because we never convert.
-function ProgrammedTargetsField({ metric, setCount, value, onChange }) {
-  const eff = EFFORT[metric]
-  if (!eff) return null
+// One coherent prescription per set: exact reps and, when enabled, the programmed effort target
+// live together so each series is read and edited as a single unit. The arrays remain separate
+// because their existing save and normalization contracts are separate.
+function PerSetPrescriptionField({ generic, perSide, setCount, repsValue, onRepsChange, showTargets, metric, programmedValue, onProgrammedChange }) {
   const n = Math.max(1, setCount || 1)
+  const values = normalizeRepsBySet(repsValue, n, generic)
+  const step = perSide ? 2 : 1
+  const eff = showTargets ? EFFORT[metric] : null
   // Mismatched slots and cleared slots render identically: an empty cell. This is the visible
   // half of the no-conversion rule — the other half is the validation on save.
-  const slotValue = i => {
-    const a = Array.isArray(value) ? value[i] : null
+  const targetValue = i => {
+    const a = Array.isArray(programmedValue) ? programmedValue[i] : null
     if (!a || a.metric !== metric) return null
     return a.value
   }
+  const setReps = (i, next) => {
+    const aligned = normalizeRepsBySet(repsValue, n, generic)
+    const numeric = Math.max(1, Math.round(Number(next) || 1))
+    aligned[i] = perSide ? Math.ceil(numeric / 2) * 2 : numeric
+    onRepsChange(aligned)
+  }
   // Grow with nulls as the set count rises, trim when it falls. The index is always safe to
   // write into because the array is exactly `n` long when the editor calls this.
-  const setSlot = (i, v) => {
-    const a = Array.isArray(value) ? value.slice() : []
+  const setTarget = (i, v) => {
+    const a = Array.isArray(programmedValue) ? programmedValue.slice() : []
     while (a.length < n) a.push(null)
     if (a.length > n) a.length = n
     a[i] = v == null ? null : { metric, value: v }
-    onChange(a)
+    onProgrammedChange(a)
   }
   return <>
-    <h4 className="sec">{t('Programmed target')}</h4>
+    <h4 className="sec">{t('Reps per set')}</h4>
     <div className="small dim" style={{ marginTop: -4, marginBottom: 10 }}>
-      {t('Optional. The target is revealed read-only during the workout; you log actual effort separately.')}
+      {t('Generic reps')}: <strong>{fmtNum(generic)}</strong>. {t('Set-specific values override Generic reps.')}
     </div>
-    <div className="row cfgrow" style={{ flexWrap: 'wrap', rowGap: 12, marginBottom: 18 }}>
-      {Array.from({ length: n }).map((_, i) => (
-        <div key={i} style={{ minWidth: 96 }}>
-          <div className="small dim" style={{ textAlign: 'center', marginBottom: 4, whiteSpace: 'nowrap' }}>
-            {t('Set {0}', i + 1)} · {eff.hd}
+    {showTargets && <div className="small dim" style={{ marginTop: -4, marginBottom: 10 }}>
+      {t('Optional. The target is revealed read-only during the workout; you log actual effort separately.')}
+    </div>}
+    <div className="cfgrow" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 8, marginBottom: 18 }}>
+      {values.map((rep, i) => <div key={i} className="sect-b" style={{ padding: '10px 8px', minWidth: 0 }}>
+        <div className="small dim" style={{ margin: '0 2px 6px', whiteSpace: 'nowrap' }}>{t('Set {0}', i + 1)}</div>
+        <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', gap: 8, minWidth: 0 }}>
+          <div style={{ flex: '1 1 104px', minWidth: 0 }}>
+            <Stepper label={t('Reps')} value={rep ?? generic} step={step} decimal={false}
+              onChange={v => setReps(i, v)} />
           </div>
-          <TargetStepper value={slotValue(i)} kind={metric} onChange={v => setSlot(i, v)} />
+          {showTargets && <div style={{ flex: '1 1 104px', minWidth: 0 }}>
+            <div className="stp-l" style={{ marginBottom: 6 }}>{eff.hd}</div>
+            <TargetStepper value={targetValue(i)} kind={metric} onChange={v => setTarget(i, v)} />
+          </div>}
         </div>
-      ))}
+      </div>)}
     </div>
   </>
 }
@@ -688,6 +700,15 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
   // n is the live set count the UI is working against; the helper uses it to grow or trim
   // the array in lockstep so the index the stepper is editing is always safe.
   const n = Math.max(1, Math.round(c.sets) || 1)
+  const typedReps = Math.max(1, Math.round(Number(c.reps) || 10))
+  const genericReps = perSide ? Math.ceil(typedReps / 2) * 2 : typedReps
+  const setCountChange = v => setC(x => ({
+    ...x,
+    sets: v,
+    ...(Array.isArray(x.repsBySet)
+      ? { repsBySet: normalizeRepsBySet(x.repsBySet, Math.max(1, Math.round(Number(v) || 1)), x.reps) }
+      : {}),
+  }))
   const save = () => {
     const timedSeconds = parseTimedSeconds(timedSecondsRaw)
     if (mode === 'time' && timedSeconds === null) {
@@ -721,6 +742,9 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
       if (policyFor({ ...c, id: ex.id }, routine, 'reps') === 'double') out.repsMin = Math.min(reps, Math.max(1, Math.round(c.repsMin) || Math.max(1, reps - 2)))
       // A ceiling below the working reps would tell you to add a set on day one.
       if (bw && !(out.weight > 0) && c.repsMax > 0) out.repsMax = Math.max(reps, Math.round(c.repsMax))
+      const alignedRepsBySet = normalizeRepsBySet(c.repsBySet, sets, reps).map(value =>
+        value == null || !perSide ? value : Math.ceil(value / 2) * 2)
+      if (hasRepsBySet({ ...out, repsBySet: alignedRepsBySet })) out.repsBySet = alignedRepsBySet
       // Programmed-effort targets ride alongside the routine. Persist only when the array has
       // at least one current-metric slot — that keeps legacy plans byte-identical on the wire
       // and silently drops the field when the profile is on a different metric. Validation +
@@ -760,7 +784,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
           onChange={v => setC(x => ({ ...x, sec: clampTimedSeconds(v) }))} />
         <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
       </> : <>
-        <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
+        <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={setCountChange} />
         <Stepper label={t('Reps')} value={c.reps} step={perSide ? 2 : 1} decimal={false} onChange={v => setC(x => ({ ...x, reps: v }))} />
         {/* On bodyweight work the weight stepper is the click #32 is about, so it is not here
             until there is a belt to describe — see the added-weight row below. */}
@@ -780,7 +804,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         subtitle={perSide ? t('You still log the total: {0} is {1} per side.', c.reps || 0, fmtNum(sideReps(c.reps))) : t('For lunges, single-arm rows and the like.')}>
         {/* Turning it on rounds the target up to an even number, since half of an odd
             total is a rep one side does not get. */}
-        <Switch checked={perSide} onChange={v => setC(x => ({ ...x, side: v || undefined, reps: v ? Math.ceil((x.reps || 0) / 2) * 2 : x.reps }))} />
+        <Switch checked={perSide} onChange={v => setC(x => ({ ...x, side: v || undefined, reps: v ? Math.ceil((x.reps || 0) / 2) * 2 : x.reps, repsBySet: v && Array.isArray(x.repsBySet) ? x.repsBySet.map(rep => rep == null ? rep : Math.ceil(rep / 2) * 2) : x.repsBySet }))} />
       </Row>}
     </div>}
     {/* A stepper is too wide to sit in a list row next to a label — it squeezes the text to
@@ -805,6 +829,10 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         ? t('Reps climb to {0}, then a set is added and the reps start over. At {1} sets it asks you to add weight instead.', c.repsMax, MAX_BW_SETS)
         : t('Reps climb by one whenever every set was clean. Set a ceiling to add sets instead of reps forever.')}
     </div>}
+    {mode === 'reps' && <PerSetPrescriptionField generic={genericReps} perSide={perSide} setCount={n}
+      repsValue={c.repsBySet} onRepsChange={arr => setC(x => ({ ...x, repsBySet: arr }))}
+      showTargets={showTargets} metric={metric} programmedValue={c.programmedEffort}
+      onProgrammedChange={arr => setC(x => ({ ...x, programmedEffort: arr }))} />}
     <div style={{ marginBottom: 18 }}>
       <div className="row between" style={{ margin: '0 2px 6px' }}>
         <label className="small dim" htmlFor="exercise-plan-note" style={{ margin: 0 }}>{t('Exercise note')}</label>
@@ -823,12 +851,6 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
           onChange={e => setC(x => ({ ...x, planNote: e.target.value }))} />
       </div>
     </div>
-    {/* ---------- programmed effort target (issue `programmed-rpe-rir`) ----------
-        A per-set target stepper for resistance exercises, only when the profile logs an
-        effort scale and the user opted in via Settings. The helper owns its own
-        mismatch-empty and array-grow logic, so this site only needs to be a single line. */}
-    {showTargets && <ProgrammedTargetsField metric={metric} setCount={n}
-      value={c.programmedEffort} onChange={arr => setC(x => ({ ...x, programmedEffort: arr }))} />}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
     {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}

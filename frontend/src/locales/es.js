@@ -634,6 +634,9 @@ export default {
   'You still log the total: {0} is {1} per side.': 'Sigues registrando el total: {0} son {1} por lado.',
 
   // --- programmed effort target (per set) ---
+  'Reps per set': 'Repeticiones por serie',
+  'Generic reps': 'Repeticiones genéricas',
+  'Set-specific values override Generic reps.': 'Los valores específicos por serie sustituyen las repeticiones genéricas.',
   'Programmed target': 'Objetivo programado',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'Opcional. El objetivo se muestra de solo lectura durante el entrenamiento; registra el esfuerzo real por separado.',
   'Set {0}': 'Serie {0}',

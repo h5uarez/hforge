@@ -227,6 +227,54 @@ export function defaultConfig(id, mode) {
   if (m === 'time') return { sets: 3, sec: 45, weight: 0, mode: 'time', ...bw }
   return { sets: 3, reps: 10, weight: 0, mode: 'reps', ...bw, ...side }
 }
+
+const normalizeRepTarget = value => {
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 1 ? Math.max(1, Math.round(n)) : null
+}
+
+// Bring optional exact-rep targets into line with the routine's current set count.
+// Existing slots stay at their indexes, null slots remain fallback slots, and new slots use
+// the last explicit target (or the generic target when none exists). The returned array is
+// always new so editors can safely keep it as draft state without mutating a routine config.
+export function normalizeRepsBySet(repsBySet, setCount, fallback) {
+  const n = Math.max(0, Math.round(Number(setCount) || 0))
+  if (n === 0) return []
+  const generic = normalizeRepTarget(fallback) ?? 1
+  if (!Array.isArray(repsBySet) || repsBySet.length === 0) return Array(n).fill(generic)
+
+  const out = repsBySet.slice(0, n).map(normalizeRepTarget)
+  let last = null
+  out.forEach(value => { if (value != null) last = value })
+  while (out.length < n) out.push(last ?? generic)
+  return out
+}
+
+export function effectiveRepsBySet(cfg) {
+  const n = Math.max(1, Math.round(Number(cfg?.sets) || 1))
+  const generic = normalizeRepTarget(cfg?.reps) ?? 10
+  return normalizeRepsBySet(cfg?.repsBySet, n, generic).map(value => value ?? generic)
+}
+
+// An array containing only the generic target adds no information to a plan file. Keep this
+// boundary shared by the editor, the routine summary, and plan export so optional data stays clean.
+export function hasRepsBySet(cfg) {
+  const generic = normalizeRepTarget(cfg?.reps) ?? 10
+  return Array.isArray(cfg?.repsBySet) && cfg.repsBySet.some(value => {
+    const target = normalizeRepTarget(value)
+    return target != null && target !== generic
+  })
+}
+
+export function repsForSet(cfg, idx) {
+  return effectiveRepsBySet(cfg)[idx] ?? (normalizeRepTarget(cfg?.reps) ?? 10)
+}
+
+export function repsBySetText(cfg) {
+  const values = effectiveRepsBySet(cfg)
+  return hasRepsBySet(cfg) ? values.map(fmtNum).join('/') : fmtNum(values[0] ?? 0)
+}
+
 // One-line summary of a planned exercise ("3 × 10 · 60 kg"), shared by the routine editor
 // and the plan export so a mode is described the same way everywhere.
 export function exLine(cfg, unit) {
@@ -237,8 +285,12 @@ export function exLine(cfg, unit) {
   if (mode === 'cardio') return `${n} × ${cfg.min || 20} min @ ${fmtNum(cfg.speed || 8)} km/h`
   if (mode === 'time') return `${n} × ${fmtSec(cfg.sec)}${load}`
   // This is the line with room for it, so the split is spelled out: "3 × 16 · 8/side".
-  const split = isPerSide(cfg) ? ' · ' + t('{0}/side', fmtNum(sideReps(cfg.reps))) : ''
-  return `${n} × ${cfg.reps}${load}${split}`
+  const split = isPerSide(cfg)
+    ? ' · ' + t('{0}/side', hasRepsBySet(cfg)
+      ? effectiveRepsBySet(cfg).map(value => fmtNum(sideReps(value))).join('/')
+      : fmtNum(sideReps(cfg.reps)))
+    : ''
+  return `${n} × ${repsBySetText(cfg)}${load}${split}`
 }
 
 // Drop superset ids that no longer have an adjacent partner (after unlink/reorder/remove).
@@ -396,12 +448,13 @@ export function buildSets(S, cfg) {
     const prev = prevAt(i)
     const usable = prev && prev.r > 0 ? prev : null
     const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
+    const reps = repsForSet(cfg, i)
     // Loads can carry forward as a useful suggestion, but actual reps belong to the previous
     // history entry. Start ordinary rep sets from this session's target; explicit progression
     // policies may adjust that target later in applyPrescription.
     const set = isPerSide(cfg)
-      ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.left.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.right.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, w, r: cfg.reps, done: false }
-      : { w, r: cfg.reps, done: false }
+      ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: sideReps(reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: sideReps(reps), done: false }, w, r: reps, done: false }
+      : { w, r: reps, done: false }
     // Snapshot the programmed target onto each set at workout start. The
     // snapshot rides alongside actual `rir`/`rpe` and is never edited by
     // the logger; metric mismatch yields `undefined`, which omits the key

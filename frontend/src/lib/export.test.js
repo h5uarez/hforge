@@ -61,4 +61,14 @@ describe('selective workout backups', () => {
     expect(JSON.parse(json)).toEqual({ unit: 'kg', routines: [], workouts: [], customEx: [] })
     expect(json).toContain('\n  "workouts"')
   })
+
+  it('keeps optional exact routine reps through a full backup serialization and restore', () => {
+    const state = {
+      unit: 'kg',
+      routines: [{ id: 'push', name: 'Push', ex: [{ id: 'bench', sets: 5, reps: 3, repsBySet: [1, 4, 3, 3, 3] }] }],
+      workouts: [], customEx: [],
+    }
+    const restored = Object.assign({ unit: 'kg', routines: [], workouts: [] }, JSON.parse(serializeBackup(state)))
+    expect(restored.routines[0].ex[0].repsBySet).toEqual([1, 4, 3, 3, 3])
+  })
 })

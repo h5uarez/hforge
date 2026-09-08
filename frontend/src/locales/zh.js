@@ -617,6 +617,9 @@ export default {
   '{0} per side': '每侧 {0} 次',
   'You still log the total: {0} is {1} per side.': '你记录的仍然是总数：{0} 表示每侧 {1} 次。',
   // --- programmed effort target (per set) ---
+  'Reps per set': '每组次数',
+  'Generic reps': '通用次数',
+  'Set-specific values override Generic reps.': '每组的具体数值会覆盖通用次数。',
   'Programmed target': '预设目标',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': '可选。目标在训练中以只读方式显示；实际强度需另行记录。',
   'Set {0}': '第 {0} 组',

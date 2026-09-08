@@ -634,6 +634,9 @@ export default {
   '{0} per side': '{0} pro Seite',
   'You still log the total: {0} is {1} per side.': 'Du trägst weiterhin die Gesamtzahl ein: {0} sind {1} pro Seite.',
   // --- programmed effort target (per set) ---
+  'Reps per set': 'Wiederholungen pro Satz',
+  'Generic reps': 'Generische Wiederholungen',
+  'Set-specific values override Generic reps.': 'Satzspezifische Werte überschreiben die generischen Wiederholungen.',
   'Programmed target': 'Vorgabe pro Satz',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'Optional. Die Vorgabe wird im Training schreibgeschützt angezeigt; du trägst die tatsächliche Anstrengung separat ein.',
   'Set {0}': 'Satz {0}',

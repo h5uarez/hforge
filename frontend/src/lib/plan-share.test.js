@@ -4,7 +4,7 @@
 // those routines reference. Workouts and private settings never cross the share
 // boundary.
 import { describe, it, expect } from 'vitest'
-import { buildPlanBundle, parsePlan, mergePlan } from './plan-share.js'
+import { buildPlanBundle, parsePlan, mergePlan, planPrintHTML } from './plan-share.js'
 import { EXDB } from './exercises.js'
 
 const KNOWN_EXERCISE = EXDB[0].id
@@ -145,6 +145,37 @@ describe('programmedEffort round-trip (Phase 2)', () => {
     const result = mergePlan(target, legacyBundle)
     expect(result.routines).toBe(1)
     expect(target.routines[0].ex[0]).not.toHaveProperty('programmedEffort')
+  })
+})
+
+describe('repsBySet round-trip', () => {
+  const exact = [1, 4, 3, 3, 3]
+
+  it('exports and imports exact reps without dropping the optional field', () => {
+    const source = {
+      routines: [{ id: 'r-push', name: 'Push', ex: [{ id: KNOWN_EXERCISE, sets: 5, reps: 3, repsBySet: exact }] }],
+      customEx: [], week: {},
+    }
+    const parsed = parsePlan(JSON.stringify(buildPlanBundle(source, 'exact')))
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, parsed)
+    expect(parsed.routines[0].ex[0].repsBySet).toEqual(exact)
+    expect(target.routines[0].ex[0].repsBySet).toEqual(exact)
+  })
+
+  it('keeps exact reps visible in the printable plan', () => {
+    const html = planPrintHTML({
+      unit: 'kg', week: {}, routines: [{ name: 'Push', ex: [{ id: KNOWN_EXERCISE, sets: 5, reps: 3, repsBySet: exact }] }],
+    }, '')
+    expect(html).toContain('5 × 1/4/3/3/3')
+  })
+
+  it('omits a redundant array that only repeats generic reps', () => {
+    const bundle = buildPlanBundle({
+      routines: [{ id: 'r', name: 'Push', ex: [{ id: KNOWN_EXERCISE, sets: 3, reps: 3, repsBySet: [3, 3, 3] }] }],
+      customEx: [], week: {},
+    }, 'generic')
+    expect(bundle.routines[0].ex[0]).not.toHaveProperty('repsBySet')
   })
 })
 

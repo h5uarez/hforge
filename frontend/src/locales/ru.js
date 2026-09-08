@@ -617,6 +617,9 @@ export default {
   '{0} per side': '{0} на сторону',
   'You still log the total: {0} is {1} per side.': 'Ты по-прежнему записываешь общее число: {0} — это {1} на сторону.',
   // --- programmed effort target (per set) ---
+  'Reps per set': 'Повторения по подходам',
+  'Generic reps': 'Общие повторения',
+  'Set-specific values override Generic reps.': 'Значения для отдельных подходов заменяют общие повторения.',
   'Programmed target': 'Запланированная цель',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'Необязательно. Цель видна на тренировке только для чтения; фактическое усилие ты записываешь отдельно.',
   'Set {0}': 'Подход {0}',

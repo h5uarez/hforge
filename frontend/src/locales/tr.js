@@ -617,6 +617,9 @@ export default {
   '{0} per side': 'Taraf başına {0}',
   'You still log the total: {0} is {1} per side.': 'Toplamı kaydetmeye devam ediyorsun: {0}, taraf başına {1} demek.',
   // --- programmed effort target (per set) ---
+  'Reps per set': 'Set başına tekrar',
+  'Generic reps': 'Genel tekrarlar',
+  'Set-specific values override Generic reps.': 'Sete özel değerler genel tekrarları geçersiz kılar.',
   'Programmed target': 'Planlanan hedef',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'İsteğe bağlı. Hedef antrenman sırasında salt okunur görünür; gerçek eforu ayrıca kaydedersin.',
   'Set {0}': 'Set {0}',

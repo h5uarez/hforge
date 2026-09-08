@@ -617,6 +617,9 @@ export default {
   '{0} per side': 'प्रति तरफ़ {0}',
   'You still log the total: {0} is {1} per side.': 'आप कुल ही दर्ज करते हैं: {0} यानी प्रति तरफ़ {1}।',
   // --- programmed effort target (per set) ---
+  'Reps per set': 'हर सेट के रेप्स',
+  'Generic reps': 'सामान्य रेप्स',
+  'Set-specific values override Generic reps.': 'सेट के खास मान सामान्य रेप्स को बदल देते हैं।',
   'Programmed target': 'निर्धारित लक्ष्य',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': 'वैकल्पिक। लक्ष्य वर्कआउट के दौरान केवल-पढ़ने योग्य दिखता है; असल मेहनत आप अलग से दर्ज करते हैं।',
   'Set {0}': 'सेट {0}',

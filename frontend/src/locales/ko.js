@@ -617,6 +617,9 @@ export default {
   '{0} per side': '한쪽당 {0}회',
   'You still log the total: {0} is {1} per side.': '기록은 그대로 합계로 합니다: {0}회는 한쪽당 {1}회입니다.',
   // --- programmed effort target (per set) ---
+  'Reps per set': '세트별 반복 횟수',
+  'Generic reps': '기본 반복 횟수',
+  'Set-specific values override Generic reps.': '세트별 값이 기본 반복 횟수를 대신합니다.',
   'Programmed target': '계획된 목표',
   'Optional. The target is revealed read-only during the workout; you log actual effort separately.': '선택 사항입니다. 목표는 운동 중에 읽기 전용으로 표시되며 실제 강도는 따로 기록합니다.',
   'Set {0}': '세트 {0}',

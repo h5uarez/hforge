@@ -9,7 +9,7 @@
 //     a page break — each exercise, and each routine that fits, stays in one place.
 
 import { EXIDX, isBodyweightEq, exerciseName } from './exercises.js'
-import { modeOf, fmtSec, isBw, isPerSide, sideReps, normalizeNote } from './history.js'
+import { modeOf, fmtSec, isBw, isPerSide, sideReps, normalizeNote, normalizeRepsBySet, repsBySetText, effectiveRepsBySet, hasRepsBySet } from './history.js'
 import { uid, todayISO, DAYN, fmtNum, exCount } from './format.js'
 import { t } from './i18n.js'
 
@@ -31,6 +31,10 @@ export function cleanEx(e) {
     if (e.weight) o.weight = e.weight
   } else {
     if (e.reps != null) o.reps = e.reps
+    if (hasRepsBySet(e)) {
+      const repsBySet = normalizeRepsBySet(e.repsBySet, e.sets, e.reps)
+      if (repsBySet.length) o.repsBySet = repsBySet
+    }
     if (e.weight) o.weight = e.weight
   }
   // How the exercise is logged travels too (issues #31/#32) — the bodyweight flag only when
@@ -167,10 +171,15 @@ function scheme(e, unit) {
     const body = `${e.min || 20} min @ ${fmtNum(e.speed || 8)} km/h`
     return sets > 1 ? `${sets} × ${body}` : body
   }
-  let s = mode === 'time' ? `${sets} × ${fmtSec(e.sec)}` : `${sets} × ${e.reps ?? 10}`
+  let s = mode === 'time' ? `${sets} × ${fmtSec(e.sec)}` : `${sets} × ${repsBySetText(e)}`
   if (e.weight) s += ` · ${isBw(e) ? '+' : ''}${fmtNum(e.weight)} ${unit}`
   // A printed plan is read at the rack, so the split earns its four characters.
-  if (mode !== 'time' && isPerSide(e)) s += ` · ${t('{0}/side', fmtNum(sideReps(e.reps ?? 10)))}`
+  if (mode !== 'time' && isPerSide(e)) {
+    const side = hasRepsBySet(e)
+      ? effectiveRepsBySet(e).map(value => fmtNum(sideReps(value))).join('/')
+      : fmtNum(sideReps(e.reps ?? 10))
+    s += ` · ${t('{0}/side', side)}`
+  }
   return s
 }
 
