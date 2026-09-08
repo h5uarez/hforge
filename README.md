@@ -1,211 +1,249 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="Hforge" width="720">
+<img src="assets/banner.svg" alt="Logotipo de Hforge" width="720">
 
 <br>
 
-**A self-hosted gym & body-weight tracker you actually own.**
+**Tu aplicación autoalojada para registrar entrenamientos, peso corporal y progreso.**
 
-Plan your week, run guided workouts, track every set and your body weight over time —
-on your phone, synced across devices, behind your own passkey login.
-No account on someone else's server, no subscription, no ads. Just `docker compose up`.
-
-<br>
-
-![Self-hosted](https://img.shields.io/badge/self--hosted-%F0%9F%8F%A0-60a5fa?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-installable-a78bfa?style=flat-square)
-![React](https://img.shields.io/badge/React-19-38bdf8?style=flat-square&logo=react&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
-![No tracking](https://img.shields.io/badge/telemetry-none-f472b6?style=flat-square)
-<br>
-![GitHub last commit](https://img.shields.io/github/last-commit/h5uarez/hforge?style=flat-square)
-[![GitHub stars](https://img.shields.io/github/stars/h5uarez/hforge?style=flat-square)](https://github.com/h5uarez/hforge/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/h5uarez/hforge?style=flat-square)](https://github.com/h5uarez/hforge/issues)
+Planifica la semana, sigue entrenamientos guiados y conserva tus datos en tu propio servidor o
+en tu teléfono. Sin suscripción, anuncios ni telemetría.
 
 </div>
 
-<br>
+## Galería móvil
+
+Las capturas siguientes se tomaron desde el navegador integrado de **Orca Browser**, con emulación
+**iPhone 12**: área visible de **390 × 844 CSS px**. Para evitar el mosaico vertical que produce
+Orca al capturar con DPR 3, los PNG conservan un único viewport limpio de **390 × 844 px**. La
+vista de entrenamiento se capturó después de esperar a que la red quedara inactiva y comprobar que
+sus seis GIF tenían `naturalWidth` y `naturalHeight` de 180 px, sin imágenes rotas.
 
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="assets/screenshots/home.png" alt="Home" width="230"><br><sub><b>Home</b> — today's workout & weight</sub></td>
-<td align="center"><img src="assets/screenshots/workout.png" alt="Workout" width="230"><br><sub><b>Guided workout</b> — animated demos & sets</sub></td>
-<td align="center"><img src="assets/screenshots/stats.png" alt="Stats" width="230"><br><sub><b>Stats</b> — heatmap, charts & PRs</sub></td>
+<td align="center"><img src="assets/screenshots/home.png" alt="Pantalla de inicio con peso corporal y progreso" width="190"><br><sub><b>Inicio</b> — peso corporal, meta y resumen</sub></td>
+<td align="center"><img src="assets/screenshots/workout.png" alt="Entrenamiento guiado con GIFs de ejercicios visibles" width="190"><br><sub><b>Entrenamiento</b> — GIFs, series y RIR</sub></td>
+<td align="center"><img src="assets/screenshots/stats.png" alt="Pantalla de progreso con gráficas y actividad" width="190"><br><sub><b>Progreso</b> — actividad, esfuerzo y curvas</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="assets/screenshots/plan.png" alt="Plan semanal con rutinas asignadas" width="190"><br><sub><b>Plan</b> — calendario y rutinas</sub></td>
+<td align="center"><img src="assets/screenshots/library.png" alt="Catálogo de ejercicios con búsqueda" width="190"><br><sub><b>Ejercicios</b> — catálogo y filtros</sub></td>
+<td align="center"><img src="assets/screenshots/history.png" alt="Historial lleno de entrenamientos de varios meses" width="190"><br><sub><b>Historial</b> — sesiones y marcas personales</sub></td>
 </tr>
 </table>
 </div>
 
-## Why
+## Qué es Hforge
 
-Most workout apps lock your data behind a login on their servers, nag you to upgrade, or
-disappear when the startup does. Hforge is the opposite: **it runs on your box, your data
-stays in a folder you control, and it's yours to fork.** It still feels modern — installable
-as a home-screen app, passkey sign-in, offline support, sync across your phone and laptop.
+Hforge es un registrador de gimnasio y peso corporal que se ejecuta donde tú decidas. El servidor
+guarda los perfiles y el historial en archivos JSON bajo `./data`; el navegador ofrece una PWA
+instalable y el acceso puede protegerse con claves de acceso (passkeys). También existe una compilación móvil
+independiente que no necesita servidor.
 
-## Features
+Incluye:
 
-- ⚖️ **Body-weight tracking** — interactive chart with a goal line you set, gains/losses colored by whether they move toward it
-- 🏋️ **Weekly plan** — a routine per weekday, over a library of **1,324 exercises** (searchable, with animated demos)
-- 🗓️ **Reschedule any day** — sick, missed a session, or fewer gym days this week? Move a workout to another day without touching your weekly plan
-- ▶️ **Guided workouts** — it knows what day it is and starts today's session; asks your body weight first, pre-fills your weights from last time, rest timer, PR detection, per-exercise weight tracking
-- ☀️ **The screen stays awake while you train** — no unlocking the phone and finding your place again between every set. On for as long as a workout is running, released the moment you finish it, and switchable off in Settings
-- 🔗 **Supersets** — build them, and log them back-to-back with a rest only after the pair
-- ⏱️ **Timed exercises** — planks, hangs, wall sits and loaded carries are logged by time, not reps, with a work timer that counts the set itself (separate from the rest timer) and logs the time you actually held. They can carry weight too
-- 📈 **Progression that follows a rule** — pick one per routine, override it per exercise: linear, **Greyskull LP** (AMRAP top set, double jumps, 10 % resets), double progression through a rep range, or adding time. Your weights are already right when the session opens, and every target says *why* it's that number. Missed reps never advance the load, stalls trigger a deload, and bodyweight exercises progress in reps instead
-- 💪 **Estimated 1RM** — per exercise, from your best eligible set (it names which one), with its own progress curve and a calculator for sets you haven't done. Won't guess above 12 reps
-- 🎯 **Effort per set, in your scale** — an optional third column rating how hard a set was, as **RIR** (reps left in the tank) or **RPE** (the same judgement on a 10-point scale). Off by default; each set keeps the scale it was logged with, and nothing else reads the value — your progression and 1RM are unaffected
-- 💪 **Bodyweight exercises, logged as bodyweight** — push-ups, pull-ups, dips and 300-odd others arrive knowing they carry no load, so there's no weight column and no working-weight prompt: one stepper, log the reps. Add a dip belt and it reads as an addition, and progression goes back to following the weight. Without one, reps climb — and past a ceiling you set, a set is added instead of a rep, up to the point where the honest advice is load or a harder variation
-- ↔️ **Reps per side** — for lunges, single-arm rows and the rest. You log the total, the app shows the split ("8 per side"), and the target steps in twos so it never lands on a number one side can't have
-- 🏃 **Cardio** — log time + speed, not just weight × reps
-- 📤 **Share a plan** — send someone your routines and week schedule as a small file (no workouts, no weigh-ins), or print it as a clean PDF. Importing merges, so their plan is never overwritten
-- 🔧 **Filter by equipment** — narrow the library to what you actually own; the options adapt to what you've picked, so every combination on screen has results behind it
-- ✨ **Your own exercises** — a name and a body part is enough; they behave like built-in ones everywhere, with an optional description instead of an animation
-- 🟩 **Activity heatmap** — a GitHub-style year view, shaded by time spent training
-- 💪 **Muscle map** — a front-and-back body diagram shaded by how much work each muscle got, over a week, a month or all time. It names the muscles you *haven't* trained in that period, previews what a routine hits while you build it, and shows what you just trained when you finish. Male or female figure, your pick
-- 🔔 **Push notifications** — rest-timer alerts even with the app closed, plus an optional reminder on days you have a workout planned but haven't logged one. Opt in per profile; keys are generated on first run, nothing to configure
-- 🔑 **Passkeys, not passwords** — Face ID / Touch ID / fingerprint login; each profile keeps its own data, synced across devices
-- 🛠️ **Admin dashboard** (optional) — for whoever runs the instance: who's training right now, per-user history, disable accounts, and invite-only signup. Off by default, so a fresh instance stays open with no admin
-- 🎨 **Designed, not assembled** — light/dark themes and 8 accent colors saved to your profile, over a hand-drawn icon set instead of emoji, so it looks the same on every phone
-- 🌍 **12 languages** — full UI translation (EN, DE, ES, FR, IT, PT, PL, TR, RU, ZH, KO, HI); exercise instructions localized in 10 of them, loaded on demand so the app stays fast
-- 📥 **Bring your history with you** — import from **FitNotes** (Android and iOS), **Strong** and **Hevy**, or body weight straight out of an **Apple Health** export. Exercise names are matched against the library and anything unrecognised becomes one of your own exercises, so nothing in the file is dropped
-- 📦 **Yours to keep** — one-tap JSON export/import, guest mode, **no telemetry**
-- 📱 **Standalone Android app** — the whole tracker as a sideloadable APK: no account, no server, data on the phone, native workout reminders ([download](https://hforge.duarte-santos.ch))
+- planes semanales por día y editor de rutinas;
+- entrenamientos guiados con GIFs reales de ejercicios, temporizador de descanso y pantalla activa;
+- series con peso, repeticiones, tiempo, cardio, superseries, RIR o RPE y repeticiones por lado;
+- progresión lineal, Greyskull LP, doble progresión y progresión por tiempo;
+- estimación de 1RM, calculadoras de 1RM y de aproximaciones;
+- seguimiento de peso corporal, metas, actividad, músculos, esfuerzo y marcas personales;
+- catálogo de **más de 1.300 ejercicios**, búsqueda, filtros por equipamiento y ejercicios propios;
+- importación desde FitNotes, Strong, Hevy y Apple Health, además de copia de seguridad JSON;
+- temas claro/oscuro, ocho colores de acento, 12 idiomas y notificaciones opcionales;
+- modo invitado para usarlo sólo en el navegador y perfiles con passkey para sincronización.
 
-## Quick start (self-host)
+## Pantallas principales
 
-You need [Docker](https://docs.docker.com/get-docker/) with Compose.
+| Pantalla | Qué muestra |
+|---|---|
+| **Inicio** | Semana actual, entrenamiento del día, peso corporal, meta, racha y calculadoras. |
+| **Plan** | Horario semanal, rutinas, número de ejercicios y edición del plan. |
+| **Entrenamiento** | Sesión guiada, GIF del ejercicio, última sesión, objetivos, series, RIR/RPE y notas. |
+| **Progreso** | Actividad anual, equilibrio muscular, esfuerzo, peso corporal, progreso por ejercicio y sesiones recientes. |
+| **Historial** | Lista completa de entrenamientos con duración, series, volumen y marcas personales. |
+| **Ejercicios** | Catálogo buscable con animaciones, filtros y opción de crear ejercicios propios. |
+| **Ajustes** | Passkeys, idioma, unidades, temporizadores, apariencia, notificaciones, importación y exportación. |
 
-```bash
+## Arranque local en Windows
+
+Requisitos: Node.js 22 o posterior, npm y las carpetas locales `media/img` y `media/gif` con el
+media de ejercicios.
+
+### Opción rápida
+
+Ejecuta `start-local.bat` desde la raíz o haz doble clic en él. El script inicia la interfaz web, la API y
+servidor de media juntos, crea `data-local/` y usa **8080 por defecto** para Vite; también usa
+`3000` para la API y `8888` para el media interno. El archivo `.bat` no acepta aquí un parámetro
+de puerto alternativo: si `8080` está ocupado, no lo uses para esta sesión.
+
+### Previsualización o capturas sin ocupar 8080
+
+Para esta galería, `8080` estaba ocupado y se usó **4174** (4173 también estaba ocupado). La
+interfaz web se inició manualmente con el puerto de Vite, sin cambiar `start-local.bat` ni la
+configuración de producción. En tres terminales de PowerShell, desde la raíz:
+
+```powershell
+npm --prefix frontend install
+npm --prefix api install
+
+node scripts/serve-media.mjs
+npm --prefix api start
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4174
+```
+
+Abre `http://127.0.0.1:4174/`. Vite mantiene el proxy de `/api`, `/img` y `/gif` hacia la API en
+`3000` y el servidor de media en `8888`. Cierra sólo las terminales que hayas iniciado tú.
+
+## Docker, HTTPS y passkeys
+
+La ruta recomendada para autoalojar es Docker Compose:
+
+```powershell
 git clone https://github.com/h5uarez/hforge
-cd hforge
-cp .env.example .env
-# Set EXERCISE_MEDIA_SOURCE to a local directory with images/ and videos/.
+Set-Location hforge
+Copy-Item .env.example .env
+# Edita EXERCISE_MEDIA_SOURCE para apuntar a una carpeta con images/ y videos/.
 docker compose up -d --build
 ```
 
-Open **http://localhost:8080**, tap **Create profile**, and you're in. First launch downloads
-the exercise media (~140 MB) once. The default Compose file builds the images from source; you
-don't need Node or a separate build step locally.
+La instancia web queda en `http://localhost:8080` cuando se usa la configuración predeterminada.
+En el primer arranque se copia el media de ejercicios a `media/img` y `media/gif`. Para detenerla:
 
-> Want it reachable from your phone over the internet with passkeys? You'll need an HTTPS
-> domain — a two-line change in `.env`. See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
-
-## Local development on Windows
-
-Run `start-local.bat` from the repository root, or double-click it, to start the frontend, API, and
-local media server together in one PowerShell window. The frontend is available at **http://localhost:8080** and
-the API at **http://localhost:3000**. The media server serves `media/img` and `media/gif` on
-**127.0.0.1:8888** for Vite's internal `/img` and `/gif` proxy; you do not need to open that port
-manually. On the first run, the script installs dependencies in `frontend/` and `api/` when their
-`node_modules/` directories are missing, creates `data-local/`, and stores local API data there.
-Close the PowerShell window (or press `Ctrl+C`) to stop the local processes.
-
-This does not change the CI, Docker, or self-hosting quick-start paths above.
-
-## Mobile app (no server at all)
-
-The same codebase also builds a **standalone mobile app** (Capacitor): no account, no sync,
-no backend — everything stays on the phone, with native workout-day reminders and share-sheet
-backups. Self-hosting gets you multi-device sync and profiles for friends & family; the
-mobile app is the install-and-done flavor.
-
-- **Android:** [**download the APK**](https://hforge.duarte-santos.ch) and sideload it —
-  Hforge is deliberately not on the Play Store. Or build it yourself: **[docs/MOBILE.md](docs/MOBILE.md)**.
-- **iPhone:** Apple doesn't allow installing apps outside the App Store, so there is no iOS
-  download. Self-host and add it to your home screen from Safari (it's a full PWA), or build
-  the native app onto your own device from Xcode — see **[docs/MOBILE.md](docs/MOBILE.md)**.
-
-## How it works
-
-```
-┌─────────────┐        ┌──────────────────────────────┐
-│  Your phone │──HTTPS─▶│  web  (nginx)                │
-│  / laptop   │        │   ├─ serves the built app    │
-└─────────────┘        │   └─ proxies /api ──────────┐│
-                       └──────────────────────────────┘│
-                                                        ▼
-                                        ┌──────────────────────────┐
-                                        │  api  (Node + WebAuthn)  │
-                                        │   └─ ./data (JSON files) │
-                                        └──────────────────────────┘
+```powershell
+docker compose down
 ```
 
-- **frontend/** — React + Vite (React Router + Zustand), built to static files **inside Docker**
-- **api/** — Node with no framework, one dependency (`@simplewebauthn/server`), storing everything as plain JSON files under `./data`
-- **web/** — a multi-stage image that builds the frontend and serves it with nginx, proxying `/api` to the backend so it's all on **one origin** (passkeys require this)
+Las passkeys usan WebAuthn y están vinculadas exactamente a `RP_ID` y `ORIGIN`. Los navegadores
+permiten passkeys en `http://localhost`, pero para otro equipo o teléfono hace falta un nombre de
+host real con **HTTPS**. Coloca Hforge detrás de un proxy TLS como Caddy, Cloudflare Tunnel,
+Traefik o nginx, ajusta esos dos valores al dominio y vuelve a ejecutar Compose. Cambiar `RP_ID`
+después de registrar perfiles invalida sus passkeys anteriores.
 
-## Your data
+Consulta la [guía de autoalojamiento](docs/SELF_HOSTING.md) para HTTPS, usuarios, notificaciones,
+copias y resolución de problemas.
 
-Lives in `./data` on your host: `db.json` (profiles + public passkeys), `state-<user>.json`
-(each user's plan, workouts, body weight, settings), and `secret` (the session-cookie key).
-**Back up `./data` and you've backed up everything.** Passkey private keys never touch the
-server — they stay in your phone's secure hardware / your password manager.
+## Datos de demostración de seis meses
 
-## Configuration
+La importación es opcional y sólo sirve para una demostración o una captura con las pantallas llenas. Si
+existe este archivo fuera del repositorio:
 
-All via `.env` (see `.env.example`):
+```text
+C:\Users\humbe\AppData\Local\Temp\opencode\hforge-seed-6m\seed.json
+```
 
-| Variable | What it is | Default |
+abre **Ajustes → Datos → Importar copia** y selecciona `seed.json`. Es un historial sintético de
+aproximadamente seis meses; sustituye los datos locales del navegador y no representa datos
+personales ni datos de producción. Después de la captura, restablece el navegador o importa tu
+propia copia. No copies este archivo ni ninguna copia de seguridad de prueba al repositorio.
+
+## Copias, importación y privacidad
+
+- **Exportar copia (JSON)** guarda el estado completo del perfil para conservarlo o moverlo.
+- **Importar copia** restaura una copia de seguridad y reemplaza los datos locales actuales después de pedir
+  confirmación.
+- Los importadores de FitNotes, Strong, Hevy y Apple Health permiten traer historial y peso; los
+  ejercicios que no se reconocen se conservan como ejercicios propios.
+- En el servidor, `./data` contiene perfiles, estados, passkeys públicas, sesiones y credenciales
+  de notificaciones. Respaldar esa carpeta equivale a respaldar la instancia; protégela y no la
+  subas al repositorio.
+- Las claves privadas de las passkeys permanecen en el dispositivo o en el gestor de credenciales.
+- El modo invitado guarda el estado sólo en `localStorage` del navegador. Limpiar sus datos lo
+  elimina; no llega a la API.
+- Hforge no incorpora telemetría. Las notificaciones requieren una suscripción explícita y, para
+  funcionar en segundo plano, HTTPS o `localhost`.
+
+## Android, iOS y PWA
+
+La aplicación móvil usa Capacitor y comparte el código de la interfaz web:
+
+```powershell
+Set-Location frontend
+npm install
+npm run build:mobile
+npx cap open android
+npx cap open ios
+```
+
+- **Android:** se puede compilar y firmar un APK propio o descargar el APK publicado en
+  [hforge.duarte-santos.ch](https://hforge.duarte-santos.ch). No se distribuye mediante Play Store.
+- **iOS:** no hay una descarga `.ipa` directa. Usa la instancia autoalojada desde Safari y añade
+  la PWA a la pantalla de inicio, o compila la app con Xcode y tu propio dispositivo.
+- **PWA:** en un dominio HTTPS, abre Hforge en el navegador del teléfono y usa “Añadir a la
+  pantalla de inicio”. La PWA conserva la experiencia web, las passkeys y la sincronización.
+
+Los detalles de Capacitor, almacenamiento local, firmas y compilación están en
+[docs/MOBILE.md](docs/MOBILE.md).
+
+## Arquitectura
+
+```text
+┌─────────────────────┐       HTTPS        ┌──────────────────────────┐
+│ Navegador / PWA     │ ─────────────────▶ │ web: nginx               │
+│ o app Capacitor     │                     │ app estática + /api      │
+└─────────────────────┘                     └────────────┬─────────────┘
+                                                         │
+                                           ┌─────────────▼─────────────┐
+                                           │ api: Node + WebAuthn      │
+                                           │ ./data/*.json             │
+                                           └───────────────────────────┘
+```
+
+- `frontend/`: React 19, Vite, React Router y Zustand; las vistas están en `src/views`, los
+  componentes en `src/components` y la lógica pura en `src/lib`.
+- `api/`: servidor Node sin framework, passkeys con `@simplewebauthn/server` y notificaciones con
+  `web-push`.
+- `web/`: imagen multi-etapa que compila la interfaz web y la sirve con nginx, manteniendo API y
+  aplicación bajo el mismo origen.
+- `media/`: servidor local de imágenes y GIFs para desarrollo; Docker monta el mismo media en la
+  imagen web.
+- `frontend/android/` y `frontend/ios/`: envoltorios Capacitor para las compilaciones nativas.
+
+## Variables de entorno
+
+Configúralas en `.env`; la referencia completa está en [.env.example](.env.example).
+
+| Variable | Uso | Valor predeterminado |
 |---|---|---|
-| `EXERCISE_MEDIA_SOURCE` | Required local directory containing `images/` and `videos/` for the one-time media import | *(set this)* |
-| `RP_ID` | Hostname passkeys are bound to | `localhost` |
-| `ORIGIN` | Full URL the app is served from | `http://localhost:8080` |
-| `WEB_PORT` | Host port for the web UI | `8080` |
-| `RP_NAME` | Name shown in the passkey prompt | `Hforge` |
-| `ADMIN_UIDS` | Optional comma-separated user IDs with the admin dashboard | *(none)* |
-| `INVITE_ONLY` | Optional: require an invite code to create a profile | *(off)* |
-| `IMAGE_TAG` | Optional image tag when using `docker-compose.prod.yml` | `latest` |
-| `SESSION_DAYS` | Optional lifetime for newly minted sessions | `90` |
+| `EXERCISE_MEDIA_SOURCE` | Carpeta local con `images/` y `videos/` para importar el media | Debe definirse |
+| `RP_ID` | Hostname asociado a las passkeys | `localhost` |
+| `ORIGIN` | URL completa que verá el navegador | `http://localhost:8080` |
+| `WEB_PORT` | Puerto publicado por Docker para la web | `8080` |
+| `RP_NAME` | Nombre mostrado en el diálogo de passkey | `Hforge` |
+| `ADMIN_UIDS` | IDs opcionales con acceso al panel de administración | Vacío |
+| `INVITE_ONLY` | Exige código de invitación para nuevos perfiles | Desactivado |
+| `IMAGE_TAG` | Etiqueta opcional del Compose de producción | `latest` |
+| `SESSION_DAYS` | Duración opcional de nuevas sesiones | `90` |
 
-Push notification keys are generated on first run and saved to `./data/vapid.json` — nothing to set.
+## Pruebas
 
-## Roadmap
+Para la lógica de entrenamiento y la interfaz web:
 
-Rough, community-driven — ideas and PRs welcome:
+```powershell
+Set-Location frontend
+npm test
+npm run build
+```
 
-- [x] Standalone mobile app — Android APK to sideload ([download](https://hforge.duarte-santos.ch)); on iOS as a self-hosted PWA (no store listings planned)
-- [x] Automatic progression programs (linear, Greyskull LP, double progression) with stalls and deloads
-- [x] Estimated 1RM per exercise
-- [ ] Percentage / training-max programming (5/3/1-style) on top of the progression engine
-- [ ] More starter plans (upper/lower, full-body, 5×5)
-- [x] Importers from FitNotes / Strong / Hevy (including the RPE they record), and body weight from Apple Health
-- [x] Effort per set — RIR or RPE, whichever scale you think in
-- [ ] Body measurements (waist, arms…) alongside weight
-- [ ] Per-exercise notes & plate calculator
-- [ ] Exercise instructions in German & Portuguese (UI is translated; these instruction packs aren't available yet)
+Para el servidor:
 
-## Tech
+```powershell
+Set-Location ..\api
+npm test
+```
 
-React 19 + Vite (React Router, Zustand) · Node (no framework) · nginx · Docker Compose ·
-WebAuthn.
-No database server, no cloud dependencies — the frontend builds inside Docker, so self-hosting
-stays a one-command `docker compose up`.
+La [guía para contribuir](CONTRIBUTING.md) describe la estructura, las reglas de pruebas y el
+flujo de desarrollo. También puedes consultar [CHANGELOG.md](CHANGELOG.md), [SECURITY.md](SECURITY.md)
+y [NOTICE.md](NOTICE.md).
 
-The training logic — progression rules, 1RM estimation, how a logged session is read back —
-lives in pure functions under `frontend/src/lib/` with tests next to them: `npm test` in
-`frontend/`. Vitest is a dev dependency; the app itself ships no runtime dependencies beyond
-React, the router and Zustand.
+## Enlaces locales
 
-## Community
-
-- **[Q&A](https://github.com/h5uarez/hforge/discussions/categories/q-a)** — self-hosting
-  help, passkey/login trouble, "how do I…". Most login problems turn out to be an `RP_ID`/`ORIGIN`
-  mismatch.
-- **[Ideas](https://github.com/h5uarez/hforge/discussions/categories/ideas)** — features
-  worth talking through before anyone writes code.
-- **[Show and tell](https://github.com/h5uarez/hforge/discussions/categories/show-and-tell)**
-  — your setup, your plan templates, whatever you built on top.
-- **[Issues](https://github.com/h5uarez/hforge/issues)** — bugs, and work that's already
-  been agreed on.
-
-## Contributing
-
-Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues: more starter
-plans, exercise-data languages, import from other trackers. **A ⭐ helps more people find it.**
-
-## Availability
-
-Hforge has no subscription or paid tier. If it replaced a paid tracker for you and you want to
-chip in, the Sponsor button at the top of the page is there — a star, a bug report or a PR is
-worth just as much.
+- [Autoalojamiento](docs/SELF_HOSTING.md)
+- [Compilación móvil](docs/MOBILE.md)
+- [Contribución](CONTRIBUTING.md)
+- [Seguridad](SECURITY.md)
+- [Cambios](CHANGELOG.md)
+- [Avisos de terceros](NOTICE.md)
+- [Contrato de configuración](.env.example)
+- [Repositorio en GitHub](https://github.com/h5uarez/hforge)
