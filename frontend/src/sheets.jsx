@@ -650,7 +650,7 @@ function PerSetPrescriptionField({ generic, perSide, setCount, repsValue, onReps
     onProgrammedChange(a)
   }
   return <>
-    <h4 className="sec">{t('Reps per set')}</h4>
+    <h4 className="sec" style={{ padding: 0 }}>{t('Reps per set')}</h4>
     <div className="small dim" style={{ marginTop: -4, marginBottom: 10 }}>
       {t('Generic reps')}: <strong>{fmtNum(generic)}</strong>. {t('Set-specific values override Generic reps.')}
     </div>
