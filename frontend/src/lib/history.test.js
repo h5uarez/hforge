@@ -560,6 +560,50 @@ describe('buildSets', () => {
       .toEqual([{ w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }])
   })
 
+  it('carries added bodyweight loads without copying actual reps into a new workout', () => {
+    const S = {
+      workouts: [{
+        d: '2026-08-22',
+        entries: [{
+          id: BW,
+          target: { mode: 'reps', bodyweight: true, sets: 3, reps: 6, weight: 0 },
+          sets: [
+            { w: 45, r: 1, rpe: 10, done: true },
+            { w: 35, r: 1, rpe: 10, done: true },
+            { w: 30, r: 1, rpe: 10, done: true },
+          ],
+        }],
+      }],
+      exWeights: {},
+      effort: 'rpe',
+    }
+    const cfg = {
+      id: BW,
+      mode: 'reps',
+      bodyweight: true,
+      sets: 3,
+      reps: 6,
+      weight: 0,
+      programmedEffort: [
+        { metric: 'rpe', value: 8 },
+        { metric: 'rpe', value: 8 },
+        { metric: 'rpe', value: 8 },
+      ],
+    }
+
+    expect(buildSets(S, cfg)).toEqual([
+      { w: 45, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+      { w: 35, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+      { w: 30, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+    ])
+    expect(cfg.reps).toBe(6)
+    expect(cfg.programmedEffort).toEqual([
+      { metric: 'rpe', value: 8 },
+      { metric: 'rpe', value: 8 },
+      { metric: 'rpe', value: 8 },
+    ])
+  })
+
   it('builds timed sets, carrying the planned duration and load', () => {
     expect(buildSets(emptyS, { id: LIFT, mode: 'time', sets: 2, sec: 60, weight: 20 }))
       .toEqual([{ sec: 60, w: 20, done: false }, { sec: 60, w: 20, done: false }])
@@ -588,9 +632,9 @@ describe('buildSets', () => {
       .toEqual([{ w: 40, r: 8, done: false }])
   })
 
-  it('still prefers the confirmed working weight for reps sets', () => {
+  it('prefers the confirmed working weight without copying previous reps', () => {
     const S = { exWeights: { [LIFT]: { w: 75 } }, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }] }
-    expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 75, r: 10, done: false }])
+    expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 75, r: 8, done: false }])
   })
 
   /* ---- programmed-effort seeding (issue: programmed-rpe-rir, Phase 1) ----

@@ -396,9 +396,12 @@ export function buildSets(S, cfg) {
     const prev = prevAt(i)
     const usable = prev && prev.r > 0 ? prev : null
     const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
+    // Loads can carry forward as a useful suggestion, but actual reps belong to the previous
+    // history entry. Start ordinary rep sets from this session's target; explicit progression
+    // policies may adjust that target later in applyPrescription.
     const set = isPerSide(cfg)
       ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.left.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: usable && hasBothSides(usable) ? (usable.right.r ?? sideReps(cfg.reps)) : sideReps(cfg.reps), done: false }, w, r: cfg.reps, done: false }
-      : { w, r: usable ? usable.r : cfg.reps, done: false }
+      : { w, r: cfg.reps, done: false }
     // Snapshot the programmed target onto each set at workout start. The
     // snapshot rides alongside actual `rir`/`rpe` and is never edited by
     // the logger; metric mismatch yields `undefined`, which omits the key
