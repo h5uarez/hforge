@@ -7,6 +7,7 @@ const setNavigator = value =>
 
 function fakeBrowser() {
   const values = new Map()
+  const listeners = new Map()
   globalThis.window = {}
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -22,8 +23,9 @@ function fakeBrowser() {
   // hidden, which never happens in tests.
   globalThis.document = {
     visibilityState: 'visible',
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    removeEventListener: (name, listener) => { if (listeners.get(name) === listener) listeners.delete(name) },
+    listeners,
   }
   setNavigator({ userAgent: 'node-test', languages: ['en-US'], language: 'en-US' })
   return values
@@ -39,6 +41,8 @@ let storage, useStore
 
 beforeEach(async () => {
   storage = fakeBrowser()
+  vi.resetModules()
+  vi.doUnmock('../lib/mobile.js')
   const storeMod = await import('./useStore.js')
   useStore = storeMod.useStore
   // Reset S to a known generic overlay. replaceState persists immediately, so each scenario
@@ -227,5 +231,87 @@ describe('bodyweightCheckEnabled compatibility', () => {
     await mobileStore.getState().boot()
     expect(nativeLoad).toHaveBeenCalledTimes(1)
     expect(mobileStore.getState().S.bodyweightCheckEnabled).toBe(false)
+  })
+})
+
+describe('server boot and synchronization boundaries', () => {
+  it('boots an authenticated profile and accepts a newer remote state', async () => {
+    const remote = { _ts: Date.now() + 10_000, unit: 'lb', routines: [{ id: 'remote', ex: [] }], workouts: [] }
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { id: 'u1', name: 'Remote User' } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ state: remote }) })
+
+    await useStore.getState().boot()
+
+    expect(useStore.getState().ready).toBe(true)
+    expect(useStore.getState().user).toEqual({ id: 'u1', name: 'Remote User' })
+    expect(useStore.getState().S.unit).toBe('lb')
+    expect(useStore.getState().S.routines).toEqual(remote.routines)
+    expect(globalThis.fetch.mock.calls.map(call => call[0])).toEqual(['/api/me', '/api/data'])
+  })
+
+  it('finishes boot after a 401, clears stale identity, and keeps local training data', async () => {
+    useStore.getState().replaceState({ routines: [{ id: 'local', ex: [] }], workouts: [] })
+    useStore.getState().setUser({ id: 'stale' })
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false, status: 401, json: async () => ({ error: 'not signed in' }),
+    })
+
+    await useStore.getState().boot()
+
+    expect(useStore.getState().ready).toBe(true)
+    expect(useStore.getState().user).toBeNull()
+    expect(useStore.getState().S.routines).toEqual([{ id: 'local', ex: [] }])
+  })
+
+  it('keeps dirty local data and pushes it instead of applying an older remote snapshot', async () => {
+    useStore.getState().replaceState({ _ts: 200, routines: [{ id: 'local', ex: [] }], workouts: [] })
+    useStore.getState().setUser({ id: 'u1' })
+    localStorage.setItem('gym_dirty', '1')
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ state: { _ts: 300, routines: [{ id: 'remote', ex: [] }], workouts: [] } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+
+    await useStore.getState().pullState()
+
+    expect(useStore.getState().S.routines[0].id).toBe('local')
+    expect(globalThis.fetch.mock.calls[1][0]).toBe('/api/data')
+    expect(globalThis.fetch.mock.calls[1][1].method).toBe('PUT')
+    expect(localStorage.getItem('gym_dirty')).toBeNull()
+  })
+
+  it('preserves the local session when sign-out-all fails and clears it after success', async () => {
+    useStore.getState().replaceState({ routines: [{ id: 'local', ex: [] }], workouts: [] })
+    useStore.getState().setUser({ id: 'u1' })
+    globalThis.fetch = vi.fn(async path => ({
+      ok: path !== '/api/logout/all', status: 503,
+      json: async () => path === '/api/logout/all' ? ({ error: 'unavailable' }) : ({ ok: true }),
+    }))
+
+    await expect(useStore.getState().signOutAll()).rejects.toMatchObject({ status: 503 })
+    expect(useStore.getState().user).toEqual({ id: 'u1' })
+    expect(useStore.getState().S.routines[0].id).toBe('local')
+
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) }))
+    await useStore.getState().signOutAll()
+    expect(useStore.getState().user).toBeNull()
+    expect(useStore.getState().S.routines).toEqual([])
+    expect(localStorage.getItem('gym_guest')).toBeNull()
+    expect(localStorage.getItem('gym_dirty')).toBeNull()
+  })
+
+  it('flushes a pending authenticated state push when the document becomes hidden', async () => {
+    useStore.getState().setUser({ id: 'u1' })
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) }))
+    useStore.getState().update(state => { state.unit = 'lb' })
+    document.visibilityState = 'hidden'
+
+    document.listeners.get('visibilitychange')()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/data')
+    expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).state.unit).toBe('lb')
   })
 })

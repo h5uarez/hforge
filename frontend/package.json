@@ -11,7 +11,14 @@
     "build:mobile": "VITE_MOBILE=1 vite build && cap sync",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:browser": "playwright test",
+    "test:browser:media": "playwright test --project=media-proxy-chromium",
+    "test:browser:functional": "playwright test --project=functional-chromium --project=functional-firefox --project=functional-webkit",
+    "test:browser:visual": "playwright test --project=visual-chromium-320 --project=visual-chromium-375 --project=visual-chromium-414 --project=visual-chromium-desktop",
+    "test:browser:visual:update": "npm run test:browser:visual -- --update-snapshots",
+    "test:browser:webauthn": "playwright test --project=webauthn-chromium"
   },
   "dependencies": {
     "@capacitor/core": "^7.6.8",
@@ -28,8 +35,10 @@
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.6.8",
     "@capacitor/ios": "^7.6.8",
+    "@playwright/test": "^1.61.0",
     "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.11",
     "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

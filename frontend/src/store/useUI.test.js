@@ -143,4 +143,59 @@ describe('rest timer setting gate', () => {
     vi.advanceTimersByTime(2000)
     expect(useUI.getState().timer).toBeNull()
   })
+
+  it('pairs each rest visibility listener with removal across restarts', () => {
+    useUI.getState().startRest(90)
+    const firstTick = document.addEventListener.mock.calls.at(-1)[1]
+    useUI.getState().startRest(45)
+
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', firstTick)
+    const secondTick = document.addEventListener.mock.calls.at(-1)[1]
+    useUI.getState().stopRest()
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', secondTick)
+  })
+})
+
+describe('work timer runtime boundaries', () => {
+  it('stops an active rest before starting work and removes both listeners', () => {
+    useUI.getState().startRest(90)
+    const restTick = document.addEventListener.mock.calls.at(-1)[1]
+    useUI.getState().startWork(30, 'Plank', vi.fn())
+    const workTick = document.addEventListener.mock.calls.at(-1)[1]
+
+    expect(useUI.getState().timer).toBeNull()
+    expect(useUI.getState().work).toMatchObject({ left: 30, total: 30, label: 'Plank' })
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', restTick)
+    useUI.getState().stopWork()
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', workTick)
+  })
+
+  it('reports actual elapsed time on early finish and never sends a work-timer push', () => {
+    const onDone = vi.fn()
+    useStore.getState().setUser({ id: 'u1' })
+    useUI.getState().startWork(45, 'Hold', onDone)
+    api.mockClear()
+    vi.advanceTimersByTime(10_000)
+
+    useUI.getState().finishWorkEarly()
+
+    expect(onDone).toHaveBeenCalledWith(10)
+    expect(vibrate).toHaveBeenCalledWith(30)
+    expect(useUI.getState().work).toBeNull()
+    expect(api).not.toHaveBeenCalled()
+  })
+
+  it('completes work once at the deadline and cleans its visibility listener', () => {
+    const onDone = vi.fn()
+    useUI.getState().startWork(2, 'Hold', onDone)
+    const tick = document.addEventListener.mock.calls.at(-1)[1]
+
+    vi.advanceTimersByTime(2_000)
+
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(onDone).toHaveBeenCalledWith(2)
+    expect(useUI.getState().work).toBeNull()
+    expect(document.removeEventListener).toHaveBeenCalledWith('visibilitychange', tick)
+    expect(beep).toHaveBeenCalledTimes(4)
+  })
 })

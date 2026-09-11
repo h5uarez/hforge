@@ -32,9 +32,67 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - name: Enforce frontend coverage ratchet
+        working-directory: frontend
+        run: npm run test:coverage
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+  browser:
+    name: Browser functional and visual regression
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            api/package-lock.json
+
+      - name: Install application dependencies
+        shell: pwsh
+        run: |
+          npm ci --prefix frontend
+          npm ci --prefix api
+
+      - name: Install pinned Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium firefox webkit
+
+      - name: Verify real media server and Vite proxy
+        working-directory: frontend
+        run: npm run test:browser:media
+
+      - name: Run browser compatibility matrix
+        working-directory: frontend
+        run: npm run test:browser:functional
+
+      - name: Compare Windows Chromium visual baselines
+        working-directory: frontend
+        run: npm run test:browser:visual
+
+      - name: Verify Chromium virtual-authenticator passkeys
+        working-directory: frontend
+        run: npm run test:browser:webauthn
+
+      - name: Upload Playwright report and image diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-windows-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   api:
     name: API checks
@@ -54,6 +112,10 @@ jobs:
         working-directory: api
         run: npm ci
 
+      - name: Run API tests
+        working-directory: api
+        run: npm test
+
       - name: Check API syntax
         working-directory: api
         run: node --check server.js
@@ -64,6 +126,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Test environment contract
+        run: node --test scripts/check-env-contract.test.mjs
 
       - name: Validate Compose and build local services
         shell: bash
@@ -77,7 +142,8 @@ jobs:
           SESSION_SECRET=ci-only-session-secret
           VAPID_SUBJECT=mailto:ci@example.invalid
           WEB_PORT=18080
-          EXERCISE_MEDIA_SOURCE=/tmp/exercise-media
+          EXERCISE_MEDIA_SOURCE=./.ci/exercise-media
           EOF
+          mkdir -p .ci/exercise-media/images .ci/exercise-media/videos
           docker compose config --quiet
           docker compose build api web

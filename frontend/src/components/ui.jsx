@@ -231,6 +231,13 @@ export function flashSetRow(el) {
   setTimeout(() => { el.classList.remove('just-done'); if (lastGlow?.el === el) lastGlow = null }, 450)
 }
 
+export function scheduleSetRowFlash(button, schedule = setTimeout) {
+  // React clears SyntheticEvent.currentTarget after the click handler returns. Resolve the row
+  // synchronously so the deferred visual effect never depends on the event's later lifetime.
+  const row = button?.closest('.setrow')
+  schedule(() => flashSetRow(row), 0)
+}
+
 export function Check({ checked, onChange, className = '', size, ...rest }) {
   const ref = useRef(null)
   const press = () => {
@@ -253,7 +260,7 @@ export function Check({ checked, onChange, className = '', size, ...rest }) {
       onClick={e => {
         press()
         // the row flash arms on completion; unchecking never glows
-        if (!checked) setTimeout(() => flashSetRow(e.currentTarget.closest('.setrow')), 0)
+        if (!checked) scheduleSetRowFlash(e.currentTarget)
         onChange(!checked)
       }}
     >

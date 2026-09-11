@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const mediaRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'media')
+const mediaRoot = resolve(process.env.MEDIA_ROOT || resolve(dirname(fileURLToPath(import.meta.url)), '..', 'media'))
 const port = Number(process.env.MEDIA_PORT || 8888)
 const contentTypes = {
   '.gif': 'image/gif',

@@ -6,6 +6,9 @@ node_modules/
 
 # Generated frontend build output
 frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
 
 # Project-local Gentle AI skills
 !.agents/skills/
