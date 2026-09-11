@@ -18,7 +18,8 @@
     "test:browser:functional": "playwright test --project=functional-chromium --project=functional-firefox --project=functional-webkit",
     "test:browser:visual": "playwright test --project=visual-chromium-320 --project=visual-chromium-375 --project=visual-chromium-414 --project=visual-chromium-desktop",
     "test:browser:visual:update": "npm run test:browser:visual -- --update-snapshots",
-    "test:browser:webauthn": "playwright test --project=webauthn-chromium"
+    "test:browser:webauthn": "playwright test --project=webauthn-chromium",
+    "test:android": "node scripts/android-smoke.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.6.8",

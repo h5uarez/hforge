@@ -26,6 +26,29 @@ cd frontend && npm install && npm run dev
 cd frontend && npm test
 ```
 
+### Browser and Android smoke tests
+
+The deterministic browser journeys use the isolated Playwright stack:
+
+```bash
+cd frontend
+npm run test:browser:functional
+```
+
+For a real Android check, install the Capacitor app (`com.hforge.app`) on a booted emulator or
+device, make it visible to Orca or `adb`, and run:
+
+```bash
+cd frontend
+npm run test:android
+```
+
+The Android harness launches Hforge, checks the foreground activity, WebView visibility, display
+size, and recent fatal logcat errors, then leaves Hforge visible. It is intentionally separate from
+`npm test` and the browser commands. Missing Orca/ADB or a booted device is reported as `SKIP` with
+exit code 2; failed smoke assertions exit with code 1. Set `ANDROID_SMOKE_COMMAND_TIMEOUT_MS` or
+`ANDROID_SMOKE_TIMEOUT_MS` to tune the bounded local timeouts.
+
 `EXERCISE_MEDIA_SOURCE` is required by Compose for the one-time media import. The safe operator
 settings and their defaults are documented in [`.env.example`](.env.example) and
 [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md); do not add generated credentials to `.env`.
