@@ -89,11 +89,15 @@ describe('Spanish translation and instruction contracts', () => {
 
   it('keeps generated Spanish instructions and intentional English fallback behavior', async () => {
     const { setLang, instrFor } = await import('./i18n.js')
-    const exercise = { id: '1000', st: ['Stand up and move.'] }
+    const exercise = { id: '4F5866F8', st: ['Stand up and move.'] }
+    const legacyProductionIds = ['0007', '1436', '1435', '0175', '0184', '1323', '0241', '0311', '0410', '0582', '0584', '1349', '0739']
     await setLang('es')
-    expect(instrFor(exercise)[0]).toBe('Ponte de pie con los pies separados a la altura de las caderas y coloca la banda alrededor de la base de los dedos del pie.')
+    expect(instrFor(exercise)[0]).toBe('Colócate en una máquina de extensión lumbar. Apoya las caderas y los muslos contra el acolchado y bloquea los tobillos en el soporte para los pies.')
+    for (const id of legacyProductionIds) expect(instrFor({ id, st: ['English fallback'] }), id).not.toEqual(['English fallback'])
     await setLang('pt')
     expect(instrFor(exercise)).toEqual(exercise.st)
+    await setLang('es')
+    expect(instrFor({ id: 'E23F1F2B', st: [] })).toEqual([])
   })
 })
 

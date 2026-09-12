@@ -40,7 +40,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'node e2e/test-stack.mjs',
-    url: 'http://127.0.0.1:4173/img/0025-EIeI8Vf.jpg',
+    url: 'http://127.0.0.1:4173/img/79D0BB3A.jpg',
     reuseExistingServer: false,
     timeout: 120_000,
   },

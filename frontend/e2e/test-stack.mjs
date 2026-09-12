@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
-import { EXDB } from '../src/lib/exercises-data.js'
+import { EXDB } from '../src/lib/catalog.js'
 
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const root = resolve(frontend, '..')
@@ -15,6 +15,10 @@ const children = []
 let stopping = false
 
 const gif = createSyntheticGif()
+const mp4 = Buffer.concat([
+  (() => { const box = Buffer.alloc(24); box.writeUInt32BE(24, 0); box.write('ftyp', 4, 'ascii'); box.write('isom', 8, 'ascii'); box.writeUInt32BE(0x200, 12); box.write('isomiso2', 16, 'ascii'); return box })(),
+  Buffer.from('synthetic hforge media payload', 'ascii'),
+])
 
 const delay = milliseconds => new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds))
 
@@ -80,7 +84,7 @@ function createSyntheticGif(size = 160) {
 }
 
 async function createSyntheticMedia() {
-  await Promise.all([mkdir(dataRoot), mkdir(resolve(mediaRoot, 'img'), { recursive: true }), mkdir(resolve(mediaRoot, 'gif'), { recursive: true })])
+  await Promise.all([mkdir(dataRoot), mkdir(resolve(mediaRoot, 'img'), { recursive: true }), mkdir(resolve(mediaRoot, 'gif'), { recursive: true }), mkdir(resolve(mediaRoot, 'video'), { recursive: true })])
   const browser = await chromium.launch()
   let jpeg
   try {
@@ -92,10 +96,12 @@ async function createSyntheticMedia() {
   }
   const imageNames = new Set(EXDB.map(exercise => exercise.img).filter(Boolean))
   const gifNames = new Set(EXDB.map(exercise => exercise.gif).filter(Boolean))
+  const videoNames = new Set(EXDB.map(exercise => exercise.video).filter(Boolean))
   // Keep aliases independent: NTFS limits hard links per source file, while these compact
   // synthetic payloads remain bounded and avoid any dependency on an operator media library.
   for (const name of imageNames) await writeFile(resolve(mediaRoot, 'img', name), jpeg)
   for (const name of gifNames) await writeFile(resolve(mediaRoot, 'gif', name), gif)
+  for (const name of videoNames) await writeFile(resolve(mediaRoot, 'video', name), mp4)
 }
 
 function start(name, command, args, cwd, env = {}) {
@@ -159,13 +165,17 @@ function isGif(response, body) {
   return response.headers.get('content-type') === 'image/gif' && body.subarray(0, 6).toString('ascii') === 'GIF89a'
 }
 
+function isMp4(response, body) {
+  return response.headers.get('content-type') === 'video/mp4' && body.subarray(4, 8).toString('ascii') === 'ftyp'
+}
+
 async function main() {
   await createSyntheticMedia()
   start('media server', process.execPath, [resolve(root, 'scripts/serve-media.mjs')], root, {
     MEDIA_ROOT: mediaRoot,
     MEDIA_PORT: '4175',
   })
-  await waitFor('http://127.0.0.1:4175/img/0025-EIeI8Vf.jpg', isJpeg, 'media server')
+  await waitFor('http://127.0.0.1:4175/img/79D0BB3A.jpg', isJpeg, 'media server')
 
   start('API server', process.execPath, ['server.js'], resolve(root, 'api'), {
     DATA_DIR: dataRoot,
@@ -182,8 +192,9 @@ async function main() {
     API_TARGET: 'http://127.0.0.1:4174',
     MEDIA_TARGET: 'http://127.0.0.1:4175',
   })
-  await waitFor('http://127.0.0.1:4173/img/0025-EIeI8Vf.jpg', isJpeg, 'Vite image proxy')
+  await waitFor('http://127.0.0.1:4173/img/79D0BB3A.jpg', isJpeg, 'Vite image proxy')
   await waitFor('http://127.0.0.1:4173/gif/0025-EIeI8Vf.gif', isGif, 'Vite GIF proxy')
+  await waitFor('http://127.0.0.1:4173/video/D57C2EC7.mp4', isMp4, 'Vite video proxy')
   console.log('Playwright API, media, and Vite proxy stack is ready')
 }
 

@@ -11,7 +11,8 @@ export default defineConfig({
     proxy: {
       '/api': { target: backend, changeOrigin: true },
       '/img': { target: media, changeOrigin: true },
-      '/gif': { target: media, changeOrigin: true }
+      '/gif': { target: media, changeOrigin: true },
+      '/video': { target: media, changeOrigin: true }
     }
   },
   build: { chunkSizeWarningLimit: 1500 },

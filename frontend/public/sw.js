@@ -3,7 +3,8 @@
    entries with the previous one):
      <v>-shell   — precached app shell: index.html, manifest, version, icons.
      <v>-rt      — runtime: hashed js/css/fonts, stale-while-revalidate.
-     <v>-media   — exercise img/gif, cache-first with a bounded entry count.
+     <v>-media   — exercise img/gif, cache-first with a bounded entry count. MP4 video is
+                  intentionally network-only: large video files must never fill the PWA cache.
    Update policy: the new worker installs in the background and WAITS. It only
    activates after the page asks (SKIP_WAITING message sent from the update
    banner the user confirmed), so an old client is never swapped for new assets
@@ -85,7 +86,10 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return
   if (url.pathname.startsWith('/api/')) return    // never cache auth/data
 
-  const isMedia = url.pathname.includes('/img/') || url.pathname.includes('/gif/')
+   // Do not put the imported Hevy MP4 catalog in Cache Storage. Browsers can otherwise retain
+   // hundreds of large videos after a single library browse; video remains streamable online.
+   if (url.pathname.includes('/video/')) return
+   const isMedia = url.pathname.includes('/img/') || url.pathname.includes('/gif/')
   if (isMedia) {
     e.respondWith(caches.open(MEDIA_CACHE).then(c => c.match(e.request).then(hit => {
       if (hit) return hit

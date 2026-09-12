@@ -1,17 +1,17 @@
 // Tiny dependency-free i18n. English source strings are the keys; locale files in
 // src/locales/ map them to translations and are lazy-loaded (Vite code-splits each
 // import.meta.glob entry), so the initial bundle stays English-only.
-// Exercise instructions come from separately generated packs in src/instr/ (one per
-// language, from source exercise data) — also lazy-loaded on language switch.
+// Spanish exercise instructions come from the generated pack in src/instr/es.js. No other
+// language pack claims coverage until independently translated source data is supplied.
 import { useSyncExternalStore } from 'react'
 
-// UI languages. de/pt have no instruction pack — instructions fall back to English.
+// UI languages. Only English and Spanish have exercise instruction packs.
 export const LANGS = {
   en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
   pt: 'Português', pl: 'Polski', tr: 'Türkçe', ru: 'Русский', zh: '中文',
   ko: '한국어', hi: 'हिन्दी'
 }
-export const INSTR_LANGS = ['en', 'es', 'fr', 'it', 'tr', 'ru', 'zh', 'hi', 'pl', 'ko']
+export const INSTR_LANGS = ['en', 'es']
 const DATE_LOCALES = {
   en: 'en-GB', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT',
   pl: 'pl-PL', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', ko: 'ko-KR', hi: 'hi-IN'

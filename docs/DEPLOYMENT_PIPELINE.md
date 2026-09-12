@@ -103,18 +103,19 @@ The Run Command script performs its preflight checks before writing the Compose 
 | `/opt/hforge/media` | Validate that it exists; never upload, replace, or reset it. |
 | `/opt/hforge/media/img` | Validate that it exists; never upload, replace, or reset it. |
 | `/opt/hforge/media/gif` | Validate that it exists; never upload, replace, or reset it. |
+| `/opt/hforge/media/video` | Validate that it exists; never upload, replace, or reset it. |
 | `/opt/hforge/docker-compose.prod.yml` | The only VM file written by the deployment script. |
 
 The production Compose file keeps these bind mounts:
 
 - `./data:/data` for API data.
-- `./media/img` and `./media/gif` for persistent exercise media.
+- `./media/img`, `./media/gif`, and `./media/video` for persistent exercise media.
 
-Production media must already be prepared on the VM before deployment. The production Compose file has no media population service: the deploy only mounts `/opt/hforge/media/img` and `/opt/hforge/media/gif` into the web container. It does not upload or copy exercise media or any other local runtime data to Azure. Keep independent backups of `/opt/hforge/data` and `/opt/hforge/media`.
+Production media must already be prepared on the VM before deployment. The production Compose file has no media population service: the deploy only mounts `/opt/hforge/media/img`, `/opt/hforge/media/gif`, and `/opt/hforge/media/video` into the web container. It does not upload or copy exercise media or any other local runtime data to Azure. Keep independent backups of `/opt/hforge/data` and `/opt/hforge/media`.
 
 ## Manual deployment and smoke test
 
-Before the first run, prepare and confirm that `/opt/hforge` already contains the production `.env`, `data`, `media/img`, and `media/gif` paths and the required exercise media. Then run the workflow manually from `main` and the intended commit. The deployment only mounts those persistent media directories; it does not upload or copy them.
+Before the first run, prepare and confirm that `/opt/hforge` already contains the production `.env`, `data`, `media/img`, `media/gif`, and `media/video` paths and the required exercise media. Use `node scripts/sync-hevy-media.mjs <hevy-media-directory> <media-directory>` before transferring the resulting `img` and `video` folders to the VM. Then run the workflow manually from `main` and the intended commit. The deployment only mounts those persistent media directories; it does not upload or copy them.
 
 Run Command must complete before the external check starts. After the workflow succeeds, verify the public endpoint from a trusted client:
 

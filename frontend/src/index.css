@@ -728,8 +728,8 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat));transform:translateZ(0);backface-visibility:hidden;will-change:transform}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2);margin-bottom:12px}
-.exmedia img,.exmedia .exmedia-x{width:100%;height:clamp(200px,60vw,320px)}
-.exmedia img{object-fit:contain;display:block}
+.exmedia img,.exmedia video,.exmedia .exmedia-x{width:100%;max-width:100%;height:clamp(200px,60vw,320px)}
+.exmedia img,.exmedia video{object-fit:contain;display:block}
 /* failed-asset placeholder: the same box the img would have filled, with the
    Thumb's surface-2/glyph treatment instead of a broken-image icon */
 .exmedia .exmedia-x{display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--label-2);font-size:32px}
@@ -744,8 +744,8 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .exmedia .gifhint .icn,.exmedia .giftoggle .icn{font-size:13px}
 /* superset: both exercises are on screen together, so the animations have to give way —
    at 180px you had to scroll a full screen between two exercises done back-to-back */
-.exmedia.compact img,.exmedia.compact .exmedia-x{height:120px}
-.exmedia.mini img,.exmedia.mini .exmedia-x{height:84px}
+.exmedia.compact img,.exmedia.compact video,.exmedia.compact .exmedia-x{height:120px}
+.exmedia.mini img,.exmedia.mini video,.exmedia.mini .exmedia-x{height:84px}
 
 /* --- set grid: one fluid system, zero horizontal scroll ---
    Nothing here scrolls: every stepper track is minmax(0,1fr) so tracks shrink
@@ -1788,7 +1788,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   .workout-session-nav{flex-wrap:wrap}
   .cal-d{font-size:13px}
   .cal-grid{gap:4px}
-  .exmedia img,.exmedia .exmedia-x{height:210px}
+  .exmedia img,.exmedia video,.exmedia .exmedia-x{height:210px}
 }
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
@@ -1813,7 +1813,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   /* 520px fits the clock, the bar and all three controls on one line again */
   #timer.rest{flex-direction:row;align-items:center;gap:14px}
   #timer.rest .head{flex:1;min-width:0}
-  .exmedia img,.exmedia .exmedia-x{height:clamp(240px,30vw,380px)}
+  .exmedia img,.exmedia video,.exmedia .exmedia-x{height:clamp(240px,30vw,380px)}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
 }
 

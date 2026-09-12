@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "audit:exercise-names": "node scripts/audit-exercise-names.mjs",
+    "audit:exercise-catalog": "node ../scripts/audit-hevy-import.mjs",
+    "import:hevy": "node ../scripts/import-hevy-catalog.mjs",
     "review:exercise-names": "node scripts/review-exercise-names.mjs",
     "build:mobile": "node scripts/build-mobile.mjs",
     "preview": "vite preview",

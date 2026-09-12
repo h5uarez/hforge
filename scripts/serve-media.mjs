@@ -9,7 +9,9 @@ const port = Number(process.env.MEDIA_PORT || 8888)
 const contentTypes = {
   '.gif': 'image/gif',
   '.jpeg': 'image/jpeg',
-  '.jpg': 'image/jpeg'
+  '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.mp4': 'video/mp4'
 }
 const isOutside = value => value === '..' || value.startsWith(`..${sep}`)
 
@@ -40,7 +42,7 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  if (!/^\/(?:img|gif)\/.+/.test(pathname) || pathname.includes('\\') || pathname.includes('\0')) {
+  if (!/^\/(?:img|gif|video)\/.+/.test(pathname) || pathname.includes('\\') || pathname.includes('\0')) {
     notFound(response)
     return
   }
@@ -71,18 +73,51 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  response.writeHead(200, {
-    'Cache-Control': 'public, max-age=3600',
+  const headers = {
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'public, max-age=2592000, immutable',
     'Content-Length': fileInfo.size,
     'Content-Type': contentTypes[extname(realFilePath).toLowerCase()] || 'application/octet-stream'
-  })
+  }
+
+  const range = request.headers.range
+  let start = 0
+  let end = fileInfo.size - 1
+  if (range) {
+    const match = range.match(/^bytes=(\d*)-(\d*)$/)
+    if (!match || (match[1] === '' && match[2] === '')) {
+      response.writeHead(416, { 'Content-Range': `bytes */${fileInfo.size}` }).end()
+      return
+    }
+    if (match[1] === '') {
+      const suffixLength = Number(match[2])
+      if (!Number.isSafeInteger(suffixLength) || suffixLength < 1) {
+        response.writeHead(416, { 'Content-Range': `bytes */${fileInfo.size}` }).end()
+        return
+      }
+      start = Math.max(0, fileInfo.size - suffixLength)
+    } else {
+      start = Number(match[1])
+      end = match[2] === '' ? end : Number(match[2])
+    }
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= fileInfo.size || end < start) {
+      response.writeHead(416, { 'Content-Range': `bytes */${fileInfo.size}` }).end()
+      return
+    }
+    end = Math.min(end, fileInfo.size - 1)
+    headers['Content-Length'] = end - start + 1
+    headers['Content-Range'] = `bytes ${start}-${end}/${fileInfo.size}`
+    response.writeHead(206, headers)
+  } else {
+    response.writeHead(200, headers)
+  }
 
   if (request.method === 'HEAD') {
     response.end()
     return
   }
 
-  const stream = createReadStream(realFilePath)
+  const stream = createReadStream(realFilePath, range ? { start, end } : undefined)
   stream.on('error', () => response.destroy())
   stream.pipe(response)
 })

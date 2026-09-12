@@ -128,7 +128,7 @@ jobs:
 
           cd /opt/hforge
           test -f .env || { echo 'ERROR: /opt/hforge/.env is missing; refusing deployment.' >&2; exit 1; }
-          for path in data media media/img media/gif; do
+          for path in data media media/img media/gif media/video; do
             test -d "$path" || {
               echo "ERROR: /opt/hforge/$path is missing; refusing deployment." >&2
               exit 1

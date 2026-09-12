@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url'
-import { EXDB } from '../src/lib/exercises-data.js'
+import { EXDB } from '../src/lib/catalog.js'
 import { EXERCISE_NAMES_ES } from '../src/lib/exercise-names.es.js'
 
 const FAMILY_ORDER = [

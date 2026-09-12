@@ -65,6 +65,9 @@ const BY_BODYPART = {
   'upper legs': { quadriceps: 0.4, hamstring: 0.35, gluteal: 0.25 },
   'lower legs': { calves: 0.8, tibialis: 0.2 },
   neck: { trapezius: 1 },
+  // Hevy's full_body target has no one-to-one body-map muscle. This is only a fallback for
+  // records without drawable secondary muscles; records with secondaries use those directly.
+  'full body': { 'upper-back': 0.2, chest: 0.15, deltoids: 0.15, biceps: 0.1, triceps: 0.1, abs: 0.1, gluteal: 0.1, quadriceps: 0.1 },
   cardio: {},
 }
 

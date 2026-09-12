@@ -1,6 +1,6 @@
 // Pure helpers over the state object S (ported 1:1 from the vanilla app).
 import { todayISO, isoOf, weekKey, fmtNum } from './format.js'
-import { isCardio, isBodyweightEq } from './exercises.js'
+import { EXIDX, isCardio, isBodyweightEq } from './exercises.js'
 import { t } from './i18n.js'
 
 // Notes are optional context, not part of exercise calculations. Keep the unbounded helper
@@ -74,7 +74,8 @@ export function updateExerciseNote(entry, raw) {
 export function modeOf(cfg) {
   const m = cfg && cfg.mode
   if (m === 'reps' || m === 'time' || m === 'cardio') return m
-  return isCardio(cfg && cfg.id) ? 'cardio' : 'reps'
+  const catalogMode = cfg?.id && typeof cfg.id === 'string' ? EXIDX[cfg.id]?.mode : null
+  return catalogMode || (isCardio(cfg && cfg.id) ? 'cardio' : 'reps')
 }
 export const isTimed = cfg => modeOf(cfg) === 'time'
 

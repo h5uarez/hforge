@@ -11,11 +11,11 @@ Requirements: [Docker](https://docs.docker.com/get-docker/) with the Compose plu
 git clone https://github.com/h5uarez/hforge hforge
 cd hforge
 cp .env.example .env
-# Set EXERCISE_MEDIA_SOURCE to a local directory with images/ and videos/.
+# Set EXERCISE_MEDIA_SOURCE to the flat Hevy media directory, or a legacy directory with images/ and videos/.
 docker compose up -d --build
 ```
 
-- First start downloads the exercise images/GIFs (~140 MB) once into `app/img` and `app/gif`.
+- First start copies exercise JPG/PNG/GIF/MP4 files once into `media/img`, `media/gif`, and `media/video`.
 - Open **http://localhost:8080** and create a profile with a passkey.
 - The default Compose file builds from source; no local Node setup is needed.
 
@@ -35,7 +35,7 @@ first start; the remaining values have source-backed defaults.
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `EXERCISE_MEDIA_SOURCE` | Required local directory containing `images/` and `videos/` for the media import | *(set this)* |
+| `EXERCISE_MEDIA_SOURCE` | Required local flat Hevy media directory, or legacy directory containing `images/` and `videos/` | *(set this)* |
 | `RP_ID` | Hostname bound to passkeys | `localhost` |
 | `ORIGIN` | Full browser-facing URL | `http://localhost:8080` |
 | `WEB_PORT` | Host port for the web UI | `8080` |

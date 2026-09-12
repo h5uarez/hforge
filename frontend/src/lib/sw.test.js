@@ -101,6 +101,17 @@ describe('service worker active inactivity ownership', () => {
     expect(fetchEvent('GET', 'https://cdn.example.com/img/x.gif')).not.toHaveBeenCalled()
   })
 
+  it('leaves large MP4 video network-only instead of filling the bounded image cache', () => {
+    const worker = loadWorker([])
+    const fetchEvent = (url) => {
+      const respondWith = vi.fn()
+      worker.listeners.fetch({ request: { method: 'GET', url, mode: 'cors', headers: { get: () => '' } }, respondWith })
+      return respondWith
+    }
+    expect(fetchEvent('https://gym.example.com/video/79D0BB3A.mp4')).not.toHaveBeenCalled()
+    expect(worker.store?.size || 0).toBe(0)
+  })
+
   it('shows the received localized copy verbatim only when no client is visible', async () => {
     const worker = loadWorker([{ visibilityState: 'hidden', postMessage: vi.fn() }])
     const event = pushEvent({

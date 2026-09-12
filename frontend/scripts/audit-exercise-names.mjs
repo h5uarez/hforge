@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url'
-import { EXDB } from '../src/lib/exercises-data.js'
+import { EXDB } from '../src/lib/catalog.js'
 import {
   EXERCISE_NAMES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
   EXERCISE_NAME_LOW_CONFIDENCE_ES,

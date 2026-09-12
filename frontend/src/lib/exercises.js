@@ -1,11 +1,11 @@
-import { EXDB } from './exercises-data.js'
+import { EXDB, HEVY_EXDB, HEVY_CATALOG_META } from './catalog.js'
 import { getLang, t } from './i18n.js'
 import {
   EXERCISE_NAMES_ES, EXERCISE_ALIASES_ES, EXERCISE_NAME_ANGLICISMS_ES,
   EXERCISE_NAME_COLLISIONS_ES,
 } from './exercise-names.es.js'
 
-export { EXDB }
+export { EXDB, HEVY_EXDB, HEVY_CATALOG_META }
 export const EXIDX = {}
 EXDB.forEach(e => { EXIDX[e.id] = e })
 export const BODYPARTS = [...new Set(EXDB.map(e => e.bp))].sort()
@@ -51,9 +51,13 @@ export function exerciseMatchNames(ex) {
 export function exerciseMatches(ex, query) {
   const q = fold(query)
   if (!q) return true
-  return fold([
+  const haystack = fold([
     ...exerciseMatchNames(ex), ex.tg, ex.eq, ex.desc,
-  ].filter(Boolean).join(' ')).includes(q)
+  ].filter(Boolean).join(' '))
+  // Source names can put equipment in parentheses after the movement ("Lateral Raise
+  // (Dumbbell)") while older Hforge names put it first. Search is a token containment
+  // contract, not an English word-order contract.
+  return haystack.includes(q) || q.split(' ').every(word => haystack.includes(word))
 }
 
 /** Auditable catalog coverage; duplicate localized labels are surfaced, never hidden. */
@@ -93,22 +97,28 @@ export function exerciseNameAudit(catalog = EXDB) {
   }
 }
 
-// Media normally sits next to the app (img/ and gif/, mounted into the web container).
+// Media normally sits next to the app (img/, gif/, and video/, mounted into the web container).
 // A build can point them somewhere else — the demo build pulls them off a CDN instead of
-// shipping ~140 MB of images into the deployment.
+// shipping the supplied exercise assets into the deployment.
 const IMG_BASE = import.meta.env.VITE_IMG_BASE || 'img/'
 const GIF_BASE = import.meta.env.VITE_GIF_BASE || 'gif/'
+const VIDEO_BASE = import.meta.env.VITE_VIDEO_BASE || 'video/'
 export const imgSrc = ex => IMG_BASE + ex.img
 export const gifSrc = ex => GIF_BASE + ex.gif
+export const videoSrc = ex => VIDEO_BASE + ex.video
 
 // Cardio exercises log time + speed instead of weight × reps.
-export const isCardio = idOrEx => (typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.bp === 'cardio'
+export const isCardio = idOrEx => {
+  const ex = typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx
+  return ex?.mode === 'cardio' || ex?.bp === 'cardio'
+}
 
 // Exercises the catalog already knows carry no external load (issue #32) — a quarter of the
 // catalogue. This seeds the `bw` flag on a fresh config so a push-up never asks for a weight
 // nobody was going to enter. It is only the default: the flag lives on the config, so a dip
 // done with a belt can turn it off and a custom exercise can turn it on.
 export const isBodyweightEq = idOrEx =>
+  (typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.bodyweight === true ||
   (typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.eq === 'body weight'
 
 // An id that resolves to nothing — a plan file built against a different exercise catalog,
