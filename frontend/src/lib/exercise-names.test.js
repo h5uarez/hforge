@@ -11,6 +11,7 @@ import { planPrintHTML } from './plan-share.js'
 import { setLang } from './i18n.js'
 import { auditExerciseNames } from '../../scripts/audit-exercise-names.mjs'
 import { stratifiedExerciseNameSample } from '../../scripts/review-exercise-names.mjs'
+import { normalizeExerciseIds } from './exercise-ids.js'
 
 const byId = id => EXIDX[id]
 const POWERLIFTING_ADDITIONS = [
@@ -35,8 +36,9 @@ afterEach(async () => {
 
 describe('Spain-Spanish exercise names', () => {
   it('keeps every catalog id unique and canonical English names untouched', () => {
-    expect(EXDB).toHaveLength(53)
+    expect(EXDB).toHaveLength(52)
     expect(new Set(EXDB.map(ex => ex.id)).size).toBe(EXDB.length)
+    expect(byId('2330')).toBeUndefined()
     expect(byId('0652').n).toBe('pull-up')
     expect(byId('0032').n).toBe('barbell deadlift')
     expect(Object.keys(EXERCISE_NAMES_ES)).toHaveLength(EXDB.length)
@@ -44,12 +46,26 @@ describe('Spain-Spanish exercise names', () => {
     expect(Object.values(EXERCISE_NAMES_ES).every(name => !!name.trim())).toBe(true)
   })
 
+  it('normalizes the merged legacy ID in persisted exercise data', () => {
+    const state = normalizeExerciseIds({
+      routines: [{ ex: [{ id: '2330' }] }],
+      workouts: [{ entries: [{ id: '2330', target: { id: '2330' } }], prs: ['2330'] }],
+      active: { entries: [{ id: '2330' }] },
+      exWeights: { '2330': { w: 40 }, '0198': { w: 50 } },
+    })
+    expect(state.routines[0].ex[0].id).toBe('0198')
+    expect(state.workouts[0].entries[0]).toMatchObject({ id: '0198', target: { id: '0198' } })
+    expect(state.workouts[0].prs).toEqual(['0198'])
+    expect(state.active.entries[0].id).toBe('0198')
+    expect(state.exWeights).toEqual({ '0198': { w: 50 } })
+  })
+
   it('uses established Spanish terms while retaining variant descriptors', () => {
     expect(exerciseName(byId('0251'), 'es-ES')).toBe('Fondos de Pecho')
     expect(exerciseName(byId('0652'), 'es')).toBe('Dominadas')
     expect(exerciseName(byId('0043'), 'es')).toBe('Sentadilla Trasera Completa con Barra')
     expect(exerciseName(byId('0032'), 'es')).toBe('Peso Muerto con Barra')
-    expect(exerciseName(byId('2330'), 'es')).toContain('Jalón al Pecho')
+    expect(exerciseName(byId('0198'), 'es')).toBe('Jalón al Pecho (Cable)')
     expect(exerciseName(byId('0334'), 'es')).toBe('Elevación Lateral con Mancuernas')
     expect(exerciseName(byId('1401'), 'es')).toBe('Muscle-up en Barra')
     expect(exerciseName(byId('0237'), 'es')).toBe('Pullover de Pie con Cuerda en Polea')
@@ -147,7 +163,7 @@ describe('Spain-Spanish exercise names', () => {
     expect(matchExercise('Bench Press (Barbell)')).toBe('0025')
     expect(matchExercise('Peso muerto')).toBe('0032')
     expect(matchExercise('Elevación lateral')).toBe('0334')
-    expect(matchExercise('Jalon al pecho')).toBe('2330')
+    expect(matchExercise('Jalon al pecho')).toBe('0198')
     expect(matchExercise('pullover con cuerda')).toBe('0237')
     expect(matchExercise('jalón de brazos rectos con cuerda')).toBe('0237')
     expect(matchExercise('pullover tumbado con cuerda')).toBe('0184')
@@ -184,7 +200,7 @@ describe('Spain-Spanish exercise names', () => {
       expect(matchExercise(label), label).toBe(id)
     }
     expect(matchExercise('RDL')).toBe('0085')
-    expect(EXDB).toHaveLength(53)
+    expect(EXDB).toHaveLength(52)
   })
 
   it('leaves ambiguous and missing routine variants unresolved', () => {
@@ -209,7 +225,7 @@ describe('Spain-Spanish exercise names', () => {
 
   it('enforces complete coverage, documented anglicisms and collision policy', () => {
     const audit = exerciseNameAudit()
-    expect(audit).toMatchObject({ total: 53, translated: 53, fallback: 0, coverage: 1 })
+    expect(audit).toMatchObject({ total: 52, translated: 52, fallback: 0, coverage: 1 })
     expect(audit.missingIds).toEqual([])
     expect(audit.unknownIds).toEqual([])
     expect(audit.emptyIds).toEqual([])

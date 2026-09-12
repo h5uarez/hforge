@@ -8,7 +8,6 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "1436": "Sentadilla High Bar con Barra",
   "1452": "Encogimientos Abdominales Sentado en Máquina de Palancas",
   "1459": "Peso Muerto Rumano con Mancuernas",
-  "2330": "Jalón al Pecho en Polea con Recorrido Completo",
   "2335": "Prensa de Gemelos Sentado en Máquina de Palancas",
   "5214": "remo en T con pecho apoyado",
   "5218": "hip thrust",
@@ -27,7 +26,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "0175": "Encogimientos Abdominales de Rodillas en Polea",
   "0178": "Elevación Lateral en Polea",
   "0184": "Pullover Tumbado con Cuerda en Polea",
-  "0198": "Jalón al Pecho en Polea",
+  "0198": "Jalón al Pecho (Cable)",
   "0201": "Jalón de Tríceps en Polea",
   "0200": "Jalón de Tríceps con Cuerda en Polea",
   "0237": "Pullover de Pie con Cuerda en Polea",
@@ -73,9 +72,10 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
   "1459": [
     "rdl con mancuernas"
   ],
-  "2330": [
+  "0198": [
     "jalón al pecho",
-    "jalón en polea"
+    "jalón en polea",
+    "jalón al pecho en polea con recorrido completo"
   ],
   "5214": [
     "remo T pecho apoyado",

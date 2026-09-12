@@ -6,6 +6,7 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/i18n.js'
 import { normalizeActiveSession } from '../lib/session.js'
+import { normalizeExerciseIds } from '../lib/exercise-ids.js'
 import { normalizeActiveInactivity } from '../lib/inactivity.js'
 import { cancelInactivityPush } from '../lib/push.js'
 import { rebuildHistory } from '../lib/history-rebuild.js'
@@ -31,7 +32,7 @@ const clone = o => JSON.parse(JSON.stringify(o))
 // Backups and server/mobile restores predate the preference. Only an explicit false disables
 // the timer; malformed or absent values retain the historical enabled behavior.
 const normalizeState = state => {
-  const next = Object.assign(clone(DEF), state || {})
+  const next = normalizeExerciseIds(Object.assign(clone(DEF), state || {}))
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.warmupConfig = { ...DEF.warmupConfig, ...(state?.warmupConfig || {}) }

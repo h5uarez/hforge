@@ -171,7 +171,7 @@ const ALIAS_EX = {
   squat: '0043', 'back squat': '0043', 'barbell squat': '0043',
   deadlift: '0032', dl: '0032', 'romanian deadlift': '0085', rdl: '0085',
   'rdl con mancuernas': '1459', 'peso muerto rumano con mancuernas': '1459', 'sumo deadlift': '0117',
-  'lat pulldown': '2330', 'lat pull down': '2330', pulldown: '2330',
+  'lat pulldown': '0198', 'lat pull down': '0198', pulldown: '0198',
   'overhead press': '0426', 'military press': '0426', 'shoulder press': '0426', ohp: '0426',
   'barbell row': '0027', 'bent over row': '0027', 'bent-over row': '0027',
   'leg curl': '0586', 'lying leg curl': '0586', 'seated leg curl': '0586',
