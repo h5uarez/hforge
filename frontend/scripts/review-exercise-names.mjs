@@ -26,7 +26,7 @@ export function exerciseNameFamily(ex) {
 export function stratifiedExerciseNameSample(catalog = EXDB) {
   const grouped = Object.fromEntries(FAMILY_ORDER.map(family => [family, []]))
   catalog.forEach(ex => grouped[exerciseNameFamily(ex)].push(ex))
-  return FAMILY_ORDER.flatMap(family => {
+  return FAMILY_ORDER.filter(family => grouped[family].length).flatMap(family => {
     const records = grouped[family]
     const indexes = [...new Set([0, Math.floor((records.length - 1) / 2), records.length - 1])]
     return indexes.map(index => {

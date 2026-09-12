@@ -162,29 +162,24 @@ function buildIndex() {
 // inside thirty-three entries — and where it *is* unique it tends to be wrong, happily
 // resolving "Squat" to "weighted squat" and "Leg Press" to "smith leg press". So the
 // common vocabulary is spelled out. The convention is that an unqualified name means the
-// canonical barbell version, which is what these apps assume when they show it to you.
+// matching active built-in record, which is what these apps assume when they show it to you.
 // Extending this table is the intended way to improve import accuracy.
 const ALIAS_EX = {
   'bench press': '0025', 'barbell bench press': '0025', 'flat bench press': '0025', bp: '0025',
-  'incline bench press': '0047', 'decline bench press': '0033',
-  'close grip bench press': '0030', 'close-grip bench press': '0030', 'sq low-bar': '1435',
-  squat: '0043', 'back squat': '0043', 'barbell squat': '0043', 'front squat': '0042',
+  'incline bench press': '0047',
+  'sq low-bar': '1435',
+  squat: '0043', 'back squat': '0043', 'barbell squat': '0043',
   deadlift: '0032', dl: '0032', 'romanian deadlift': '0085', rdl: '0085',
   'rdl con mancuernas': '1459', 'peso muerto rumano con mancuernas': '1459', 'sumo deadlift': '0117',
   'lat pulldown': '2330', 'lat pull down': '2330', pulldown: '2330',
-  shrug: '0095', shrugs: '0095',
-  'overhead press': '0091', 'military press': '0091', 'shoulder press': '0091', ohp: '0091',
+  'overhead press': '0426', 'military press': '0426', 'shoulder press': '0426', ohp: '0426',
   'barbell row': '0027', 'bent over row': '0027', 'bent-over row': '0027',
-  'dumbbell row': '0292', 'one arm dumbbell row': '0292',
   'leg curl': '0586', 'lying leg curl': '0586', 'seated leg curl': '0586',
   'leg press': '0739', 'sled 45в° leg press': '0739', 'leg extension': '0585',
-  'calf raise': '1372', 'standing calf raise': '1372', 'seated calf raise': '0088',
-  'lateral raise': '0334', 'side raise': '0334', 'reverse fly': '0348', 'rear delt fly': '0348',
-  'bicep curl': '0294', 'biceps curl': '0294', 'dumbbell curl': '0294',
-  'preacher curl': '0070', 'barbell curl': '0031',
+  'calf raise': '0605', 'standing calf raise': '0605', 'seated calf raise': '2335',
+  'lateral raise': '0334', 'side raise': '0334', 'reverse fly': '0602', 'rear delt fly': '0602',
+  'barbell curl': '0031',
   'tricep pushdown': '0241', 'triceps pushdown': '0241', pushdown: '0241',
-  skullcrusher: '0060', 'skull crusher': '0060', 'lying triceps extension': '0061',
-  lunge: '0054', lunges: '0054', 'cable crossover': '1269', 'cable cross over': '1269',
 }
 
 let ALIAS_IDX = null

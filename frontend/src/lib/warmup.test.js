@@ -11,7 +11,7 @@ describe('resolveKind', () => {
     expect(resolveKind('0032')).toBe('deadlift')
     expect(resolveKind('0652')).toBe('pullup')
     expect(resolveKind('0251')).toBe('dip')
-    expect(resolveKind('0091')).toBe('ohp')
+    expect(resolveKind('0426')).toBe('ohp')
     expect(resolveKind('bench')).toBe('bench')
     expect(resolveKind('dip')).toBe('dip')
   })
@@ -119,7 +119,7 @@ describe('buildWarmup bench', () => {
 
 describe('buildWarmup overhead press', () => {
   it('climbs small plates into a 60x5 top set with capped jumps', () => {
-    const sets = buildWarmup({ exerciseId: '0091', topKg: 60, topReps: 5 })
+    const sets = buildWarmup({ exerciseId: '0426', topKg: 60, topReps: 5 })
     expect(plates(sets)).toEqual([[20, 10], [32.5, 5], [37.5, 5], [42.5, 3], [47.5, 3], [50, 2]])
     for (const s of sets.filter(x => !x.label)) expect(Math.round(s.kg * 100) % 125).toBe(0)
     expect(gaps(sets).slice(1).every(g => g <= 10)).toBe(true)

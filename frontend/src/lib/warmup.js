@@ -24,14 +24,14 @@ export const DEFAULT_WARMUP_CONFIG = {
 }
 
 // Catalog ids behind each family (see lib/exercises.js): bench 0025, squat 0043,
-// deadlift 0032, pull-up 0652, dip 0251 (chest dip), overhead press 0091.
+// deadlift 0032, pull-up 0652, dip 0251 (chest dip), dumbbell overhead press 0426.
 // Short keys are accepted too so callers are not forced to know catalog ids;
 // anything unknown falls through to the generic barbell ladder.
 export const WARMUP_OPTIONS = [
   { key: 'bench', id: '0025' },
   { key: 'squat', id: '0043' },
   { key: 'deadlift', id: '0032' },
-  { key: 'ohp', id: '0091' },
+  { key: 'ohp', id: '0426' },
   { key: 'pullup', id: '0652' },
   { key: 'dip', id: '0251' },
 ]
@@ -40,7 +40,7 @@ const KIND_BY_ID = {
   '0025': 'bench', bench: 'bench',
   '0043': 'squat', squat: 'squat',
   '0032': 'deadlift', deadlift: 'deadlift',
-  '0091': 'ohp', ohp: 'ohp', overhead: 'ohp',
+  '0426': 'ohp', ohp: 'ohp', overhead: 'ohp',
   '0652': 'pullup', pullup: 'pullup', 'pull-up': 'pullup',
   '0251': 'dip', dip: 'dip', dips: 'dip',
 }
