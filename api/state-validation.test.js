@@ -78,3 +78,55 @@ test('keeps legacy workouts without timestamps valid for backward compatibility'
   delete state.workouts[0].end;
   assert.equal(preparePersistedState(state).ok, true);
 });
+
+test('validates historical modes, targets, nested sides, and effort fields', () => {
+  const state = validState();
+  state.workouts[0].entries = [
+    { id: 'hold', mode: 'time', target: { mode: 'time', sets: 1, sec: 30, weight: 0 }, sets: [{ sec: 30, w: 0, rir: 0, rpe: 5 }] },
+    { id: 'run', mode: 'cardio', target: { mode: 'cardio', sets: 1, min: 10, speed: 8 }, sets: [{ min: 10, speed: 8 }] },
+    { id: 'split', mode: 'reps', target: { mode: 'reps', sets: 1, side: true }, sets: [{ left: { r: 5, w: 0 }, right: { r: 5, w: 0 } }] },
+  ];
+  assert.equal(preparePersistedState(state).ok, true);
+  for (const [mutate, code, path] of [
+    [s => { s.workouts[0].entries[0].mode = 'unknown'; }, 'invalid_mode', '$.workouts[0].entries[0].mode'],
+    [s => { s.workouts[0].entries[0].sets[0].sec = 0; }, 'range', '$.workouts[0].entries[0].sets[0].sec'],
+    [s => { s.workouts[0].entries[0].sets[0].rpe = 11; }, 'range', '$.workouts[0].entries[0].sets[0].rpe'],
+    [s => { s.workouts[0].entries[1].sets[0].min = 0; }, 'range', '$.workouts[0].entries[1].sets[0].min'],
+    [s => { s.workouts[0].entries[2].sets[0].right = null; }, 'invalid_side', '$.workouts[0].entries[2].sets[0]'],
+    [s => { s.workouts[0].entries[0].target.sets = 0; }, 'range', '$.workouts[0].entries[0].target.sets'],
+  ]) {
+    const candidate = structuredClone(state); mutate(candidate);
+    assert.deepEqual(preparePersistedState(candidate), { ok: false, code, path });
+  }
+});
+
+test('rejects one-sided and mixed timestamps while preserving safe unknown fields', () => {
+  for (const [mutate, path] of [
+    [s => { s.workouts[0].start = 1; }, '$.workouts[0]'],
+    [s => { s.workouts[0].start = 0; s.workouts[0].end = 2; }, '$.workouts[0]'],
+    [s => { s.workouts[0].start = -1; s.workouts[0].end = -1; }, '$.workouts[0]'],
+  ]) {
+    const candidate = validState(); mutate(candidate);
+    assert.deepEqual(preparePersistedState(candidate), { ok: false, code: 'invalid_timestamp', path });
+  }
+  const candidate = validState(); candidate.workouts[0].metadata = { retained: true };
+  const result = preparePersistedState(candidate);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.state.workouts[0].metadata, { retained: true });
+});
+
+test('rejects timestamps outside the representable Date boundary and non-boolean completion', () => {
+  for (const timestamp of [8640000000000001, -8640000000000001]) {
+    const state = validState();
+    state.workouts[0].start = timestamp;
+    state.workouts[0].end = timestamp;
+    assert.deepEqual(preparePersistedState(state), {
+      ok: false, code: 'invalid_timestamp', path: '$.workouts[0]',
+    });
+  }
+  const state = validState();
+  state.workouts[0].entries[0].sets[0].done = 'yes';
+  assert.deepEqual(preparePersistedState(state), {
+    ok: false, code: 'invalid_done', path: '$.workouts[0].entries[0].sets[0].done',
+  });
+});

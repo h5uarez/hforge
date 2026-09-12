@@ -2,6 +2,7 @@ const LIMITS = { depth: 64, nodes: 250000, arrayItems: 100000, objectKeys: 10000
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const MAX_DATE_TIMESTAMP = 8640000000000000;
 
 const fail = (code, path) => ({ ok: false, code, path });
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -49,6 +50,69 @@ function validateStructure(value) {
 
 const validId = value => typeof value === 'string' && value.trim().length > 0;
 const nonnegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const positiveInteger = value => Number.isSafeInteger(value) && value > 0;
+const modes = new Set(['reps', 'time', 'cardio']);
+
+function validateWorkoutTimestamps(workout, base) {
+  const hasStart = Object.hasOwn(workout, 'start'), hasEnd = Object.hasOwn(workout, 'end');
+  if (!hasStart && !hasEnd) return null;
+  const start = hasStart ? workout.start : 0, end = hasEnd ? workout.end : 0;
+  if (start === 0 && end === 0) return null;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start <= 0 || end <= 0
+    || start > MAX_DATE_TIMESTAMP || end > MAX_DATE_TIMESTAMP
+    || new Date(start).getTime() !== start || new Date(end).getTime() !== end)
+    return fail('invalid_timestamp', base);
+  if (end < start) return fail('timestamp_order', `${base}.end`);
+  return null;
+}
+
+function validateEffortFields(value, path) {
+  if (Object.hasOwn(value, 'rir') && (!Number.isFinite(value.rir) || value.rir < 0 || value.rir > 10))
+    return fail('range', `${path}.rir`);
+  if (Object.hasOwn(value, 'rpe') && (!Number.isFinite(value.rpe) || value.rpe < 5 || value.rpe > 10))
+    return fail('range', `${path}.rpe`);
+  return null;
+}
+
+function validateSideSet(value, mode, path) {
+  if (!plainObject(value)) return fail('invalid_collection', path);
+  for (const key of ['r', 'w', 'speed'])
+    if (Object.hasOwn(value, key) && !nonnegative(value[key])) return fail('range', `${path}.${key}`);
+  if (Object.hasOwn(value, 'done') && typeof value.done !== 'boolean') return fail('invalid_done', `${path}.done`);
+  if (Object.hasOwn(value, 'sec') && !positiveInteger(value.sec)) return fail('range', `${path}.sec`);
+  if (Object.hasOwn(value, 'min') && !positiveInteger(value.min)) return fail('range', `${path}.min`);
+  const effort = validateEffortFields(value, path); if (effort) return effort;
+  if (Object.hasOwn(value, 'left') || Object.hasOwn(value, 'right')) {
+    if (!plainObject(value.left) || !plainObject(value.right)) return fail('invalid_side', path);
+    const left = validateSideSet(value.left, mode, `${path}.left`); if (left) return left;
+    return validateSideSet(value.right, mode, `${path}.right`);
+  }
+  if (mode === 'cardio') {
+    if (!positiveInteger(value.min)) return fail('range', `${path}.min`);
+    if (!Object.hasOwn(value, 'speed') || !nonnegative(value.speed)) return fail('range', `${path}.speed`);
+  } else if (mode === 'time') {
+    if (!positiveInteger(value.sec)) return fail('range', `${path}.sec`);
+  }
+  return null;
+}
+
+function validateHistoryTarget(value, mode, path) {
+  if (!plainObject(value)) return fail('invalid_target', path);
+  if (Object.hasOwn(value, 'mode') && !modes.has(value.mode)) return fail('invalid_mode', `${path}.mode`);
+  for (const key of ['weight', 'bodyweight']) {
+    if (Object.hasOwn(value, key) && (key === 'bodyweight' ? typeof value[key] !== 'boolean' : !nonnegative(value[key])))
+      return fail('range', `${path}.${key}`);
+  }
+  if (Object.hasOwn(value, 'sets') && !positiveInteger(value.sets)) return fail('range', `${path}.sets`);
+  if (Object.hasOwn(value, 'reps') && (!Number.isFinite(value.reps) || value.reps < 1)) return fail('range', `${path}.reps`);
+  if (Object.hasOwn(value, 'repsBySet') && (!Array.isArray(value.repsBySet) || value.repsBySet.some(item => item != null && (!Number.isFinite(item) || item < 1))))
+    return fail('range', `${path}.repsBySet`);
+  if (Object.hasOwn(value, 'sec') && !positiveInteger(value.sec)) return fail('range', `${path}.sec`);
+  if (Object.hasOwn(value, 'min') && !positiveInteger(value.min)) return fail('range', `${path}.min`);
+  if (Object.hasOwn(value, 'speed') && !nonnegative(value.speed)) return fail('range', `${path}.speed`);
+  if (Object.hasOwn(value, 'side') && typeof value.side !== 'boolean') return fail('invalid_side', `${path}.side`);
+  return null;
+}
 
 function validateSemantic(state) {
   const check = (condition, code, path) => condition ? null : fail(code, path);
@@ -83,22 +147,20 @@ function validateSemantic(state) {
   for (let index = 0; index < (state.workouts || []).length; index++) {
     const workout = state.workouts[index], base = `$.workouts[${index}]`;
     if (!plainObject(workout) || !isoDate(workout.d)) return fail('invalid_date', `${base}.d`);
-    for (const key of ['start', 'end']) {
-      if (Object.hasOwn(workout, key) && !nonnegative(workout[key])) return fail('range', `${base}.${key}`);
-    }
-    if (Object.hasOwn(workout, 'start') && Object.hasOwn(workout, 'end') && workout.end < workout.start)
-      return fail('timestamp_order', `${base}.end`);
+    const timestampFailure = validateWorkoutTimestamps(workout, base); if (timestampFailure) return timestampFailure;
     if (Object.hasOwn(workout, 'entries') && !Array.isArray(workout.entries)) return fail('invalid_collection', `${base}.entries`);
     for (let entryIndex = 0; entryIndex < (workout.entries || []).length; entryIndex++) {
       const entry = workout.entries[entryIndex], entryPath = `${base}.entries[${entryIndex}]`;
       if (!plainObject(entry) || !validId(entry.id)) return fail('invalid_id', `${entryPath}.id`);
+      const mode = entry.mode || entry.target?.mode || 'reps';
+      if (!modes.has(mode)) return fail('invalid_mode', `${entryPath}.mode`);
+      const target = entry.target || Object.fromEntries(['mode', 'sets', 'reps', 'repsBySet', 'weight', 'bodyweight', 'side', 'sec', 'min', 'speed']
+        .filter(key => Object.hasOwn(entry, key) && (key !== 'sets' || Number.isSafeInteger(entry[key]))).map(key => [key, entry[key]]));
+      const targetFailure = validateHistoryTarget(target, mode, `${entryPath}.target`); if (targetFailure) return targetFailure;
       if (Object.hasOwn(entry, 'sets') && !Array.isArray(entry.sets)) return fail('invalid_collection', `${entryPath}.sets`);
       for (let setIndex = 0; setIndex < (entry.sets || []).length; setIndex++) {
         const set = entry.sets[setIndex], setPath = `${entryPath}.sets[${setIndex}]`;
-        if (!plainObject(set)) return fail('invalid_collection', setPath);
-        for (const key of ['r', 'w', 'sec', 'speed']) if (Object.hasOwn(set, key) && !nonnegative(set[key])) return fail('range', `${setPath}.${key}`);
-        if (Object.hasOwn(set, 'rir') && (!Number.isInteger(set.rir) || set.rir < 0 || set.rir > 10)) return fail('range', `${setPath}.rir`);
-        if (Object.hasOwn(set, 'rpe') && (!Number.isFinite(set.rpe) || set.rpe < 6 || set.rpe > 10)) return fail('range', `${setPath}.rpe`);
+        const setFailure = validateSideSet(set, mode, setPath); if (setFailure) return setFailure;
       }
     }
   }

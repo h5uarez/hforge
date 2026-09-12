@@ -8,6 +8,7 @@ import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/
 import { normalizeActiveSession } from '../lib/session.js'
 import { normalizeActiveInactivity } from '../lib/inactivity.js'
 import { cancelInactivityPush } from '../lib/push.js'
+import { rebuildHistory } from '../lib/history-rebuild.js'
 
 const KEY = 'gym_state_v1'
 const LAST_VALID_KEY = 'gym_state_last_valid_v1'
@@ -76,6 +77,7 @@ const hasData = st => !!((st.workouts || []).length || (st.routines || []).lengt
 export const useStore = create((set, get) => {
   let pushTm = null
   let saveTm = null
+  let lastTransaction = null
 
   // Mobile build: mirror the state into a file in the app's data directory (survives WebView
   // storage eviction) and keep the native reminder schedule in step with the weekly plan.
@@ -84,19 +86,25 @@ export const useStore = create((set, get) => {
     saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
   }
 
-  const persist = (S, push = true) => {
-    S = normalizeState(S)
-    S._ts = Date.now()
-    registerCustom(S.customEx)
-    const previous = get().S
+  const persist = (S, push = true, transaction = null) => {
+    const previous = transaction?.previous || get().S
+    const previousKeys = transaction?.previousStorage || new Map([KEY, LAST_VALID_KEY].map(key => [key, localStorage.getItem(key)]))
     try {
+      S = normalizeState(S)
+      S = rebuildHistory(S)
+      S._ts = Date.now()
+      registerCustom(S.customEx)
       const serialized = JSON.stringify(S)
       localStorage.setItem(KEY, serialized)
       localStorage.setItem(LAST_VALID_KEY, serialized)
+      lastTransaction = { previous: structuredClone(previous), draft: structuredClone(S), previousStorage: previousKeys }
       set({ S, persistence: null })
     } catch (error) {
-      // Keep the draft visible and actionable. No routine/dayPlan data is rewritten here.
-      set({ S, persistence: { status: 'failed', error, draft: S, previous } })
+      for (const [key, value] of previousKeys) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) } catch { /* best effort rollback */ }
+      }
+      // Keep the draft visible and actionable. The two persisted keys are restored together.
+      set({ S, persistence: { status: 'failed', error, draft: structuredClone(S), previous, previousStorage: previousKeys } })
       return false
     }
     if (MOBILE) nativePersist()
@@ -145,21 +153,24 @@ export const useStore = create((set, get) => {
     update(mut, push = true) {
       const S = clone(get().S)
       mut(S)
-      persist(S, push)
+      return persist(S, push)
     },
     retryPersistence() {
       const pending = get().persistence
       if (pending?.status !== 'failed') return false
-      return persist(pending.draft)
+      return persist(pending.draft, true, pending)
     },
     undoPersistence() {
       const pending = get().persistence
       if (pending?.status !== 'failed') return false
-      return persist(pending.previous)
+      return persist(pending.previous, true, pending)
     },
     cancelPersistence() {
       const pending = get().persistence
       if (pending?.status !== 'failed') return false
+      for (const [key, value] of pending.previousStorage || []) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) } catch { /* best effort rollback */ }
+      }
       set({ S: pending.previous, persistence: null })
       return true
     },
@@ -189,8 +200,16 @@ export const useStore = create((set, get) => {
     async pushState() {
       if (!get().user) return
       clearTimeout(pushTm)
-      try { await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) }); localStorage.removeItem('gym_dirty') }
-      catch (e) { localStorage.setItem('gym_dirty', '1') }
+      try {
+        await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) })
+        localStorage.removeItem('gym_dirty')
+        return true
+      } catch (e) {
+        localStorage.setItem('gym_dirty', '1')
+        const current = get().S
+        set({ persistence: { status: 'failed', error: e, draft: structuredClone(current), previous: lastTransaction?.previous || current, previousStorage: lastTransaction?.previousStorage } })
+        return false
+      }
     },
     async pullState() {
       try {

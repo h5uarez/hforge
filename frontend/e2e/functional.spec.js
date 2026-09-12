@@ -178,6 +178,88 @@ test('history opens a workout detail dialog', async ({ page, openApp }) => {
   await expect(dialog.getByRole('button', { name: 'Delete workout', exact: true })).toBeVisible()
 })
 
+test('historical editor exposes scoped keyboard-accessible mode controls and cancellation', async ({ page, openApp }) => {
+  await openApp({ route: '/history', state: 'rich' })
+  await page.getByRole('button', { name: /Push Day/ }).first().click()
+  const detail = page.getByRole('dialog')
+  await expect(detail.getByText('Only this completed history record will change.')).toBeVisible()
+  await detail.getByRole('button', { name: 'Edit exercises', exact: true }).click()
+
+  const editor = page.getByRole('dialog')
+  await expect(editor.getByRole('heading', { name: 'Edit exercises', exact: true })).toBeVisible()
+  await expect(editor.getByText('Only this completed history record changes. Routines and the active workout are untouched.')).toBeVisible()
+  const mode = editor.getByLabel('Mode').first()
+  await mode.selectOption('time')
+  await mode.selectOption('cardio')
+  await mode.selectOption('reps')
+  const sets = editor.locator('input[id$="-sets"]').first()
+  await sets.fill('-1')
+  await editor.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(editor.getByRole('alert')).toContainText('Fix the highlighted history fields before saving.')
+  await sets.fill('4')
+  await editor.getByRole('button', { name: 'Remove exercise' }).first().click()
+  const removal = page.getByRole('dialog').last()
+  await expect(removal.getByRole('heading', { name: 'Remove exercise?', exact: true })).toBeVisible()
+  await removal.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await editor.getByRole('button', { name: 'Add exercise', exact: true }).click()
+  const picker = page.getByRole('dialog').last()
+  await expect(picker.getByRole('heading', { name: 'Add exercise', exact: true })).toBeVisible()
+  await picker.getByRole('button', { name: 'Close', exact: true }).click()
+  await editor.getByRole('button', { name: 'Add exercise', exact: true }).focus()
+  await expect(page.locator(':focus')).toBeVisible()
+  await assertNoHorizontalOverflow(page)
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'History', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('historical editor saves a mode-specific change and announces recovery choices', async ({ page, openApp }) => {
+  await openApp({ route: '/history', state: 'rich' })
+  await page.getByRole('button', { name: /Push Day/ }).first().click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Edit exercises', exact: true }).click()
+  const editor = page.getByRole('dialog')
+  await editor.getByLabel('Exercise note').first().fill('Corrected historical note')
+  await editor.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Historical workout draft saved', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: /Push Day/ }).first().click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Edit exercises', exact: true }).click()
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'gym_state_v1') throw new Error('quota')
+      return original.call(this, key, value)
+    }
+  })
+  await page.getByRole('dialog').getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Retry')
+  await expect(page.getByRole('alert')).toContainText('Undo')
+  await expect(page.getByRole('alert')).toContainText('Cancel')
+})
+
+test('historical editor persists additions without mutating protected state', async ({ page, openApp }) => {
+  await openApp({ route: '/history', state: 'rich' })
+  await page.getByRole('button', { name: /Push Day/ }).first().click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Edit exercises', exact: true }).click()
+
+  const editor = page.getByRole('dialog')
+  const initialEntries = await editor.locator('.history-entry').count()
+  await editor.getByRole('button', { name: 'Add exercise', exact: true }).click()
+  const picker = page.getByRole('dialog').last()
+  await picker.getByRole('textbox', { name: /Search/ }).fill('barbell bench press')
+  await picker.getByRole('button', { name: 'Add barbell bench press', exact: true }).click()
+  const added = editor.getByRole('region', { name: `Exercise ${initialEntries + 1}` })
+  await added.getByRole('checkbox', { name: 'Completed', exact: true }).first().check()
+  await expect(editor.locator('.history-entry')).toHaveCount(initialEntries + 1)
+
+  await editor.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByText('Historical workout draft saved', { exact: true })).toBeVisible()
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
+  expect(saved.routines).toEqual(richState.routines)
+  expect(saved.active).toBeNull()
+  expect(saved.workouts.some(workout => workout.name === 'Push Day' && workout.entries.filter(entry => entry.id === '0025').length === 2)).toBe(true)
+})
+
 test('active workout stays within a narrow mobile viewport', async ({ page, openApp }) => {
   await page.setViewportSize({ width: 320, height: 568 })
   await openApp({ route: '/workout', state: 'active' })

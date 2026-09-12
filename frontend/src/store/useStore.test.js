@@ -315,3 +315,63 @@ describe('server boot and synchronization boundaries', () => {
     expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).state.unit).toBe('lb')
   })
 })
+
+describe('history persistence transaction', () => {
+  it('rolls both local persistence keys back when the second write fails', () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+    const before = localStorage.getItem('gym_state_v1')
+    const original = localStorage.setItem
+    localStorage.setItem = (key, value) => {
+      if (key === 'gym_state_last_valid_v1') throw new Error('quota')
+      return original.call(localStorage, key, value)
+    }
+    useStore.getState().update(state => { state.workouts = [{ id: 'w1', d: '2026-09-01', entries: [] }] }, false)
+    expect(useStore.getState().persistence.status).toBe('failed')
+    expect(localStorage.getItem('gym_state_v1')).toBe(before)
+    expect(localStorage.getItem('gym_state_last_valid_v1')).toBe(before)
+    localStorage.setItem = original
+  })
+
+  it('keeps a server-rejected candidate available for retry and restores it on cancel', async () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+    useStore.getState().setUser({ id: 'history-user' })
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ error: 'invalid history' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    useStore.getState().update(state => { state.workouts = [{ id: 'w1', d: '2026-09-01', entries: [] }] })
+    await useStore.getState().pushState()
+    expect(useStore.getState().persistence).toMatchObject({ status: 'failed', error: { status: 422 } })
+    expect(useStore.getState().retryPersistence()).toBe(true)
+    expect(useStore.getState().persistence).toBeNull()
+  })
+
+  it('undoes a failed local history edit without touching active or routines', () => {
+    const routines = [{ id: 'routine', ex: [] }]
+    const active = { id: 'active', entries: [] }
+    useStore.getState().replaceState({ routines, active, workouts: [] })
+    const protectedActive = structuredClone(useStore.getState().S.active)
+    const original = localStorage.setItem
+    localStorage.setItem = (key, value) => { if (key === KEY) throw new Error('quota'); return original.call(localStorage, key, value) }
+    useStore.getState().update(state => { state.workouts = [{ id: 'w1', d: '2026-09-01', entries: [] }] })
+    localStorage.setItem = original
+    expect(useStore.getState().undoPersistence()).toBe(true)
+    expect(useStore.getState().S.workouts).toEqual([])
+    expect(useStore.getState().S.routines).toEqual(routines)
+    expect(useStore.getState().S.active).toEqual(protectedActive)
+  })
+
+  it('keeps the original rollback baseline across failed retries', () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+    const original = localStorage.setItem
+    let failures = 4
+    localStorage.setItem = (key, value) => {
+      if (key === KEY && failures-- > 0) throw new Error('quota')
+      return original.call(localStorage, key, value)
+    }
+    useStore.getState().update(state => { state.workouts = [{ id: 'candidate', d: '2026-09-01', entries: [] }] }, false)
+    expect(useStore.getState().retryPersistence()).toBe(false)
+    localStorage.setItem = original
+    expect(useStore.getState().undoPersistence()).toBe(true)
+    expect(useStore.getState().S.workouts).toEqual([])
+  })
+})
