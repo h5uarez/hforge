@@ -22,7 +22,8 @@ import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLIC
 import { MOBILE } from './lib/mobile.js'
 import { newSessionSid } from './lib/session.js'
 import { touchActiveRecord } from './lib/inactivity.js'
-import { formatWorkoutDateTime, parseWorkoutTimestampEdit } from './lib/workout-time.js'
+import { formatWorkoutDateTime, parseWorkoutTimestampEdit, classifyWorkoutTimestamps } from './lib/workout-time.js'
+import { attachOccurrenceIdentity, normalizeHistoryWorkout, explicitHistoryAddition, removeOccurrence, cloneHistoryValue, validateHistoryEntry } from './lib/history-edit.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
@@ -567,7 +568,7 @@ function RoutineImportPicker({ routines, onPick }) {
         <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
         <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
         <Icon name="chevronRight" className="chev" aria-hidden="true" />
-      </button>)}
+       </button>)}
     </div>
   </>
 }
@@ -610,27 +611,27 @@ function ExercisePicker({ onPick, close, mode = 'catalog', onRoutineImport }) {
     <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(50) }} onClear={() => { setQ(''); setShown(50) }}
       placeholder={t('Search {0} exercises…', all.length)} aria-label={t('Search {0} exercises…', all.length)} />
     <div className="chips" style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
-      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(50) }}>{t(b)}</button>)}
+      {chosenCount > 0 && <button type="button" className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
+      <button type="button" className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
+      {BODYPARTS.map(b => <button type="button" key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(50) }}>{t(b)}</button>)}
     </div>
     {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 10 }}>
-      <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
-      {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
+      <button type="button" className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
+      {eqOpts.map(x => <button type="button" key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
     {importableRoutines.length > 0 && <div className="routine-import-prompt">
       <Button variant="ghost" className="routine-import-action" onClick={openRoutinePicker}>{t('Add exercises from another routine')}</Button>
       <div className="small dim">{t('Add its exercises to the end of this workout. Your saved routine will not change.')}</div>
     </div>}
     <div className="list">
-      {bp !== '★' && <div className="item" onClick={() => customExSheet(null, ex => onPick(ex, close), q.trim())}>
+      {bp !== '★' && <button type="button" className="item" aria-label={t('Create your own exercise')} onClick={() => customExSheet(null, ex => onPick(ex, close), q.trim())}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
-      </div>}
-      {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => onPick(e, close)}>
+      </button>}
+      {f.slice(0, shown).map(e => <button type="button" key={e.id} className="item" aria-label={t('Add {0}', exerciseName(e))} onClick={() => onPick(e, close)}>
         <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseName(e)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
-        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
-      </div>)}
+         {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
+       </button>)}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
       {f.length === 0 && bp !== '★' && <div className="empty"><div className="ico"><Icon name="magnifier" /></div>{t('No match')}</div>}
     </div>
@@ -737,8 +738,8 @@ function PerSetPrescriptionField({ generic, perSide, setCount, repsValue, onReps
             <div className="stp-l" style={{ marginBottom: 6 }}>{eff.hd}</div>
             <TargetStepper value={targetValue(i)} kind={metric} onChange={v => setTarget(i, v)} />
           </div>}
-        </div>
-      </div>)}
+         </div>
+       </div>)}
     </div>
   </>
 }
@@ -777,7 +778,17 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
       ? { repsBySet: normalizeRepsBySet(x.repsBySet, Math.max(1, Math.round(Number(v) || 1)), x.reps) }
       : {}),
   }))
-  const save = () => {
+  const recover = async action => {
+    const result = action()
+    if (!result) return false
+    if (useStore.getState().user) {
+      const pushed = await useStore.getState().pushState()
+      if (!pushed) return false
+    }
+    close(); onSaved?.()
+    return true
+  }
+  const save = async () => {
     const timedSeconds = parseTimedSeconds(timedSecondsRaw)
     if (mode === 'time' && timedSeconds === null) {
       toast(t('Enter a valid whole number of seconds'))
@@ -1074,6 +1085,129 @@ function DayAssign({ day, close }) {
 export const dayAssignSheet = day => ui().openSheet(close => <DayAssign day={day} close={close} />)
 
 /* ============================ workout detail ============================ */
+export const historyDraftCopy = value => cloneHistoryValue(value)
+
+const TARGET_FIELDS = ['mode', 'sets', 'reps', 'repsBySet', 'weight', 'bodyweight', 'side', 'sec', 'min', 'speed', 'planNote', 'programmedEffort']
+export const historyTargetBaseline = entry => {
+  if (entry?.target && typeof entry.target === 'object') return historyDraftCopy(entry.target)
+  return Object.fromEntries(TARGET_FIELDS.filter(key => Object.prototype.hasOwnProperty.call(entry || {}, key) && (key !== 'sets' || Number.isSafeInteger(entry[key])))
+    .map(key => [key, historyDraftCopy(entry[key])]))
+}
+export const historyValidationMessage = reason => {
+  if (reason === 'target') return t('Target fields must use valid nonnegative values.')
+  if (reason === 'set') return t('Set fields must use valid values and complete side data.')
+  if (reason === 'mode') return t('Choose a supported exercise mode.')
+  return t('This exercise has invalid history data.')
+}
+
+function HistoryValue({ label, value, onChange, decimal = true, type = 'number', id, error }) {
+  return <label className="history-field"><span>{label}</span><input type={type} inputMode={type === 'number' ? (decimal ? 'decimal' : 'numeric') : undefined}
+    id={id} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-error` : undefined}
+    value={value ?? ''} min={type === 'number' ? 0 : undefined} step={type === 'number' ? (decimal ? 'any' : 1) : undefined}
+    onChange={e => onChange(type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)} />{error && <span id={`${id}-error`} className="history-field-error">{error}</span>}</label>
+}
+
+function HistorySet({ set, index, mode, perSide, onChange, onRemove, error }) {
+  const field = (name, label, decimal = true) => <HistoryValue id={`history-set-${index}-${name}`} label={label} value={set[name]} decimal={decimal} error={error} onChange={value => onChange({ ...set, [name]: value })} />
+  const effort = name => <><HistoryValue id={`history-set-${index}-${name}-rir`} label="RIR" value={set[name]?.rir} onChange={value => onChange({ ...set, [name]: { ...set[name], rir: value } })} /><HistoryValue id={`history-set-${index}-${name}-rpe`} label="RPE" value={set[name]?.rpe} onChange={value => onChange({ ...set, [name]: { ...set[name], rpe: value } })} /></>
+  const side = name => <div className="history-side"><strong>{name.toUpperCase()}</strong><HistoryValue id={`history-set-${index}-${name}-r`} label={t('Reps')} value={set[name]?.r} decimal={false} error={error} onChange={value => onChange({ ...set, [name]: { ...set[name], r: value } })} /><HistoryValue id={`history-set-${index}-${name}-w`} label={t('Load')} value={set[name]?.w} error={error} onChange={value => onChange({ ...set, [name]: { ...set[name], w: value } })} />{effort(name)}<label className="history-check"><input type="checkbox" checked={!!set[name]?.done} onChange={e => onChange({ ...set, [name]: { ...set[name], done: e.target.checked } })} />{t('Done')}</label></div>
+  return <div className="history-set">
+    <div className="history-set-heading"><strong>{t('Set {0}', index + 1)}</strong><button type="button" className="iconbtn" onClick={onRemove} aria-label={t('Remove set')}><Icon name="trash" /></button></div>
+    <div className="history-fields">
+      {mode === 'cardio' ? <>{field('min', t('Minutes'), false)}{field('speed', t('Speed (km/h)'))}</> : perSide ? <>{side('left')}{side('right')}</> : <>{mode === 'time' ? field('sec', t('Seconds'), false) : field('r', t('Actual reps'), false)}{field('w', mode === 'time' ? t('Added load') : t('Load'))}{mode !== 'cardio' && <>{field('rir', 'RIR')}{field('rpe', 'RPE')}</>}</>}
+      {mode !== 'cardio' && <label className="history-check"><input type="checkbox" checked={!!set.done} onChange={e => onChange({ ...set, done: e.target.checked })} />{t('Completed')}</label>}
+      {mode === 'cardio' && <label className="history-check"><input type="checkbox" checked={!!set.done} onChange={e => onChange({ ...set, done: e.target.checked })} />{t('Completed')}</label>}
+    </div>
+  </div>
+}
+
+function HistoryEntry({ entry, index, onChange, onRemove, onMove, error }) {
+  const target = historyTargetBaseline(entry)
+  const mode = modeOf({ ...target, id: entry.id })
+  const perSide = mode === 'reps' && !!target.side
+  const setEntry = patch => onChange({ ...entry, ...patch })
+  const setTarget = patch => onChange({ ...entry, target: { ...target, ...patch } })
+  return <section className="history-entry" aria-label={t('Exercise {0}', index + 1)}>
+    <div className="history-entry-heading"><div><strong>{exerciseName(EXIDX[entry.id] || entry)}</strong><div className="small dim">{t('Occurrence {0}', index + 1)}</div></div><div className="history-entry-actions">
+      <button type="button" className="iconbtn" onClick={() => onMove(-1)} disabled={index === 0} aria-label={t('Move exercise up')}><Icon name="chevronUp" /></button>
+      <button type="button" className="iconbtn" onClick={() => onMove(1)} aria-label={t('Move exercise down')}><Icon name="chevronDown" /></button>
+      <button type="button" className="iconbtn" onClick={onRemove} aria-label={t('Remove exercise')}><Icon name="trash" /></button>
+    </div></div>
+    <div className="history-fields">
+       <label className="history-field"><span>{t('Mode')}</span><select aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `history-entry-${index}-error` : undefined} value={mode} onChange={e => setTarget({ mode: e.target.value })}><option value="reps">{t('Reps')}</option><option value="time">{t('Time')}</option><option value="cardio">{t('Cardio')}</option></select></label>
+       <HistoryValue id={`history-entry-${index}-sets`} label={t('Target sets')} value={target.sets} decimal={false} error={error} onChange={value => setTarget({ sets: value })} />
+       {mode === 'cardio' ? <><HistoryValue id={`history-entry-${index}-min`} label={t('Target minutes')} value={target.min} decimal={false} error={error} onChange={value => setTarget({ min: value })} /><HistoryValue id={`history-entry-${index}-speed`} label={t('Target speed')} value={target.speed} error={error} onChange={value => setTarget({ speed: value })} /></> : mode === 'time' ? <><HistoryValue id={`history-entry-${index}-sec`} label={t('Target seconds')} value={target.sec} decimal={false} error={error} onChange={value => setTarget({ sec: value })} /><HistoryValue id={`history-entry-${index}-weight`} label={t('Target load')} value={target.weight} error={error} onChange={value => setTarget({ weight: value })} /></> : <><HistoryValue id={`history-entry-${index}-reps`} label={t('Target reps')} value={target.reps} decimal={false} error={error} onChange={value => setTarget({ reps: value })} /><HistoryValue id={`history-entry-${index}-repsBySet`} label={t('Target reps by set')} type="text" value={Array.isArray(target.repsBySet) ? target.repsBySet.join(', ') : ''} error={error} onChange={value => setTarget({ repsBySet: value.split(',').map(item => item.trim() === '' ? null : Number(item.trim())) })} /><HistoryValue id={`history-entry-${index}-weight`} label={t('Target load')} value={target.weight} error={error} onChange={value => setTarget({ weight: value })} /></>}
+       {mode !== 'cardio' && <><label className="history-check"><input type="checkbox" checked={!!target.bodyweight} onChange={e => setTarget({ bodyweight: e.target.checked })} />{t('Bodyweight')}</label><label className="history-check"><input type="checkbox" checked={!!target.side} onChange={e => setTarget({ side: e.target.checked })} />{t('Per side')}</label></>}
+      <label className="history-check"><input type="checkbox" checked={!!entry.done} onChange={e => setEntry({ done: e.target.checked })} />{t('Exercise completed')}</label>
+    </div>
+    <label className="history-note"><span>{t('Exercise note')}</span><textarea rows="2" maxLength={NOTE_MAX} value={entry.note || ''} onChange={e => setEntry({ note: e.target.value })} /></label>
+    <label className="history-note"><span>{t('Target note')}</span><textarea rows="2" maxLength={NOTE_MAX} value={target.planNote || ''} onChange={e => setTarget({ planNote: e.target.value })} /></label>
+    {error && <div id={`history-entry-${index}-error`} className="history-field-error" role="status">{error}</div>}
+    <div className="history-sets-heading"><strong>{t('Actual sets')}</strong><Button size="sm" type="button" onClick={() => onChange({ ...entry, sets: [...(entry.sets || []), mode === 'cardio' ? { min: 1, speed: 0, done: false } : mode === 'time' ? { sec: 1, w: 0, done: false } : perSide ? { left: { r: 1, done: false }, right: { r: 1, done: false } } : { r: 1, w: 0, done: false }] })}>{t('Add set')}</Button></div>
+     {(entry.sets || []).map((set, setIndex) => <HistorySet key={setIndex} set={set} index={setIndex} mode={mode} perSide={perSide} error={error}
+      onChange={next => onChange({ ...entry, sets: entry.sets.map((item, i) => i === setIndex ? next : item) })}
+      onRemove={() => confirmSheet({ title: t('Remove set?'), message: t('This set will be removed from this history draft.'), confirmText: t('Remove'), danger: true, onConfirm: () => onChange({ ...entry, sets: entry.sets.filter((_, i) => i !== setIndex) }) })} />)}
+  </section>
+}
+
+export function HistoryEditor({ workout, close, onSaved }) {
+  const [draft, setDraft] = useState(() => ({ ...historyDraftCopy(workout), entries: attachOccurrenceIdentity(workout) }))
+  const [removals, setRemovals] = useState(() => new Set())
+  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [recovery, setRecovery] = useState(null)
+  const timestamp = classifyWorkoutTimestamps(workout.start, workout.end).kind === 'timestamped'
+  const updateEntry = (key, next) => setDraft(current => ({ ...current, entries: current.entries.map(entry => entry._draftKey === key ? next : entry) }))
+  const removeEntry = key => confirmSheet({ title: t('Remove exercise?'), message: t('This exercise will be removed from this history draft, even if it has notes.'), confirmText: t('Remove'), danger: true, onConfirm: () => { setRemovals(current => new Set([...current, key])); setDraft(current => ({ ...current, entries: removeOccurrence(current.entries, key) })) } })
+  const moveEntry = (key, direction) => setDraft(current => {
+    const at = current.entries.findIndex(entry => entry._draftKey === key), to = at + direction
+    if (at < 0 || to < 0 || to >= current.entries.length) return current
+    const entries = current.entries.slice(), [item] = entries.splice(at, 1); entries.splice(to, 0, item); return { ...current, entries }
+  })
+  const addExercise = () => exercisePicker((ex, pickerClose) => {
+    const mode = isCardio(ex.id) ? 'cardio' : 'reps'
+    const addition = explicitHistoryAddition({ id: ex.id, mode, sets: [mode === 'cardio' ? { min: 1, speed: 0, done: false } : { r: 1, w: 0, done: false }], target: { mode, sets: 1 } })
+    if (!addition.ok) return
+    const entry = { ...addition.entry, _draftKey: 'new:' + uid() }
+    setDraft(current => ({ ...current, entries: [...current.entries, entry] })); pickerClose()
+  }, { mode: 'history' })
+  const save = async () => {
+    const result = normalizeHistoryWorkout({ ...draft, entries: draft.entries }, draft.d, removals)
+    if (result.kind === 'invalid' || result.ok === false) {
+      const invalid = draft.entries.reduce((out, entry) => {
+        const checked = validateHistoryEntry(entry)
+        if (!checked.ok) out[entry._draftKey] = historyValidationMessage(checked.reason)
+        return out
+      }, {})
+      setFieldErrors(invalid)
+      setError(t('Fix the highlighted history fields before saving.'))
+      return
+    }
+    setFieldErrors({}); setError('')
+    const saved = update(state => { const found = state.workouts.find(item => item.id === workout.id); if (found) Object.assign(found, result) }, false)
+    if (!saved) {
+      setRecovery({ previous: historyDraftCopy(workout), candidate: historyDraftCopy(draft) })
+      setError(t('The history draft could not be saved. Retry, undo, or cancel without losing your edits.'))
+      return
+    }
+    if (useStore.getState().user && !(await useStore.getState().pushState())) {
+      setRecovery({ previous: historyDraftCopy(workout), candidate: historyDraftCopy(draft) })
+      setError(t('The history draft could not be saved. Retry, undo, or cancel without losing your edits.'))
+      return
+    }
+    close(); onSaved?.(); toast(t('Historical workout draft saved'))
+  }
+  return <div className="history-editor" aria-labelledby="history-editor-title">
+    <div className="history-editor-header"><div><h3 id="history-editor-title">{t('Edit exercises')}</h3><div className="small dim">{t('Only this completed history record changes. Routines and the active workout are untouched.')}</div></div></div>
+    <div className="history-fields history-date-fields"><HistoryValue label={t('Workout day')} type="date" value={draft.d} onChange={value => setDraft(current => ({ ...current, d: value }))} />{timestamp && <div className="small dim history-time-hint">{t('Start and end times shift together, preserving local time and duration.')}</div>}</div>
+    {error && <div className="history-error" role="alert" aria-live="assertive">{error}{recovery && <div className="history-recovery"><Button type="button" size="sm" onClick={() => recover(() => useStore.getState().retryPersistence())}>{t('Retry')}</Button><Button type="button" size="sm" variant="ghost" onClick={() => recover(() => useStore.getState().undoPersistence())}>{t('Undo')}</Button><Button type="button" size="sm" variant="ghost" onClick={() => { useStore.getState().cancelPersistence(); close() }}>{t('Cancel')}</Button></div>}</div>}
+    <div className="history-editor-list">{draft.entries.map((entry, index) => <HistoryEntry key={entry._draftKey} entry={entry} index={index} error={fieldErrors[entry._draftKey]}
+      onChange={next => updateEntry(entry._draftKey, next)} onRemove={() => removeEntry(entry._draftKey)} onMove={direction => moveEntry(entry._draftKey, direction)} />)}</div>
+    <Button type="button" variant="tinted" icon="plus" onClick={addExercise}>{t('Add exercise')}</Button>
+    <div className="history-editor-actions"><Button type="button" variant="primary" onClick={save}>{t('Save changes')}</Button><Button type="button" variant="ghost" onClick={close}>{t('Cancel')}</Button></div>
+  </div>
+}
+
 function WorkoutTimestampEditor({ workout, close, onSaved }) {
   const [start, setStart] = useState(() => formatWorkoutDateTime(workout.start))
   const [end, setEnd] = useState(() => formatWorkoutDateTime(workout.end))
@@ -1116,6 +1250,8 @@ function WorkoutDetail({ w, close }) {
   const st = useStore(s => s.S)
   const current = st.workouts.find(item => item.id === w.id) || w
   const [editing, setEditing] = useState(false)
+  const [editingExercises, setEditingExercises] = useState(false)
+  if (editingExercises) return <HistoryEditor workout={current} close={close} onSaved={() => setEditingExercises(false)} />
   if (editing) return <WorkoutTimestampEditor workout={current} close={close} onSaved={() => setEditing(false)} />
   return <>
     <div className="row between" style={{ marginBottom: 8, paddingRight: 48 }}><h3 style={{ margin: 0, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => setEditing(true)} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
@@ -1131,6 +1267,8 @@ function WorkoutDetail({ w, close }) {
         </div>
       </div>
     })}
+    <Button variant="tinted" icon="pencil" onClick={() => setEditingExercises(true)}>{t('Edit exercises')}</Button>
+    <div className="small dim history-edit-disclosure">{t('Only this completed history record will change. Saved routines and your active workout are untouched.')}</div>
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== current.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
   </>
 }

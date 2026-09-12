@@ -20,7 +20,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historyDraftCopy, historyTargetBaseline, historyValidationMessage } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 
 const ACTIVE_LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
@@ -68,6 +68,32 @@ describe('commitPickerSelection', () => {
     expect(() => commitPickerSelection(failing, thisCloser)).toThrow('boom')
     expect(thisCloser).not.toHaveBeenCalled()
     expect(otherCloser).not.toHaveBeenCalled()
+  })
+})
+
+describe('HistoryEditor draft and field contracts', () => {
+  it('deep-isolates entries, targets, sets, side objects, and arrays from the source', () => {
+    const source = { id: 'w1', entries: [{ id: 'lift', target: { repsBySet: [8, 10] }, sets: [{ left: { r: 8 }, right: { r: 8 } }] }] }
+    const draft = historyDraftCopy(source)
+    draft.entries[0].target.repsBySet[0] = 12
+    draft.entries[0].sets[0].left.r = 1
+    expect(source.entries[0].target.repsBySet).toEqual([8, 10])
+    expect(source.entries[0].sets[0].left.r).toBe(8)
+    expect(draft.entries[0].target).not.toBe(source.entries[0].target)
+  })
+
+  it('builds a target-only baseline for legacy entries without sharing actual sets', () => {
+    const entry = { id: 'lift', mode: 'reps', sets: [{ r: 8, w: 20, done: true }], reps: 8, weight: 20 }
+    const target = historyTargetBaseline(entry)
+    target.reps = 10
+    expect(target).toEqual({ mode: 'reps', reps: 10, weight: 20 })
+    expect(target).not.toHaveProperty('sets')
+    expect(entry.sets).toEqual([{ r: 8, w: 20, done: true }])
+  })
+
+  it('provides an actionable field-associated validation message', () => {
+    expect(historyValidationMessage('target')).toMatch(/Target fields/)
+    expect(historyValidationMessage('set')).toMatch(/Set fields/)
   })
 })
 
