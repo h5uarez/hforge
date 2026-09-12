@@ -396,6 +396,33 @@ describe('sessionsFor', () => {
     const S = { unit: 'kg', workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 5, done: true }] }] }] }
     expect(sessionsFor(S, LIFT)).toHaveLength(1)
   })
+
+  it('uses the last completed duplicate entry within a workout', () => {
+    const S = {
+      unit: 'kg',
+      workouts: [{ d: '2026-01-01', entries: [
+        { id: LIFT, target: { sets: 1, reps: 5 }, sets: [{ w: 60, r: 5, done: true }] },
+        { id: LIFT, target: { sets: 1, reps: 6 }, sets: [{ w: 75, r: 6, done: true }] },
+      ] }],
+    }
+
+    expect(sessionsFor(S, LIFT)).toEqual([expect.objectContaining({ d: '2026-01-01', weight: 75, reps: [6] })])
+  })
+
+  it('skips a workout when no duplicate match has a completed set', () => {
+    const S = {
+      unit: 'kg',
+      workouts: [
+        { d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 5, done: true }] }] },
+        { d: '2026-01-02', entries: [
+          { id: LIFT, sets: [{ w: 75, r: 5, done: false }] },
+          { id: LIFT, sets: [{ w: 80, r: 6, done: false }] },
+        ] },
+      ],
+    }
+
+    expect(sessionsFor(S, LIFT).map(s => s.d)).toEqual(['2026-01-01'])
+  })
 })
 
 // Workouts only began storing their prescription in v1.2.2. Everything logged before that is

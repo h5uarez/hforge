@@ -64,6 +64,38 @@ export function buildWorkoutEntry(S, cfg, routine, previous) {
   return { ...base, id, target, plan, sets: applyPrescription(buildSets(S, full), plan) }
 }
 
+// Routine configs can contain arrays of per-set prescriptions. Clone recursively before changing
+// superset metadata so an active-session snapshot never shares mutable config data with its source.
+const cloneRoutineValue = value => {
+  if (Array.isArray(value)) return value.map(cloneRoutineValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneRoutineValue(item)]))
+  }
+  return value
+}
+
+// Build a complete source-routine snapshot for the active workout. This is deliberately pure with
+// respect to the source routine: every exercise config and every active entry is newly allocated.
+export function buildImportedWorkoutEntries(S, routine, existingEntries = []) {
+  if (!routine || !Array.isArray(routine.ex)) return []
+  const usedSupersetIds = new Set((existingEntries || []).map(entry => entry?.sg).filter(Boolean))
+  const sourceSupersets = new Map()
+  const freshSupersetId = () => {
+    let id
+    do { id = 'sg-import-' + uid() } while (usedSupersetIds.has(id))
+    usedSupersetIds.add(id)
+    return id
+  }
+  return routine.ex.map(sourceCfg => {
+    const cfg = cloneRoutineValue(sourceCfg)
+    if (sourceCfg?.sg) {
+      if (!sourceSupersets.has(sourceCfg.sg)) sourceSupersets.set(sourceCfg.sg, freshSupersetId())
+      cfg.sg = sourceSupersets.get(sourceCfg.sg)
+    }
+    return buildWorkoutEntry(S, cfg, routine)
+  })
+}
+
 const cloneWorkoutSet = set => {
   if (!set || typeof set !== 'object') return set
   const out = { ...set }
@@ -524,7 +556,23 @@ function usageMap(st) {
   st.workouts.forEach(w => w.entries.forEach(e => { u[e.id] = (u[e.id] || 0) + 1 }))
   return u
 }
-function ExercisePicker({ onPick, close }) {
+function RoutineImportPicker({ routines, onPick }) {
+  return <>
+    <h3>{t('Add from another routine')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>
+      {t('Choose a saved routine to append all of its exercises to this workout.')}
+    </div>
+    <div className="list">
+      {routines.map(r => <button type="button" key={r.id} className="item" onClick={() => onPick(r)}>
+        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
+        <Icon name="chevronRight" className="chev" aria-hidden="true" />
+      </button>)}
+    </div>
+  </>
+}
+
+function ExercisePicker({ onPick, close, mode = 'catalog', onRoutineImport }) {
   const st = useStore(s => s.S)
   const usage = usageMap(st)
   const [q, setQ] = useState('')
@@ -541,6 +589,22 @@ function ExercisePicker({ onPick, close }) {
   const eqOn = eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? base.filter(e => e.eq === eqOn) : base
   const chosenCount = Object.keys(usage).length
+  const importableRoutines = mode === 'active-workout'
+    ? (st.routines || []).filter(r => r.ex?.length && (!st.active?.routineId || r.id !== st.active.routineId))
+    : []
+  const openRoutinePicker = () => ui().openSheet(routineClose => <RoutineImportPicker routines={importableRoutines} onPick={routine => {
+    routineClose()
+    const duplicateIds = new Set(st.active?.entries?.map(entry => entry.id) || [])
+    const hasDuplicates = routine.ex.some(cfg => duplicateIds.has(cfg.id))
+    confirmSheet({
+      title: t('Add routine to workout?'),
+      message: t('All {0} exercises from “{1}” will be appended to the end of this workout. Their configuration, progression and supersets will be kept. Your saved routine will not change.{2}',
+        routine.ex.length, routine.name, hasDuplicates ? ' ' + t('Some exercise IDs overlap existing entries, so duplicates will still be added intentionally.') : ''),
+      confirmText: t('Add exercises'),
+      cancelText: t('Cancel'),
+      onConfirm: () => onRoutineImport && onRoutineImport(routine.id, close),
+    })
+  }} />, { tall: true })
   return <>
     <h3>{t('Add exercise')}</h3>
     <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(50) }} onClear={() => { setQ(''); setShown(50) }}
@@ -553,6 +617,10 @@ function ExercisePicker({ onPick, close }) {
     {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 10 }}>
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
+    </div>}
+    {importableRoutines.length > 0 && <div className="routine-import-prompt">
+      <Button variant="ghost" className="routine-import-action" onClick={openRoutinePicker}>{t('Add exercises from another routine')}</Button>
+      <div className="small dim">{t('Add its exercises to the end of this workout. Your saved routine will not change.')}</div>
     </div>}
     <div className="list">
       {bp !== '★' && <div className="item" onClick={() => customExSheet(null, ex => onPick(ex, close), q.trim())}>
@@ -569,7 +637,7 @@ function ExercisePicker({ onPick, close }) {
     {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
   </>
 }
-export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />, { tall: true })
+export const exercisePicker = (onPick, options = {}) => ui().openSheet(close => <ExercisePicker {...options} onPick={onPick} close={close} />, { tall: true })
 
 /* ============================ exercise config ============================ */
 // Progression settings for one exercise (issue #17). Shown inside the config sheet because

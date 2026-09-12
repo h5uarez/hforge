@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -135,12 +135,12 @@ describe('side-aware set accounting', () => {
     expect(setIsDone({ done: true, w: 40 })).toBe(true)
     expect(setIsDone({ left: { done: true }, right: { done: false } })).toBe(false)
   })
-  it('does not copy a legacy aggregate into newly created side records', () => {
-    const S = { exWeights: {}, workouts: [{ d: '2026-08-28', entries: [{ id: LIFT, sets: [{ done: true, w: 40, r: 10 }] }] }] }
+  it('does not copy historical loads into newly created side records', () => {
+    const S = { exWeights: { [LIFT]: { w: 45 } }, workouts: [{ d: '2026-08-28', entries: [{ id: LIFT, sets: [{ done: true, w: 40, r: 10 }] }] }] }
     const sets = buildSets(S, { id: LIFT, mode: 'reps', side: true, sets: 1, reps: 12, weight: 0 })
     expect(sets[0].left).toMatchObject({ w: 0, r: 6 })
     expect(sets[0].right).toMatchObject({ w: 0, r: 6 })
-    expect(sets[0]).toMatchObject({ w: 40, r: 12 })
+    expect(sets[0]).toMatchObject({ w: 0, r: 12 })
   })
   it('counts a workout set only after both sides finish', () => {
     const w = { entries: [{ sets: [{ left: { done: true }, right: { done: false } }] }] }
@@ -570,13 +570,48 @@ describe('exLine', () => {
 
 const emptyS = { workouts: [], exWeights: {} }
 
+describe('lastEntryFor', () => {
+  it('uses the last completed duplicate entry in the most recent workout', () => {
+    const S = {
+      workouts: [
+        { d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 40, r: 5, done: true }] }] },
+        { d: '2026-01-02', entries: [
+          { id: LIFT, target: { mode: 'reps', reps: 5 }, sets: [{ w: 60, r: 5, done: true }] },
+          { id: LIFT, sets: [{ w: 70, r: 5, done: false }] },
+          { id: LIFT, target: { mode: 'reps', reps: 6 }, sets: [{ w: 80, r: 6, done: true }] },
+        ] },
+      ],
+    }
+
+    expect(lastEntryFor(S, LIFT)).toEqual({
+      d: '2026-01-02',
+      sets: [{ w: 80, r: 6, done: true }],
+      target: { mode: 'reps', reps: 6 },
+    })
+  })
+
+  it('skips a workout when all of its duplicate matches are unfinished', () => {
+    const S = {
+      workouts: [
+        { d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 40, r: 5, done: true }] }] },
+        { d: '2026-01-02', entries: [
+          { id: LIFT, sets: [{ w: 70, r: 5, done: false }] },
+          { id: LIFT, sets: [{ w: 80, r: 6, done: false }] },
+        ] },
+      ],
+    }
+
+    expect(lastEntryFor(S, LIFT)).toMatchObject({ d: '2026-01-01', sets: [{ w: 40, r: 5, done: true }] })
+  })
+})
+
 describe('buildSets', () => {
   it('builds reps sets from the plan when there is no history', () => {
     expect(buildSets(emptyS, { id: LIFT, sets: 3, reps: 8, weight: 50 }))
       .toEqual([{ w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }])
   })
 
-  it('carries added bodyweight loads without copying actual reps into a new workout', () => {
+  it('starts bodyweight loads empty without copying historical loads or actual reps', () => {
     const S = {
       workouts: [{
         d: '2026-08-22',
@@ -590,7 +625,7 @@ describe('buildSets', () => {
           ],
         }],
       }],
-      exWeights: {},
+      exWeights: { [BW]: { w: 55 } },
       effort: 'rpe',
     }
     const cfg = {
@@ -608,9 +643,9 @@ describe('buildSets', () => {
     }
 
     expect(buildSets(S, cfg)).toEqual([
-      { w: 45, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
-      { w: 35, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
-      { w: 30, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+      { w: 0, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+      { w: 0, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
+      { w: 0, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } },
     ])
     expect(cfg.reps).toBe(6)
     expect(cfg.programmedEffort).toEqual([
@@ -630,10 +665,10 @@ describe('buildSets', () => {
       .toEqual([{ min: 25, speed: 9, done: false }])
   })
 
-  it('carries last time\'s numbers forward within the same mode', () => {
+  it('carries last time\'s duration but leaves its load empty', () => {
     const S = { exWeights: {}, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { mode: 'time' }, sets: [{ sec: 70, w: 10, done: true }] }] }] }
     expect(buildSets(S, { id: LIFT, mode: 'time', sets: 2, sec: 45, weight: 0 }))
-      .toEqual([{ sec: 70, w: 10, done: false }, { sec: 70, w: 10, done: false }])
+      .toEqual([{ sec: 70, w: 0, done: false }, { sec: 70, w: 0, done: false }])
   })
 
   it('does not seed a duration from a rep count when an exercise switches to time', () => {
@@ -648,25 +683,34 @@ describe('buildSets', () => {
       .toEqual([{ w: 40, r: 8, done: false }])
   })
 
-  it('prefers the confirmed working weight without copying previous reps', () => {
+  it('preserves an explicit routine weight without copying historical loads or reps', () => {
     const S = { exWeights: { [LIFT]: { w: 75 } }, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [{ w: 60, r: 10, done: true }] }] }] }
-    expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 75, r: 8, done: false }])
+    expect(buildSets(S, { id: LIFT, sets: 1, reps: 8, weight: 50 })).toEqual([{ w: 50, r: 8, done: false }])
   })
 
-  it('seeds exact per-set reps with the generic fallback while carrying only prior loads', () => {
+  it('leaves a fresh loaded rep set empty despite both historical load sources', () => {
     const S = {
-      exWeights: {},
+      exWeights: { [LIFT]: { w: 45 } },
+      workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { mode: 'reps', sets: 1, reps: 1 }, sets: [{ w: 45, r: 1, done: true }] }] }],
+    }
+    expect(buildSets(S, { id: LIFT, mode: 'reps', sets: 1, reps: 6, weight: 0 }))
+      .toEqual([{ w: 0, r: 6, done: false }])
+  })
+
+  it('seeds exact per-set reps while using only the current routine load', () => {
+    const S = {
+      exWeights: { [LIFT]: { w: 90 } },
       workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, sets: [
         { w: 80, r: 1, done: true }, { w: 75, r: 1, done: true }, { w: 70, r: 1, done: true },
       ] }] }],
     }
     const cfg = { id: LIFT, sets: 5, reps: 3, weight: 60, repsBySet: [1, 4, 3] }
     expect(buildSets(S, cfg)).toEqual([
-      { w: 80, r: 1, done: false },
-      { w: 75, r: 4, done: false },
-      { w: 70, r: 3, done: false },
-      { w: 70, r: 3, done: false },
-      { w: 70, r: 3, done: false },
+      { w: 60, r: 1, done: false },
+      { w: 60, r: 4, done: false },
+      { w: 60, r: 3, done: false },
+      { w: 60, r: 3, done: false },
+      { w: 60, r: 3, done: false },
     ])
   })
 
@@ -792,7 +836,7 @@ describe('buildSets', () => {
     expect(set.rir).toBe(0)
   })
 
-  it('uses the latest completed entry for an existing routine', () => {
+  it('does not use the latest completed entry for a fresh routine set', () => {
     const S = {
       active: null,
       workouts: [
@@ -801,10 +845,10 @@ describe('buildSets', () => {
       exWeights: {},
       effort: 'rir',
     }
-    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 50 }
+    const cfg = { id: LIFT, sets: 2, reps: 8, weight: 0 }
     const sets = buildSets(S, cfg)
-    expect(sets[0].w).toBe(80)
-    expect(sets[1].w).toBe(80)
+    expect(sets[0].w).toBe(0)
+    expect(sets[1].w).toBe(0)
   })
 })
 

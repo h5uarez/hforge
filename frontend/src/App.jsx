@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
@@ -16,6 +17,7 @@ import Toast from './components/Toast.jsx'
 import PwaUpdateBanner from './components/PwaUpdateBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import InactivityReminder from './components/InactivityReminder.jsx'
+import { handleAndroidBack } from './lib/android-back.js'
 import Login from './views/Login.jsx'
 import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
@@ -49,6 +51,45 @@ function Shell() {
   useEffect(() => { document.documentElement.lang = getLang() }, [langV, S.lang])
   // every tab/route change starts at the top of the page
   useEffect(() => { window.scrollTo(0, 0) }, [loc.pathname])
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'android') return undefined
+
+    let disposed = false
+    let listener = null
+    const removeListener = handle => {
+      try { void handle?.remove?.() } catch { /* plugin teardown is best effort */ }
+    }
+    const onBackButton = ({ canGoBack } = {}) => {
+      if (disposed) return
+      const { sheets, closeSheet } = useUI.getState()
+      handleAndroidBack({
+        platform: 'android',
+        sheets,
+        canGoBack: !!canGoBack,
+        // This is the same store close path used by Modals. Its unmount cleanup restores the
+        // opener focus, including when a nested routine picker is dismissed from the hardware key.
+        closeSheet,
+        historyBack: () => window.history.back(),
+        exitApp: () => { void import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {}) },
+      })
+    }
+
+    // Keep the App plugin out of ordinary browser execution. The promise guard also handles
+    // React StrictMode's setup/cleanup cycle without leaving a late listener behind.
+    void import('@capacitor/app').then(({ App }) => {
+      if (disposed) return null
+      return App.addListener('backButton', onBackButton)
+    }).then(handle => {
+      if (!handle) return
+      if (disposed) removeListener(handle)
+      else listener = handle
+    }).catch(() => {})
+
+    return () => {
+      disposed = true
+      removeListener(listener)
+    }
+  }, [])
   // bound to the workout, not to the route — checking Stats mid-session keeps the screen on
   useWakeLock(!!S.active && S.keepAwake !== false)
 

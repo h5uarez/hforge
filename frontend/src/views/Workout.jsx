@@ -11,7 +11,7 @@ import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
 import Media from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry } from '../sheets.jsx'
+import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry, buildImportedWorkoutEntries } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -482,6 +482,28 @@ function ActiveWorkout() {
     })
   }
 
+  const importRoutine = (routineId, closePicker) => {
+    let imported = null
+    update(s => {
+      const active = s.active
+      const source = s.routines.find(r => r.id === routineId)
+      if (!active || !source?.ex?.length) return
+      imported = buildImportedWorkoutEntries(s, source, active.entries)
+      if (!imported.length) return
+      const firstIndex = active.entries.length
+      active.entries.push(...imported)
+      active.cur = firstIndex
+      touchActiveRecord(active)
+    })
+    if (!imported?.length) {
+      useUI.getState().toast(t('That routine is no longer available'))
+      return
+    }
+    closePicker()
+    focusEntry(imported[0].sid)
+    useUI.getState().toast(t('{0} exercises added to this workout', imported.length), { kind: 'success' })
+  }
+
   const toggle = (idx, i, side) => {
     const m = modeAt(idx)
     const cardioEntry = m === 'cardio'
@@ -579,7 +601,10 @@ function ActiveWorkout() {
       touchActiveRecord(s.active)
     }), closePicker)
     if (addedSid) focusEntry(addedSid)
-  }, null, S.routines.find(r => r.id === A.routineId)))
+  }, null, S.routines.find(r => r.id === A.routineId)), {
+    mode: 'active-workout',
+    onRoutineImport: importRoutine,
+  })
 
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="hdr">

@@ -33,14 +33,15 @@ under the new name; the old file is left behind.
 ```sh
 cd frontend
 npm install
-npm run build:mobile        # VITE_MOBILE build + `cap sync` into android/ and ios/
+npm run build:mobile        # VITE_MOBILE build + `cap sync android` into android/
 
 npx cap open android        # opens Android Studio → run on emulator or device
 npx cap open ios            # opens Xcode (Mac only) → set your signing team, then run
 ```
 
 `npm run build:mobile` bakes the CDN media base into the bundle and copies the web build
-into both native projects — re-run it after every web-code change before building natively.
+into the Android project — re-run it after every web-code change before building natively.
+On macOS, run `npx cap sync ios` after the mobile build and before opening Xcode.
 
 > **Heads-up:** after `build:mobile`, `frontend/dist` contains the *mobile* bundle.
 > Run a plain `npm run build` again before deploying `dist` to a server.

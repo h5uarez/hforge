@@ -20,7 +20,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 
 const ACTIVE_LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
@@ -68,6 +68,53 @@ describe('commitPickerSelection', () => {
     expect(() => commitPickerSelection(failing, thisCloser)).toThrow('boom')
     expect(thisCloser).not.toHaveBeenCalled()
     expect(otherCloser).not.toHaveBeenCalled()
+  })
+})
+
+describe('active workout routine imports', () => {
+  it('imports the complete source in order with fresh snapshots and remapped supersets', () => {
+    const source = {
+      id: 'source-routine', name: 'Source routine', prog: 'off',
+      ex: [
+        { id: ACTIVE_LIFT, sets: 2, reps: 8, weight: 0, repsBySet: [8, 10], sg: 'source-pair' },
+        { id: 'duplicate-exercise', sets: 1, reps: 6, weight: 25, sg: 'source-pair' },
+        { id: ACTIVE_LIFT, sets: 1, reps: 5, weight: 0 },
+      ],
+    }
+    const sourceBefore = JSON.parse(JSON.stringify(source))
+    const existing = [{ id: 'existing', sid: 'existing-sid', sg: 'source-pair' }]
+    const S = { unit: 'kg', workouts: [], exWeights: { [ACTIVE_LIFT]: { w: 90 } } }
+
+    const imported = buildImportedWorkoutEntries(S, source, existing)
+
+    expect(imported).toHaveLength(3)
+    expect(imported.map(entry => entry.id)).toEqual([ACTIVE_LIFT, 'duplicate-exercise', ACTIVE_LIFT])
+    expect(new Set(imported.map(entry => entry.sid)).size).toBe(3)
+    expect(imported.every(entry => entry.sid !== 'existing-sid')).toBe(true)
+    expect(imported[0].sg).toBe(imported[1].sg)
+    expect(imported[0].sg).not.toBe('source-pair')
+    expect(imported[2].sg).toBeUndefined()
+    expect(imported[0].target.repsBySet).toEqual([8, 10])
+    expect(imported[0].target.repsBySet).not.toBe(source.ex[0].repsBySet)
+    expect(source).toEqual(sourceBefore)
+    expect(existing).toEqual([{ id: 'existing', sid: 'existing-sid', sg: 'source-pair' }])
+  })
+
+  it('passes source-routine progression through the normal prescription path', () => {
+    const source = {
+      id: 'progressed-routine', name: 'Progressed routine', prog: 'linear',
+      ex: [{ id: ACTIVE_LIFT, sets: 1, reps: 5, weight: 0 }],
+    }
+    const S = {
+      unit: 'kg', exWeights: { [ACTIVE_LIFT]: { w: 95 } },
+      workouts: [{ d: '2026-01-01', entries: [{ id: ACTIVE_LIFT, target: { mode: 'reps', sets: 1, reps: 5, weight: 60 }, sets: [{ w: 60, r: 5, done: true }] }] }],
+    }
+
+    const [imported] = buildImportedWorkoutEntries(S, source)
+
+    expect(imported.plan).toMatchObject({ policy: 'linear', kind: 'up' })
+    expect(imported.plan.weight).toBeGreaterThan(60)
+    expect(imported.sets[0]).toMatchObject({ w: imported.plan.weight, r: 5, done: false })
   })
 })
 

@@ -8,7 +8,7 @@
     "build": "vite build",
     "audit:exercise-names": "node scripts/audit-exercise-names.mjs",
     "review:exercise-names": "node scripts/review-exercise-names.mjs",
-    "build:mobile": "VITE_MOBILE=1 vite build && cap sync",
+    "build:mobile": "node scripts/build-mobile.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -22,6 +22,7 @@
     "test:android": "node scripts/android-smoke.mjs"
   },
   "dependencies": {
+    "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.6.8",
     "@capacitor/filesystem": "^7.1.8",
     "@capacitor/local-notifications": "^7.0.7",

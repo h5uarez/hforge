@@ -383,11 +383,19 @@ export function resolveTarget(cfg, idx, metric) {
 
 export function lastEntryFor(S, exId) {
   for (let i = S.workouts.length - 1; i >= 0; i--) {
-    const en = S.workouts[i].entries.find(e => e.id === exId)
-    // `target` is what the session prescribed; finished workouts carry it so labels and the
-    // progression engine can read a session back the way it was logged. Older workouts have
-    // none — modeOf() falls back to the body part for them, which is what they were.
-    if (en && en.sets.some(setIsDone)) return { d: S.workouts[i].d, sets: en.sets.map(projectSideSet).filter(setIsDone), target: en.target || null }
+    const workout = S.workouts[i]
+    const entries = workout.entries || []
+    // A routine can intentionally contain the same exercise more than once. Scan from the end
+    // and accept only a matching entry with completed sets, so a later unfinished duplicate does
+    // not hide the occurrence that was actually logged. If none completed, skip this workout.
+    for (let j = entries.length - 1; j >= 0; j--) {
+      const en = entries[j]
+      if (en?.id !== exId || !en.sets?.some(setIsDone)) continue
+      // `target` is what the session prescribed; finished workouts carry it so labels and the
+      // progression engine can read a session back the way it was logged. Older workouts have
+      // none — modeOf() falls back to the body part for them, which is what they were.
+      return { d: workout.d, sets: en.sets.map(projectSideSet).filter(setIsDone), target: en.target || null }
+    }
   }
   return null
 }
@@ -437,23 +445,23 @@ export function buildSets(S, cfg) {
       // exercise from reps to time must not seed the duration from a rep count.
       const prev = prevAt(i)
       const carried = prev && prev.sec > 0 ? prev : null
-      const w = carried ? (carried.w || 0) : (cfg.weight || 0)
+      // Duration is historical context; load is a fresh input unless the routine configured it.
+      const w = cfg.weight || 0
       sets.push({ sec: carried ? carried.sec : cfg.sec, w, done: false })
     }
     return sets
   }
-  const conf = S.exWeights[cfg.id]
   const metric = effortOf(S)
   for (let i = 0; i < n; i++) {
-    const prev = prevAt(i)
-    const usable = prev && prev.r > 0 ? prev : null
-    const w = conf && conf.w > 0 ? conf.w : (usable ? usable.w : cfg.weight)
+    // A new session starts with the routine's configured load, not a remembered load or the
+    // last completed set. Historical values remain available through Last time and statistics;
+    // explicit progression is applied below by buildWorkoutEntry.
+    const w = cfg.weight || 0
     const reps = repsForSet(cfg, i)
-    // Loads can carry forward as a useful suggestion, but actual reps belong to the previous
-    // history entry. Start ordinary rep sets from this session's target; explicit progression
-    // policies may adjust that target later in applyPrescription.
+    // Start ordinary rep sets from this session's target; explicit progression policies may
+    // adjust that target later in applyPrescription.
     const set = isPerSide(cfg)
-      ? { left: { w: usable && hasBothSides(usable) ? (usable.left.w ?? 0) : (cfg.weight || 0), r: sideReps(reps), done: false }, right: { w: usable && hasBothSides(usable) ? (usable.right.w ?? 0) : (cfg.weight || 0), r: sideReps(reps), done: false }, w, r: reps, done: false }
+      ? { left: { w, r: sideReps(reps), done: false }, right: { w, r: sideReps(reps), done: false }, w, r: reps, done: false }
       : { w, r: reps, done: false }
     // Snapshot the programmed target onto each set at workout start. The
     // snapshot rides alongside actual `rir`/`rpe` and is never edited by

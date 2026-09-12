@@ -131,8 +131,19 @@ export function readSession(entry, fallback) {
 export function sessionsFor(S, exId, fallback) {
   const out = []
   ;(S.workouts || []).forEach(w => {
-    const entry = w.entries.find(e => e.id === exId)
-    if (entry && entry.sets.some(s => projectSideSet(s).done)) out.push({ d: w.d, ...readSession(entry, fallback) })
+    const entries = w.entries || []
+    let entry = null
+    // Repeated exercise IDs are valid. The last matching entry with completed sets is the one
+    // this workout logged; an unfinished duplicate must not hide it. No completed match means
+    // this workout contributes no session.
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const candidate = entries[i]
+      if (candidate?.id === exId && candidate.sets?.some(s => projectSideSet(s).done)) {
+        entry = candidate
+        break
+      }
+    }
+    if (entry) out.push({ d: w.d, ...readSession(entry, fallback) })
   })
   return out
 }
