@@ -382,8 +382,15 @@ export function resolveTarget(cfg, idx, metric) {
 }
 
 export function lastEntryFor(S, exId) {
-  for (let i = S.workouts.length - 1; i >= 0; i--) {
-    const workout = S.workouts[i]
+  const workouts = (S.workouts || []).map((workout, index) => ({ workout, index })).sort((a, b) => {
+    const day = String(a.workout.d || '').localeCompare(String(b.workout.d || ''))
+    if (day) return day
+    const at = Number.isSafeInteger(a.workout.start) && a.workout.start > 0 ? a.workout.start : null
+    const bt = Number.isSafeInteger(b.workout.start) && b.workout.start > 0 ? b.workout.start : null
+    return (at == null ? 1 : bt == null ? -1 : at - bt) || a.index - b.index
+  }).map(item => item.workout)
+  for (let i = workouts.length - 1; i >= 0; i--) {
+    const workout = workouts[i]
     const entries = workout.entries || []
     // A routine can intentionally contain the same exercise more than once. Scan from the end
     // and accept only a matching entry with completed sets, so a later unfinished duplicate does

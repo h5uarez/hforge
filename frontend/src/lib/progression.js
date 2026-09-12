@@ -130,7 +130,14 @@ export function readSession(entry, fallback) {
 /** Every past session for one exercise, oldest first. `fallback` — see readSession. */
 export function sessionsFor(S, exId, fallback) {
   const out = []
-  ;(S.workouts || []).forEach(w => {
+  const workouts = (S.workouts || []).map((workout, index) => ({ workout, index })).sort((a, b) => {
+    const day = String(a.workout.d || '').localeCompare(String(b.workout.d || ''))
+    if (day) return day
+    const at = Number.isSafeInteger(a.workout.start) && a.workout.start > 0 ? a.workout.start : null
+    const bt = Number.isSafeInteger(b.workout.start) && b.workout.start > 0 ? b.workout.start : null
+    return (at == null ? 1 : bt == null ? -1 : at - bt) || a.index - b.index
+  }).map(item => item.workout)
+  workouts.forEach(w => {
     const entries = w.entries || []
     let entry = null
     // Repeated exercise IDs are valid. The last matching entry with completed sets is the one

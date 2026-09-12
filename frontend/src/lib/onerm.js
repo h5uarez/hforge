@@ -91,10 +91,21 @@ export function bestSetOf(entry, formula = DEFAULT_FORMULA) {
 // Chronological, matching the order workouts are appended in.
 export function e1rmSeries(S, exId, formula = DEFAULT_FORMULA) {
   const pts = []
-  ;(S.workouts || []).forEach(w => {
-    const entry = w.entries.find(e => e.id === exId)
-    if (!entry) return
-    const best = bestSetOf(entry, formula)
+  const workouts = (S.workouts || []).map((workout, index) => ({ workout, index })).sort((a, b) => {
+    const day = String(a.workout.d || '').localeCompare(String(b.workout.d || ''))
+    if (day) return day
+    const at = Number.isSafeInteger(a.workout.start) && a.workout.start > 0 ? a.workout.start : null
+    const bt = Number.isSafeInteger(b.workout.start) && b.workout.start > 0 ? b.workout.start : null
+    return (at == null ? 1 : bt == null ? -1 : at - bt) || a.index - b.index
+  }).map(item => item.workout)
+  workouts.forEach(w => {
+    // Duplicate IDs are occurrences, not a set to deduplicate. A workout contributes the
+    // strongest estimate from every matching occurrence.
+    const entries = (w.entries || []).filter(e => e.id === exId)
+    const best = entries.reduce((winner, entry) => {
+      const candidate = bestSetOf(entry, formula)
+      return candidate && (!winner || candidate.est > winner.est) ? candidate : winner
+    }, null)
     if (best) pts.push({ t: w.start, d: w.d, y: best.est, w: best.w, r: best.r })
   })
   return pts

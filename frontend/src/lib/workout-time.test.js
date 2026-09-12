@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatWorkoutDateTime, localDateKey, parseWorkoutDateTime,
-  parseWorkoutTimestampEdit, validateWorkoutTimestamps,
+  parseWorkoutTimestampEdit, validateWorkoutTimestamps, classifyWorkoutTimestamps,
+  shiftWorkoutTimestamps, normalizeWorkoutDateEdit,
 } from './workout-time.js'
 
 describe('completed workout timestamp editing', () => {
@@ -36,5 +37,30 @@ describe('completed workout timestamp editing', () => {
   it('allows equal start and end timestamps', () => {
     const start = parseWorkoutDateTime('2026-01-02T10:00:00')
     expect(validateWorkoutTimestamps(start, start)).toMatchObject({ ok: true, duration: 0, d: '2026-01-02' })
+  })
+
+  it('classifies legacy, valid, mixed, unsafe, and non-ordered timestamp rows', () => {
+    expect(classifyWorkoutTimestamps(undefined, undefined)).toEqual({ kind: 'legacy' })
+    expect(classifyWorkoutTimestamps(0, 0)).toEqual({ kind: 'legacy' })
+    expect(classifyWorkoutTimestamps(1, 1).kind).toBe('timestamped')
+    expect(classifyWorkoutTimestamps(1, undefined).reason).toBe('invalid')
+    expect(classifyWorkoutTimestamps(-1, 1).reason).toBe('invalid')
+    expect(classifyWorkoutTimestamps(1, Infinity).reason).toBe('invalid')
+    expect(classifyWorkoutTimestamps(Number.MAX_SAFE_INTEGER + 1, 1).reason).toBe('invalid')
+    expect(classifyWorkoutTimestamps(2, 1).reason).toBe('order')
+  })
+
+  it('shifts both local timestamps by a calendar day and preserves duration', () => {
+    const start = parseWorkoutDateTime('2026-03-08T01:30:00')
+    const end = parseWorkoutDateTime('2026-03-08T03:30:00')
+    const shifted = shiftWorkoutTimestamps(start, end, '2026-03-08', '2026-03-09')
+    expect(shifted.kind).toBe('timestamped')
+    expect(shifted.d).toBe('2026-03-09')
+    expect(shifted.end - shifted.start).toBe(end - start)
+  })
+
+  it('edits legacy dates without inventing start or end fields', () => {
+    const edited = normalizeWorkoutDateEdit({ d: '2026-01-01', start: 0, end: 0 }, '2026-01-02')
+    expect(edited).toEqual({ d: '2026-01-02' })
   })
 })

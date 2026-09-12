@@ -1,6 +1,7 @@
 const LOCAL_DATETIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/
 
 const finiteTimestamp = value => typeof value === 'number' && Number.isFinite(value)
+const safeTimestamp = value => finiteTimestamp(value) && Number.isSafeInteger(value) && value > 0
 const pad = value => String(value).padStart(2, '0')
 
 // `datetime-local` deliberately has no timezone. Interpret its fields in the user's current
@@ -39,6 +40,48 @@ export function validateWorkoutTimestamps(start, end) {
   }
   if (end < start) return { ok: false, reason: 'order' }
   return { ok: true, start, end, d: localDateKey(start), duration: end - start }
+}
+
+// History timestamps have two deliberately separate representations. Older records are keyed
+// only by their calendar date; accepting them here must never manufacture a time at midnight.
+export function classifyWorkoutTimestamps(start, end) {
+  const hasStart = start !== undefined && start !== null
+  const hasEnd = end !== undefined && end !== null
+  if ((!hasStart || start === 0) && (!hasEnd || end === 0)) return { kind: 'legacy' }
+  if (!safeTimestamp(start) || !safeTimestamp(end)) return { kind: 'invalid', reason: 'invalid' }
+  if (end < start) return { kind: 'invalid', reason: 'order' }
+  const startDate = new Date(start), endDate = new Date(end)
+  if (!localDateKey(start) || !localDateKey(end) || !Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
+    return { kind: 'invalid', reason: 'invalid' }
+  }
+  return { kind: 'timestamped', start, end, d: localDateKey(start), duration: end - start }
+}
+
+export function shiftWorkoutTimestamps(start, end, fromDate, toDate) {
+  const classification = classifyWorkoutTimestamps(start, end)
+  if (classification.kind !== 'timestamped') return classification
+  const from = parseWorkoutDateTime(`${fromDate}T00:00:00`)
+  const to = parseWorkoutDateTime(`${toDate}T00:00:00`)
+  if (from === null || to === null) return { kind: 'invalid', reason: 'date' }
+  const offsetDays = Math.round((to - from) / 86400000)
+  const shiftedStart = new Date(start), shiftedEnd = new Date(end)
+  shiftedStart.setDate(shiftedStart.getDate() + offsetDays)
+  shiftedEnd.setDate(shiftedEnd.getDate() + offsetDays)
+  return classifyWorkoutTimestamps(+shiftedStart, +shiftedEnd)
+}
+
+export function normalizeWorkoutDateEdit(workout, date) {
+  const classification = classifyWorkoutTimestamps(workout?.start, workout?.end)
+  if (classification.kind === 'legacy') {
+    const copy = { ...workout, d: date }
+    delete copy.start
+    delete copy.end
+    return copy
+  }
+  if (classification.kind !== 'timestamped') return classification
+  const shifted = shiftWorkoutTimestamps(workout.start, workout.end, workout.d, date)
+  if (shifted.kind !== 'timestamped') return shifted
+  return { ...workout, d: shifted.d, start: shifted.start, end: shifted.end }
 }
 
 export function parseWorkoutTimestampEdit(startRaw, endRaw) {

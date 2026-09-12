@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
+import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition } from './history-edit.js'
+import { rebuildHistory } from './history-rebuild.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
 const CARDIO = EXDB.find(e => e.bp === 'cardio').id
@@ -920,4 +922,54 @@ describe('effectiveRoutineId (canonical resolver)', () => {
     })
   })
 
+})
+
+describe('history editing foundations', () => {
+  const entry = (id, sets = [{ w: 20, r: 5, done: true }]) => ({ id, sets, target: { mode: 'reps', sets: sets.length, reps: 5 } })
+
+  it('gives duplicate occurrences immutable keys and edits by key rather than id', () => {
+    const entries = attachOccurrenceIdentity({ id: 'w1', entries: [entry('x'), entry('x')] })
+    expect(entries[0]._draftKey).not.toBe(entries[1]._draftKey)
+    expect(removeOccurrence(entries, entries[0]._draftKey)).toHaveLength(1)
+    expect(reorderOccurrences(entries, [entries[1]._draftKey])[0]).toBe(entries[1])
+  })
+
+  it('validates all supported modes and rejects negative values', () => {
+    expect(validateHistoryEntry({ id: CARDIO, target: { mode: 'cardio' }, sets: [{ min: 20, speed: 8, done: true }] }).ok).toBe(true)
+    expect(validateHistoryEntry({ id: LIFT, target: { mode: 'time' }, sets: [{ sec: 30, w: 0, done: true }] }).ok).toBe(true)
+    expect(validateHistoryEntry({ id: LIFT, target: { mode: 'reps' }, sets: [{ r: -1, w: 20, done: true }] }).ok).toBe(false)
+    expect(validateHistoryEntry({ id: CARDIO, target: { mode: 'cardio' }, sets: [{ min: -1, speed: 8, done: true }] }).ok).toBe(false)
+  })
+
+  it('preserves safe unknown fields but rejects unsafe, sparse, cyclic, and non-plain values', () => {
+    const safe = { ...entry(LIFT), futureField: { enabled: true } }
+    expect(normalizeHistoryEntry(safe).entry.futureField).toEqual({ enabled: true })
+    expect(validateHistoryEntry({ ...entry(LIFT), constructor: true }).ok).toBe(false)
+    const cyclic = entry(LIFT); cyclic.loop = cyclic
+    expect(validateHistoryEntry(cyclic).ok).toBe(false)
+    const sparse = []; sparse[1] = { w: 1, r: 1, done: true }
+    expect(validateHistoryEntry({ ...entry(LIFT), sets: sparse }).ok).toBe(false)
+    expect(validateHistoryEntry({ ...entry(LIFT), sets: [{ w: 1, r: 1, done: true, when: new Date() }] }).ok).toBe(false)
+  })
+
+  it('retains notes, drops empty entries, and honors explicit removal', () => {
+    expect(normalizeHistoryEntry({ id: LIFT, sets: [{ done: false }], note: 'keep' }).entry.note).toBe('keep')
+    expect(normalizeHistoryEntry({ id: LIFT, sets: [{ done: false }] }).removed).toBe(true)
+    expect(normalizeHistoryEntry({ id: LIFT, sets: [{ done: false }], note: 'keep' }, true).removed).toBe(true)
+  })
+
+  it('sorts timestamped occurrences before date-only ties and rebuilds derived values', () => {
+    const old = { id: 'old', d: '2026-01-01', entries: [entry(LIFT)] }
+    const recent = { id: 'recent', d: '2026-01-01', start: 2000, end: 3000, entries: [entry(LIFT, [{ w: 30, r: 5, done: true }])] }
+    const rebuilt = rebuildHistory({ workouts: [recent, old], exWeights: {} })
+    expect(rebuilt.workouts.map(w => w.id)).toEqual(['recent', 'old'])
+    expect(rebuilt.workouts[0].vol).toBe(150)
+    expect(rebuilt.exWeights[LIFT]).toMatchObject({ w: 30, d: '2026-01-01' })
+    expect(rebuilt.workouts[0].prs).toContain(LIFT)
+  })
+
+  it('requires explicit mode and actual sets for additions without routine inheritance', () => {
+    expect(explicitHistoryAddition({ id: LIFT, mode: 'reps', sets: [{ r: 5, w: 0, done: true }] }).entry).toEqual(expect.objectContaining({ mode: 'reps' }))
+    expect(explicitHistoryAddition({ id: LIFT, sets: [{ r: 5 }] }).ok).toBe(false)
+  })
 })
