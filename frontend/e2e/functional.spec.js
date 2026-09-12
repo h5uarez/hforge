@@ -1,5 +1,6 @@
 import { test, expect, assertCriticalVisible, assertNoHorizontalOverflow } from './fixtures.js'
 import { richState } from './synthetic-data.js'
+import { normalizeExerciseIds } from '../src/lib/exercise-ids.js'
 
 test('responsive navigation reaches every primary view', async ({ page, openApp }) => {
   await openApp({ state: 'rich' })
@@ -255,7 +256,7 @@ test('historical editor persists additions without mutating protected state', as
   await editor.getByRole('button', { name: 'Save changes', exact: true }).click()
   await expect(page.getByText('Historical workout draft saved', { exact: true })).toBeVisible()
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
-  expect(saved.routines).toEqual(richState.routines)
+  expect(saved.routines).toEqual(normalizeExerciseIds(richState).routines)
   expect(saved.active).toBeNull()
   expect(saved.workouts.some(workout => workout.name === 'Push Day' && workout.entries.filter(entry => entry.id === '0025').length === 2)).toBe(true)
 })
