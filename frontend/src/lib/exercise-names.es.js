@@ -1241,12 +1241,12 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0727": "Elevación de Gemelos a una Pierna con Mancuerna",
   "0730": "Deslizamiento sobre Plataforma a una Pierna",
   "0735": "Abdominales Variante 2",
-  "0738": "Prensa de Gemelos a 45° en Trineo",
+  "0738": "Prensa de Gemelos a 45°",
   "0739": "prensa de piernas a 45°",
   "0740": "press a 45° pierna ancho en trineo",
   "0741": "sentadilla hack cerrado en trineo",
   "0742": "elevación de gemelos hacia delante inclinado en trineo",
-  "0743": "Sentadilla Hack en Trineo",
+  "0743": "Hack Squat",
   "0744": "sentadilla en posición tumbada en trineo",
   "0746": "Encogimiento de Hombros con Barra Detrás en Máquina Smith",
   "0747": "Press Tras Nuca en Máquina Smith",
@@ -1257,7 +1257,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0752": "Peso Muerto en Máquina Smith",
   "0753": "Press de Banca en Banco Declinado en Máquina Smith",
   "0754": "Press con Agarre Supino en Banco Declinado en Máquina Smith",
-  "0755": "Sentadilla Hack en Máquina Smith",
+  "0755": "Hack Squat en Máquina Smith",
   "0756": "Elevación de Cadera en Máquina Smith",
   "0757": "Press de Banca en Banco Inclinado en Máquina Smith",
   "0758": "Press con Agarre Supino en Banco Inclinado en Máquina Smith",
@@ -1688,13 +1688,13 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "1759": "Sentadilla Pistol",
   "3679": "Abdominales con Brazos Cruzados sobre el Pecho",
   "3671": "Paso de Esquiador",
-  "1425": "Prensa a una Pierna a 45° en Trineo",
-  "1464": "Prensa de Piernas a 45° en Trineo, Vista Posterior",
-  "1463": "Prensa de Piernas a 45° en Trineo, Vista Lateral",
-  "0740": "Prensa de Piernas a 45° con Postura Ancha en Trineo",
+  "1425": "Prensa a una Pierna a 45°",
+  "1464": "Prensa de Piernas a 45°, Vista Posterior",
+  "1463": "Prensa de Piernas a 45°, Vista Lateral",
+  "0740": "Prensa de Piernas a 45° con Postura Ancha",
   "1391": "Prensa de Gemelos en Prensa de Piernas",
-  "0741": "Sentadilla Hack con Postura Cerrada en Trineo",
-  "0742": "Elevación de Gemelos Inclinada hacia Delante en Trineo",
+  "0741": "Hack Squat con Postura Cerrada",
+  "0742": "Elevación de Gemelos Inclinada hacia Delante",
   "1392": "Prensa de Gemelos a una Pierna en Prensa de Piernas",
   "0746": "Encogimiento de Hombros con Barra Detrás en Máquina Smith",
   "0747": "Press Tras Nuca en Máquina Smith",
@@ -1855,8 +1855,8 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "0650": "Encogimiento de Rodillas sobre Fitball",
   "0642": "Flexiones con Patada Lateral de Pierna",
   "0661": "Flexiones con Patada hacia Dentro",
-  "0739": "Prensa de Piernas a 45° en Trineo",
-  "0744": "Sentadilla en Máquina de Trineo Tumbado",
+  "0739": "Prensa de Piernas a 45°",
+  "0744": "Sentadilla en Máquina Tumbada",
   "0750": "Sentadilla a Cajón en Máquina Smith",
   "0858": "sprints cortos",
   "0980": "Extensión de Cadera Inclinado hacia Delante con Banda Elástica",
@@ -1890,7 +1890,7 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "2203": "Rodillo Sentado con Flexión de Hombros",
   "2209": "Rodillo Sentado a una Pierna con Elevación de Hombros",
   "2321": "curl de bíceps de pie con mancuernas, variante 2",
-  "2334": "Prensa de Gemelos en Trineo Tumbado",
+  "2334": "Prensa de Gemelos Tumbado",
   "2335": "Prensa de Gemelos Sentado en Máquina de Palancas",
   "2399": "Giro Sentado en Polea",
   "2705": "Pronación Tumbado en el Suelo con Mancuernas",
@@ -1983,8 +1983,8 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "5203": "sentadilla con barra con tempo",
   "5204": "sentadilla con barra desde topes",
   "5205": "press de banca con barra con pausa",
-  "5206": "press Spoto con barra",
-  "5207": "press Larsen con barra",
+  "5206": "spoto press",
+  "5207": "larsen press",
   "5208": "press de suelo con barra",
   "5209": "peso muerto con barra desde bloques",
   "5210": "peso muerto con barra con pausa",
@@ -1993,18 +1993,18 @@ export const EXERCISE_NAMES_ES = Object.freeze(Object.assign({
   "5213": "peso muerto con barra con tempo",
   "5214": "remo en T con pecho apoyado",
   "5215": "remo en máquina con pecho apoyado",
-  "5216": "remo seal",
+  "5216": "seal row",
   "5217": "remo en polea con pecho apoyado",
   "5218": "hip thrust",
   "5219": "zancada inversa con barra",
   "5220": "sentadilla dividida con pie delantero elevado",
-  "5221": "sentadilla con cinturón",
+  "5221": "belt squat",
   "5222": "curl nórdico",
   "5223": "hiperextensión lastrada",
   "5224": "peso muerto rumano con pausa",
   "5225": "patada de glúteo",
   "5226": "remo Gironda",
-  "5227": "curl Bayesian",
+  "5227": "bayesian curl",
   }, {
   // Block-8: reviewed Title-Case dumbbell, fitball and EZ-bar names (LAST wins).
   "0413": "Sentadilla con Mancuernas",
@@ -2316,9 +2316,45 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "flexiones de brazos"
     ],
     "0739": [
+      "Prensa de Piernas a 45° en Trineo",
       "prensa de piernas",
       "prensa 45 grados",
       "prensa"
+    ],
+    "0738": [
+      "Prensa de Gemelos a 45° en Trineo"
+    ],
+    "1425": [
+      "Prensa a una Pierna a 45° en Trineo"
+    ],
+    "1463": [
+      "Prensa de Piernas a 45° en Trineo, Vista Lateral"
+    ],
+    "1464": [
+      "Prensa de Piernas a 45° en Trineo, Vista Posterior"
+    ],
+    "0740": [
+      "Prensa de Piernas a 45° con Postura Ancha en Trineo"
+    ],
+    "0741": [
+      "Hack Squat con Postura Cerrada en Trineo",
+      "Sentadilla Hack con Postura Cerrada en Trineo"
+    ],
+    "0742": [
+      "Elevación de Gemelos Inclinada hacia Delante en Trineo"
+    ],
+    "0743": [
+      "Hack Squat en Trineo",
+      "Sentadilla Hack en Trineo"
+    ],
+    "0744": [
+      "Sentadilla en Máquina de Trineo Tumbado"
+    ],
+    "2334": [
+      "Prensa de Gemelos en Trineo Tumbado"
+    ],
+    "0755": [
+      "Sentadilla Hack en Máquina Smith"
     ],
     "0811": [
       "peso muerto barra hexagonal"
@@ -2387,9 +2423,11 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "paused bench press"
     ],
     "5206": [
+      "press Spoto con barra",
       "spoto press"
     ],
     "5207": [
+      "press Larsen con barra",
       "larsen press"
     ],
     "5208": [
@@ -2425,6 +2463,7 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "chest supported machine row"
     ],
     "5216": [
+      "remo seal",
       "seal row"
     ],
     "5217": [
@@ -2442,6 +2481,7 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
       "front foot elevated split squat"
     ],
     "5221": [
+      "sentadilla con cinturón",
       "belt squat"
     ],
     "5222": [
@@ -2753,7 +2793,12 @@ export const EXERCISE_NAME_ANGLICISMS_ES = Object.freeze({
   "3296": "Front lever is the established calisthenics name in Spain.",
   "3297": "Back lever is the established calisthenics name in Spain.",
   "0276": "Dead bug is the established core-training name in Spain.",
-  "5218": "Hip thrust is the established training name in Spain."
+  "5218": "Hip thrust is the established training name in Spain.",
+  "5206": "Spoto press is the established powerlifting name in Spain.",
+  "5207": "Larsen press is the established powerlifting name in Spain.",
+  "5216": "Seal row is the established strength-training name in Spain.",
+  "5221": "Belt squat is the established strength-training name in Spain.",
+  "5227": "Bayesian curl is the established strength-training name in Spain."
 })
 
 // Entries that still need semantic confirmation must be listed here with a reason.
