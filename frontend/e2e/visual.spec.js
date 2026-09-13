@@ -40,15 +40,16 @@ test('plan assignment overlay canonical viewport', async ({ page, openApp }) => 
   await expect(page).toHaveScreenshot('plan-assignment-overlay.png', { fullPage: false })
 })
 
-test('historical editor remains readable at phone widths', async ({ page, openApp }) => {
+test('historical workout editor remains readable at phone widths', async ({ page, openApp }) => {
   for (const width of [320, 375, 414]) {
     await page.setViewportSize({ width, height: 760 })
     await openApp({ route: '/history', state: 'rich' })
     await page.getByRole('button', { name: /Push Day/ }).first().click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Edit exercises', exact: true }).click()
-    const editor = page.getByRole('dialog')
-    await expect(editor.getByRole('heading', { name: 'Edit exercises', exact: true })).toBeVisible()
-    await expect(editor.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: 'Edit workout', exact: true }).click()
+    const editor = page.locator('main.workout-session')
+    await expect(page).toHaveURL(/#\/workout$/)
+    await expect(editor.getByText('Edit workout', { exact: true })).toBeVisible()
+    await expect(editor.getByRole('button', { name: 'Save changes', exact: true }).first()).toBeVisible()
     await assertCriticalVisible(editor)
     await assertNoHorizontalOverflow(page)
     await editor.getByRole('button', { name: 'Cancel', exact: true }).click()

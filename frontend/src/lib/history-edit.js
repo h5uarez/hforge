@@ -6,6 +6,8 @@ const unsafe = new Set(['__proto__', 'prototype', 'constructor', 'sid'])
 const finite = value => typeof value === 'number' && Number.isFinite(value)
 const nonnegative = value => finite(value) && value >= 0
 const plain = value => value === null || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype
+const TARGET_FIELDS = ['mode', 'sets', 'reps', 'repsBySet', 'weight', 'bodyweight', 'side', 'sec', 'min', 'speed', 'planNote', 'programmedEffort']
+export const HISTORICAL_ADDITION_MARKER = '_historicalAddition'
 
 export function cloneHistoryValue(value, seen = new Map()) {
   if (value === null || typeof value !== 'object') return value
@@ -42,6 +44,114 @@ export function attachOccurrenceIdentity(workout) {
     counts.set(entry?.id, ordinal + 1)
     return { ...cloneHistoryValue(entry), _draftKey: occurrenceKey(workout.id, index, ordinal) }
   })
+}
+
+// Mark an entry added in the historical editor without changing the active-workout contract.
+// The entry object is carried through edits and reordering, then the save boundary below selects
+// only stored history fields so this marker cannot persist in a history record.
+export function markHistoricalAddition(entry) {
+  if (!entry || typeof entry !== 'object') return entry
+  return { ...entry, [HISTORICAL_ADDITION_MARKER]: true }
+}
+
+// A target is optional in old history records. Keep the legacy fields isolated from actual sets;
+// the active workout renderer needs a target snapshot, but it must never use the actual array as
+// the target's set count.
+export function historyTargetBaseline(entry) {
+  if (entry?.target && typeof entry.target === 'object') return cloneHistoryValue(entry.target)
+  return Object.fromEntries(TARGET_FIELDS.filter(key => Object.prototype.hasOwnProperty.call(entry || {}, key) && (key !== 'sets' || Number.isSafeInteger(entry[key])))
+    .map(key => [key, cloneHistoryValue(entry[key])]))
+}
+
+function completeHistoricalTarget(entry) {
+  const target = historyTargetBaseline(entry)
+  const actualSets = Array.isArray(entry?.sets) ? entry.sets : []
+  const first = actualSets[0] || {}
+  const projected = projectSideSet(first) || {}
+  const mode = modeOf({ ...target, id: entry?.id })
+  if (target.mode == null) target.mode = mode
+  if (target.sets == null) target.sets = Math.max(1, actualSets.length || 1)
+  if (target.side == null && (first.left || first.right)) target.side = true
+
+  if (mode === 'cardio') {
+    if (target.min == null) target.min = Number.isSafeInteger(projected.min) && projected.min > 0 ? projected.min : 1
+    if (target.speed == null) target.speed = finite(projected.speed) ? projected.speed : 0
+  } else if (mode === 'time') {
+    if (target.sec == null) target.sec = Number.isSafeInteger(projected.sec) && projected.sec > 0 ? projected.sec : 1
+    if (target.weight == null) target.weight = finite(projected.w) ? projected.w : 0
+  } else {
+    if (target.reps == null) target.reps = Number.isFinite(projected.r) && projected.r > 0 ? projected.r : 1
+    if (target.weight == null) target.weight = finite(projected.w) ? projected.w : 0
+  }
+  return target
+}
+
+const historicalSid = (workoutId, index) => `history-${String(workoutId ?? 'workout').replace(/[^a-zA-Z0-9_-]/g, '_')}-${index}`
+
+// Turn one completed record into the active-session shape consumed by ExerciseBlock. This is a
+// view-model conversion only: every nested value is cloned, and originalWorkout/returnActive are
+// transient context used to replace the same record or restore an already-running session.
+export function historicalWorkoutToActive(workout, returnActive = null) {
+  const source = cloneHistoryValue(workout || {})
+  const entries = (source.entries || []).map((entry, index) => ({
+    id: entry.id,
+    sid: historicalSid(source.id, index),
+    ...(entry.n ? { n: entry.n } : {}),
+    ...(entry.sg ? { sg: entry.sg } : {}),
+    target: completeHistoricalTarget(entry),
+    sets: cloneHistoryValue(Array.isArray(entry.sets) ? entry.sets : []),
+    ...(Object.prototype.hasOwnProperty.call(entry, 'topW') ? { topW: entry.topW } : {}),
+    ...(Object.prototype.hasOwnProperty.call(entry, 'note') ? { note: entry.note } : {}),
+  }))
+  return {
+    id: source.id,
+    d: source.d,
+    start: source.start,
+    end: source.end,
+    routineId: source.routineId ?? null,
+    name: source.name || 'Workout',
+    bw: source.bw ?? null,
+    cur: 0,
+    entries,
+    historicalEdit: {
+      workoutId: source.id,
+      originalWorkout: source,
+      returnActive: cloneHistoryValue(returnActive),
+    },
+  }
+}
+
+// Convert the edited active snapshot back to a history record. Selecting fields here is
+// intentional: sid, plan, asked, rest/activity and other session-only metadata never cross the
+// history boundary. Derived volume/PR/exWeights are rebuilt by the normal store persistence flow.
+export function historyWorkoutFromActive(active) {
+  const context = active?.historicalEdit
+  if (!context || !Array.isArray(active.entries)) return { ok: false, reason: 'historical context missing' }
+  const original = cloneHistoryValue(context.originalWorkout || {})
+  const entries = active.entries.map(entry => {
+    const clean = {
+      id: entry.id,
+      ...(entry.n ? { n: entry.n } : {}),
+      ...(entry.sg ? { sg: entry.sg } : {}),
+      sets: cloneHistoryValue(Array.isArray(entry.sets) ? entry.sets : []),
+      topW: entry.topW ?? null,
+      target: cloneHistoryValue(entry.target || {}),
+      ...(Object.prototype.hasOwnProperty.call(entry, 'note') ? { note: entry.note } : {}),
+    }
+    const historyEntry = copyHistoryEntry(clean)
+    return keepHistoryEntry(historyEntry) || entry[HISTORICAL_ADDITION_MARKER] === true ? historyEntry : null
+  }).filter(entry => entry !== null)
+  return {
+    ok: true,
+    workout: {
+      ...original,
+      id: context.workoutId,
+      d: active.d,
+      start: active.start,
+      end: active.end,
+      entries,
+    },
+  }
 }
 
 export function removeOccurrence(entries, key) { return (entries || []).filter(entry => entry._draftKey !== key) }

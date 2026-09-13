@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
-import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition } from './history-edit.js'
+import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition, historyTargetBaseline, historicalWorkoutToActive, historyWorkoutFromActive, markHistoricalAddition, HISTORICAL_ADDITION_MARKER } from './history-edit.js'
 import { rebuildHistory } from './history-rebuild.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -971,5 +971,79 @@ describe('history editing foundations', () => {
   it('requires explicit mode and actual sets for additions without routine inheritance', () => {
     expect(explicitHistoryAddition({ id: LIFT, mode: 'reps', sets: [{ r: 5, w: 0, done: true }] }).entry).toEqual(expect.objectContaining({ mode: 'reps' }))
     expect(explicitHistoryAddition({ id: LIFT, sets: [{ r: 5 }] }).ok).toBe(false)
+  })
+
+  it('creates a cloned active snapshot for legacy records and restores only history fields', () => {
+    const workout = {
+      id: 'history-1', d: '2026-08-24', start: 1000, end: 2000, name: 'Old session',
+      entries: [{ id: LIFT, sets: [{ w: 40, r: 8, done: true }], note: 'felt strong' }],
+    }
+    const returnActive = { id: 'live-1', entries: [{ id: LIFT, sets: [{ w: 20, r: 5, done: false }] }] }
+    const active = historicalWorkoutToActive(workout, returnActive)
+
+    expect(active.entries[0].sid).toBe('history-history-1-0')
+    expect(active.entries[0].target).toMatchObject({ mode: 'reps', sets: 1, reps: 8, weight: 40 })
+    expect(active.entries[0].sets).not.toBe(workout.entries[0].sets)
+    active.entries[0].sets[0].w = 45
+    expect(workout.entries[0].sets[0].w).toBe(40)
+    expect(active.historicalEdit.returnActive).not.toBe(returnActive)
+
+    active.entries[0].plan = { kind: 'up' }
+    active.entries[0].asked = true
+    active.d = '2026-08-25'
+    const result = historyWorkoutFromActive(active)
+    expect(result.ok).toBe(true)
+    expect(result.workout).toMatchObject({ id: 'history-1', d: '2026-08-25', start: 1000, end: 2000 })
+    expect(result.workout.entries[0]).toMatchObject({ id: LIFT, note: 'felt strong', target: { reps: 8, weight: 40 } })
+    expect(result.workout.entries[0]).not.toHaveProperty('sid')
+    expect(result.workout.entries[0]).not.toHaveProperty('plan')
+    expect(result.workout.entries[0]).not.toHaveProperty('asked')
+  })
+
+  it('preserves an explicitly marked empty historical addition', () => {
+    const active = historicalWorkoutToActive({
+      id: 'history-addition',
+      entries: [entry(LIFT)],
+    })
+    active.entries.push(markHistoricalAddition({
+      id: CARDIO,
+      target: { mode: 'cardio', sets: 1, min: 20, speed: 8 },
+      sets: [{ min: 20, speed: 8, done: false }],
+    }))
+
+    const result = historyWorkoutFromActive(active)
+    expect(result.workout.entries.map(item => item.id)).toEqual([LIFT, CARDIO])
+  })
+
+  it('drops an unmarked empty original historical entry', () => {
+    const active = historicalWorkoutToActive({
+      id: 'history-empty',
+      entries: [{
+        id: LIFT,
+        target: { mode: 'reps', sets: 1, reps: 5, weight: 0 },
+        sets: [{ w: 0, r: 5, done: false }],
+      }],
+    })
+
+    const result = historyWorkoutFromActive(active)
+    expect(result.workout.entries).toEqual([])
+  })
+
+  it('omits the transient historical-addition marker from stored records', () => {
+    const active = historicalWorkoutToActive({ id: 'history-marker', entries: [entry(LIFT)] })
+    active.entries.push(markHistoricalAddition({
+      id: CARDIO,
+      target: { mode: 'cardio', sets: 1, min: 20, speed: 8 },
+      sets: [{ min: 20, speed: 8, done: false }],
+    }))
+
+    const result = historyWorkoutFromActive(active)
+    expect(active.entries[1]).toHaveProperty(HISTORICAL_ADDITION_MARKER, true)
+    expect(result.workout.entries[1]).not.toHaveProperty(HISTORICAL_ADDITION_MARKER)
+  })
+
+  it('keeps legacy actual set counts out of the target baseline', () => {
+    const entry = { id: LIFT, sets: [{ w: 20, r: 5, done: true }, { w: 25, r: 5, done: true }], reps: 5 }
+    expect(historyTargetBaseline(entry)).toEqual({ reps: 5 })
   })
 })

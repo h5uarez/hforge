@@ -174,6 +174,38 @@ describe('active-session persistence recovery', () => {
   })
 })
 
+describe('remote persistence snapshots', () => {
+  it('pushes an explicit snapshot without replacing the locally visible state', async () => {
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
+    const active = { id: 'local-session', entries: [entry('squat')] }
+    useStore.getState().replaceState({ routines: [], workouts: [], active })
+    useStore.getState().setUser({ id: 'server-user' })
+
+    const local = structuredClone(useStore.getState().S.active)
+    const snapshot = structuredClone(useStore.getState().S)
+    snapshot.active = null
+    expect(await useStore.getState().pushState(snapshot)).toBe(true)
+
+    const pushed = JSON.parse(globalThis.fetch.mock.calls[0][1].body)
+    expect(pushed.state.active).toBeNull()
+    expect(useStore.getState().S.active).toEqual(local)
+  })
+
+  it('keeps the local draft available when an explicit snapshot cannot be pushed', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('offline') })
+    useStore.getState().replaceState({ routines: [], workouts: [], active: { id: 'historical-view', entries: [entry('squat')] } })
+    useStore.getState().setUser({ id: 'server-user' })
+
+    const local = structuredClone(useStore.getState().S)
+    const snapshot = structuredClone(local)
+    snapshot.active = null
+    expect(await useStore.getState().pushState(snapshot)).toBe(false)
+
+    expect(useStore.getState().S).toEqual(local)
+    expect(useStore.getState().persistence.status).toBe('failed')
+  })
+})
+
 describe('bodyweightCheckEnabled compatibility', () => {
   it('defaults missing and malformed values to enabled, while preserving explicit false', () => {
     useStore.getState().replaceState({ routines: [], workouts: [], bodyweightCheckEnabled: null })

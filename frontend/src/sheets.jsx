@@ -22,8 +22,7 @@ import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLIC
 import { MOBILE } from './lib/mobile.js'
 import { newSessionSid } from './lib/session.js'
 import { touchActiveRecord } from './lib/inactivity.js'
-import { formatWorkoutDateTime, parseWorkoutTimestampEdit, classifyWorkoutTimestamps } from './lib/workout-time.js'
-import { attachOccurrenceIdentity, normalizeHistoryWorkout, explicitHistoryAddition, removeOccurrence, cloneHistoryValue, validateHistoryEntry } from './lib/history-edit.js'
+import { historicalWorkoutToActive } from './lib/history-edit.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
@@ -744,7 +743,7 @@ function PerSetPrescriptionField({ generic, perSide, setCount, repsValue, onReps
   </>
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
+function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
@@ -876,7 +875,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
     {/* ---------- bodyweight + per side (issues #31/#32/#33) ---------- */}
     {!cardio && <div className="sect-b" style={{ marginBottom: 8 }}>
       <Row icon="figureStrength" iconTint="var(--acc)" title={t('Bodyweight')}
-        subtitle={bw ? t('No weight to enter — just log the reps.') : t('Ask for a weight on every set.')}>
+        subtitle={bw ? mode === 'time' ? t('A timer runs while you hold the set. Leave the weight at 0 for bodyweight holds.') : t('No weight to enter — just log the reps.') : t('Ask for a weight on every set.')}>
         <Switch checked={bw} onChange={v => setC(x => ({ ...x, bodyweight: v, weight: v ? 0 : x.weight }))} />
       </Row>
       {mode === 'reps' && <Row icon="shuffle" iconTint="var(--blue)" title={t('Reps per side')}
@@ -931,12 +930,12 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
       </div>
     </div>
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
-    <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
+    <Button variant="primary" onClick={save}>{submitLabel ? t(submitLabel) : existing ? t('Save') : t('Add to routine')}</Button>
     {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
-export const exConfigSheet = (ex, existing, onSave, onDelete, routine) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} close={close} />)
+export const exConfigSheet = (ex, existing, onSave, onDelete, routine, { submitLabel } = {}) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} submitLabel={submitLabel} close={close} />)
 
 /* ============================ glyph picker ============================ */
 // Grouped by what the glyph means for a training day, so picking one is a scan
@@ -1085,176 +1084,30 @@ function DayAssign({ day, close }) {
 export const dayAssignSheet = day => ui().openSheet(close => <DayAssign day={day} close={close} />)
 
 /* ============================ workout detail ============================ */
-export const historyDraftCopy = value => cloneHistoryValue(value)
 
-const TARGET_FIELDS = ['mode', 'sets', 'reps', 'repsBySet', 'weight', 'bodyweight', 'side', 'sec', 'min', 'speed', 'planNote', 'programmedEffort']
-export const historyTargetBaseline = entry => {
-  if (entry?.target && typeof entry.target === 'object') return historyDraftCopy(entry.target)
-  return Object.fromEntries(TARGET_FIELDS.filter(key => Object.prototype.hasOwnProperty.call(entry || {}, key) && (key !== 'sets' || Number.isSafeInteger(entry[key])))
-    .map(key => [key, historyDraftCopy(entry[key])]))
-}
-export const historyValidationMessage = reason => {
-  if (reason === 'target') return t('Target fields must use valid nonnegative values.')
-  if (reason === 'set') return t('Set fields must use valid values and complete side data.')
-  if (reason === 'mode') return t('Choose a supported exercise mode.')
-  return t('This exercise has invalid history data.')
-}
-
-function HistoryValue({ label, value, onChange, decimal = true, type = 'number', id, error }) {
-  return <label className="history-field"><span>{label}</span><input type={type} inputMode={type === 'number' ? (decimal ? 'decimal' : 'numeric') : undefined}
-    id={id} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `${id}-error` : undefined}
-    value={value ?? ''} min={type === 'number' ? 0 : undefined} step={type === 'number' ? (decimal ? 'any' : 1) : undefined}
-    onChange={e => onChange(type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)} />{error && <span id={`${id}-error`} className="history-field-error">{error}</span>}</label>
-}
-
-function HistorySet({ set, index, mode, perSide, onChange, onRemove, error }) {
-  const field = (name, label, decimal = true) => <HistoryValue id={`history-set-${index}-${name}`} label={label} value={set[name]} decimal={decimal} error={error} onChange={value => onChange({ ...set, [name]: value })} />
-  const effort = name => <><HistoryValue id={`history-set-${index}-${name}-rir`} label="RIR" value={set[name]?.rir} onChange={value => onChange({ ...set, [name]: { ...set[name], rir: value } })} /><HistoryValue id={`history-set-${index}-${name}-rpe`} label="RPE" value={set[name]?.rpe} onChange={value => onChange({ ...set, [name]: { ...set[name], rpe: value } })} /></>
-  const side = name => <div className="history-side"><strong>{name.toUpperCase()}</strong><HistoryValue id={`history-set-${index}-${name}-r`} label={t('Reps')} value={set[name]?.r} decimal={false} error={error} onChange={value => onChange({ ...set, [name]: { ...set[name], r: value } })} /><HistoryValue id={`history-set-${index}-${name}-w`} label={t('Load')} value={set[name]?.w} error={error} onChange={value => onChange({ ...set, [name]: { ...set[name], w: value } })} />{effort(name)}<label className="history-check"><input type="checkbox" checked={!!set[name]?.done} onChange={e => onChange({ ...set, [name]: { ...set[name], done: e.target.checked } })} />{t('Done')}</label></div>
-  return <div className="history-set">
-    <div className="history-set-heading"><strong>{t('Set {0}', index + 1)}</strong><button type="button" className="iconbtn" onClick={onRemove} aria-label={t('Remove set')}><Icon name="trash" /></button></div>
-    <div className="history-fields">
-      {mode === 'cardio' ? <>{field('min', t('Minutes'), false)}{field('speed', t('Speed (km/h)'))}</> : perSide ? <>{side('left')}{side('right')}</> : <>{mode === 'time' ? field('sec', t('Seconds'), false) : field('r', t('Actual reps'), false)}{field('w', mode === 'time' ? t('Added load') : t('Load'))}{mode !== 'cardio' && <>{field('rir', 'RIR')}{field('rpe', 'RPE')}</>}</>}
-      {mode !== 'cardio' && <label className="history-check"><input type="checkbox" checked={!!set.done} onChange={e => onChange({ ...set, done: e.target.checked })} />{t('Completed')}</label>}
-      {mode === 'cardio' && <label className="history-check"><input type="checkbox" checked={!!set.done} onChange={e => onChange({ ...set, done: e.target.checked })} />{t('Completed')}</label>}
-    </div>
-  </div>
-}
-
-function HistoryEntry({ entry, index, onChange, onRemove, onMove, error }) {
-  const target = historyTargetBaseline(entry)
-  const mode = modeOf({ ...target, id: entry.id })
-  const perSide = mode === 'reps' && !!target.side
-  const setEntry = patch => onChange({ ...entry, ...patch })
-  const setTarget = patch => onChange({ ...entry, target: { ...target, ...patch } })
-  return <section className="history-entry" aria-label={t('Exercise {0}', index + 1)}>
-    <div className="history-entry-heading"><div><strong>{exerciseName(EXIDX[entry.id] || entry)}</strong><div className="small dim">{t('Occurrence {0}', index + 1)}</div></div><div className="history-entry-actions">
-      <button type="button" className="iconbtn" onClick={() => onMove(-1)} disabled={index === 0} aria-label={t('Move exercise up')}><Icon name="chevronUp" /></button>
-      <button type="button" className="iconbtn" onClick={() => onMove(1)} aria-label={t('Move exercise down')}><Icon name="chevronDown" /></button>
-      <button type="button" className="iconbtn" onClick={onRemove} aria-label={t('Remove exercise')}><Icon name="trash" /></button>
-    </div></div>
-    <div className="history-fields">
-       <label className="history-field"><span>{t('Mode')}</span><select aria-invalid={error ? 'true' : undefined} aria-describedby={error ? `history-entry-${index}-error` : undefined} value={mode} onChange={e => setTarget({ mode: e.target.value })}><option value="reps">{t('Reps')}</option><option value="time">{t('Time')}</option><option value="cardio">{t('Cardio')}</option></select></label>
-       <HistoryValue id={`history-entry-${index}-sets`} label={t('Target sets')} value={target.sets} decimal={false} error={error} onChange={value => setTarget({ sets: value })} />
-       {mode === 'cardio' ? <><HistoryValue id={`history-entry-${index}-min`} label={t('Target minutes')} value={target.min} decimal={false} error={error} onChange={value => setTarget({ min: value })} /><HistoryValue id={`history-entry-${index}-speed`} label={t('Target speed')} value={target.speed} error={error} onChange={value => setTarget({ speed: value })} /></> : mode === 'time' ? <><HistoryValue id={`history-entry-${index}-sec`} label={t('Target seconds')} value={target.sec} decimal={false} error={error} onChange={value => setTarget({ sec: value })} /><HistoryValue id={`history-entry-${index}-weight`} label={t('Target load')} value={target.weight} error={error} onChange={value => setTarget({ weight: value })} /></> : <><HistoryValue id={`history-entry-${index}-reps`} label={t('Target reps')} value={target.reps} decimal={false} error={error} onChange={value => setTarget({ reps: value })} /><HistoryValue id={`history-entry-${index}-repsBySet`} label={t('Target reps by set')} type="text" value={Array.isArray(target.repsBySet) ? target.repsBySet.join(', ') : ''} error={error} onChange={value => setTarget({ repsBySet: value.split(',').map(item => item.trim() === '' ? null : Number(item.trim())) })} /><HistoryValue id={`history-entry-${index}-weight`} label={t('Target load')} value={target.weight} error={error} onChange={value => setTarget({ weight: value })} /></>}
-       {mode !== 'cardio' && <><label className="history-check"><input type="checkbox" checked={!!target.bodyweight} onChange={e => setTarget({ bodyweight: e.target.checked })} />{t('Bodyweight')}</label><label className="history-check"><input type="checkbox" checked={!!target.side} onChange={e => setTarget({ side: e.target.checked })} />{t('Per side')}</label></>}
-      <label className="history-check"><input type="checkbox" checked={!!entry.done} onChange={e => setEntry({ done: e.target.checked })} />{t('Exercise completed')}</label>
-    </div>
-    <label className="history-note"><span>{t('Exercise note')}</span><textarea rows="2" maxLength={NOTE_MAX} value={entry.note || ''} onChange={e => setEntry({ note: e.target.value })} /></label>
-    <label className="history-note"><span>{t('Target note')}</span><textarea rows="2" maxLength={NOTE_MAX} value={target.planNote || ''} onChange={e => setTarget({ planNote: e.target.value })} /></label>
-    {error && <div id={`history-entry-${index}-error`} className="history-field-error" role="status">{error}</div>}
-    <div className="history-sets-heading"><strong>{t('Actual sets')}</strong><Button size="sm" type="button" onClick={() => onChange({ ...entry, sets: [...(entry.sets || []), mode === 'cardio' ? { min: 1, speed: 0, done: false } : mode === 'time' ? { sec: 1, w: 0, done: false } : perSide ? { left: { r: 1, done: false }, right: { r: 1, done: false } } : { r: 1, w: 0, done: false }] })}>{t('Add set')}</Button></div>
-     {(entry.sets || []).map((set, setIndex) => <HistorySet key={setIndex} set={set} index={setIndex} mode={mode} perSide={perSide} error={error}
-      onChange={next => onChange({ ...entry, sets: entry.sets.map((item, i) => i === setIndex ? next : item) })}
-      onRemove={() => confirmSheet({ title: t('Remove set?'), message: t('This set will be removed from this history draft.'), confirmText: t('Remove'), danger: true, onConfirm: () => onChange({ ...entry, sets: entry.sets.filter((_, i) => i !== setIndex) }) })} />)}
-  </section>
-}
-
-export function HistoryEditor({ workout, close, onSaved }) {
-  const [draft, setDraft] = useState(() => ({ ...historyDraftCopy(workout), entries: attachOccurrenceIdentity(workout) }))
-  const [removals, setRemovals] = useState(() => new Set())
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
-  const [recovery, setRecovery] = useState(null)
-  const timestamp = classifyWorkoutTimestamps(workout.start, workout.end).kind === 'timestamped'
-  const updateEntry = (key, next) => setDraft(current => ({ ...current, entries: current.entries.map(entry => entry._draftKey === key ? next : entry) }))
-  const removeEntry = key => confirmSheet({ title: t('Remove exercise?'), message: t('This exercise will be removed from this history draft, even if it has notes.'), confirmText: t('Remove'), danger: true, onConfirm: () => { setRemovals(current => new Set([...current, key])); setDraft(current => ({ ...current, entries: removeOccurrence(current.entries, key) })) } })
-  const moveEntry = (key, direction) => setDraft(current => {
-    const at = current.entries.findIndex(entry => entry._draftKey === key), to = at + direction
-    if (at < 0 || to < 0 || to >= current.entries.length) return current
-    const entries = current.entries.slice(), [item] = entries.splice(at, 1); entries.splice(to, 0, item); return { ...current, entries }
-  })
-  const addExercise = () => exercisePicker((ex, pickerClose) => {
-    const mode = isCardio(ex.id) ? 'cardio' : 'reps'
-    const addition = explicitHistoryAddition({ id: ex.id, mode, sets: [mode === 'cardio' ? { min: 1, speed: 0, done: false } : { r: 1, w: 0, done: false }], target: { mode, sets: 1 } })
-    if (!addition.ok) return
-    const entry = { ...addition.entry, _draftKey: 'new:' + uid() }
-    setDraft(current => ({ ...current, entries: [...current.entries, entry] })); pickerClose()
-  }, { mode: 'history' })
-  const save = async () => {
-    const result = normalizeHistoryWorkout({ ...draft, entries: draft.entries }, draft.d, removals)
-    if (result.kind === 'invalid' || result.ok === false) {
-      const invalid = draft.entries.reduce((out, entry) => {
-        const checked = validateHistoryEntry(entry)
-        if (!checked.ok) out[entry._draftKey] = historyValidationMessage(checked.reason)
-        return out
-      }, {})
-      setFieldErrors(invalid)
-      setError(t('Fix the highlighted history fields before saving.'))
-      return
-    }
-    setFieldErrors({}); setError('')
-    const saved = update(state => { const found = state.workouts.find(item => item.id === workout.id); if (found) Object.assign(found, result) }, false)
-    if (!saved) {
-      setRecovery({ previous: historyDraftCopy(workout), candidate: historyDraftCopy(draft) })
-      setError(t('The history draft could not be saved. Retry, undo, or cancel without losing your edits.'))
-      return
-    }
-    if (useStore.getState().user && !(await useStore.getState().pushState())) {
-      setRecovery({ previous: historyDraftCopy(workout), candidate: historyDraftCopy(draft) })
-      setError(t('The history draft could not be saved. Retry, undo, or cancel without losing your edits.'))
-      return
-    }
-    close(); onSaved?.(); toast(t('Historical workout draft saved'))
-  }
-  return <div className="history-editor" aria-labelledby="history-editor-title">
-    <div className="history-editor-header"><div><h3 id="history-editor-title">{t('Edit exercises')}</h3><div className="small dim">{t('Only this completed history record changes. Routines and the active workout are untouched.')}</div></div></div>
-    <div className="history-fields history-date-fields"><HistoryValue label={t('Workout day')} type="date" value={draft.d} onChange={value => setDraft(current => ({ ...current, d: value }))} />{timestamp && <div className="small dim history-time-hint">{t('Start and end times shift together, preserving local time and duration.')}</div>}</div>
-    {error && <div className="history-error" role="alert" aria-live="assertive">{error}{recovery && <div className="history-recovery"><Button type="button" size="sm" onClick={() => recover(() => useStore.getState().retryPersistence())}>{t('Retry')}</Button><Button type="button" size="sm" variant="ghost" onClick={() => recover(() => useStore.getState().undoPersistence())}>{t('Undo')}</Button><Button type="button" size="sm" variant="ghost" onClick={() => { useStore.getState().cancelPersistence(); close() }}>{t('Cancel')}</Button></div>}</div>}
-    <div className="history-editor-list">{draft.entries.map((entry, index) => <HistoryEntry key={entry._draftKey} entry={entry} index={index} error={fieldErrors[entry._draftKey]}
-      onChange={next => updateEntry(entry._draftKey, next)} onRemove={() => removeEntry(entry._draftKey)} onMove={direction => moveEntry(entry._draftKey, direction)} />)}</div>
-    <Button type="button" variant="tinted" icon="plus" onClick={addExercise}>{t('Add exercise')}</Button>
-    <div className="history-editor-actions"><Button type="button" variant="primary" onClick={save}>{t('Save changes')}</Button><Button type="button" variant="ghost" onClick={close}>{t('Cancel')}</Button></div>
-  </div>
-}
-
-function WorkoutTimestampEditor({ workout, close, onSaved }) {
-  const [start, setStart] = useState(() => formatWorkoutDateTime(workout.start))
-  const [end, setEnd] = useState(() => formatWorkoutDateTime(workout.end))
-  const save = () => {
-    const result = parseWorkoutTimestampEdit(start, end)
-    if (!result.ok) {
-      toast(t(result.reason === 'order' ? 'End time must be on or after start time' : 'Enter valid start and end times'))
-      return
-    }
-    update(s => {
-      const found = s.workouts.find(item => item.id === workout.id)
-      if (!found) return
-      // Duration is intentionally derived from end-start. Volume, PRs, and all set data remain
-      // untouched; d follows the edited local start date so calendar/stats use the same key.
-      found.start = result.start
-      found.end = result.end
-      found.d = result.d
-    })
-    close()
-    onSaved?.()
-    toast(t('Workout timestamps updated'))
-  }
-  return <>
-    <h3>{t('Edit workout')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Calendar day follows the start time, including overnight workouts.')}</div>
-    <label className="small dim" htmlFor="workout-start-time">{t('Start time')}</label>
-    <TextField id="workout-start-time" type="datetime-local" step="1" value={start}
-      aria-label={t('Start time')} onChange={e => setStart(e.target.value)} />
-    <div style={{ height: 10 }} />
-    <label className="small dim" htmlFor="workout-end-time">{t('End time')}</label>
-    <TextField id="workout-end-time" type="datetime-local" step="1" value={end}
-      aria-label={t('End time')} onChange={e => setEnd(e.target.value)} />
-    <div style={{ height: 14 }} />
-    <Button variant="primary" onClick={save}>{t('Save changes')}</Button>
-    <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
-  </>
+export function startHistoricalWorkoutEdit(workout) {
+  const current = S().workouts.find(item => item.id === workout?.id)
+  if (!current) return false
+  let started = false
+  const saved = update(state => {
+    const found = state.workouts.find(item => item.id === current.id)
+    if (!found) return
+    state.active = historicalWorkoutToActive(found, state.active)
+    started = true
+  }, false)
+  if (!saved || !started) return false
+  // A historical edit is not a live workout: never carry a normal session's rest timer into it.
+  ui().stopRest()
+  ui().stopWork()
+  nav('/workout')
+  return true
 }
 
 function WorkoutDetail({ w, close }) {
   const st = useStore(s => s.S)
   const current = st.workouts.find(item => item.id === w.id) || w
-  const [editing, setEditing] = useState(false)
-  const [editingExercises, setEditingExercises] = useState(false)
-  if (editingExercises) return <HistoryEditor workout={current} close={close} onSaved={() => setEditingExercises(false)} />
-  if (editing) return <WorkoutTimestampEditor workout={current} close={close} onSaved={() => setEditing(false)} />
   return <>
-    <div className="row between" style={{ marginBottom: 8, paddingRight: 48 }}><h3 style={{ margin: 0, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => setEditing(true)} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
+    <div className="row between" style={{ marginBottom: 8, paddingRight: 48 }}><h3 style={{ margin: 0, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => { close(); startHistoricalWorkoutEdit(current) }} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {current.entries.map((e, i) => {
       const ex = EXIDX[e.id]
@@ -1267,8 +1120,7 @@ function WorkoutDetail({ w, close }) {
         </div>
       </div>
     })}
-    <Button variant="tinted" icon="pencil" onClick={() => setEditingExercises(true)}>{t('Edit exercises')}</Button>
-    <div className="small dim history-edit-disclosure">{t('Only this completed history record will change. Saved routines and your active workout are untouched.')}</div>
+    <div className="small dim" style={{ margin: '8px 0 14px', lineHeight: 1.4 }}>{t('Only this completed history record will change. Saved routines and your active workout are untouched.')}</div>
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== current.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
   </>
 }

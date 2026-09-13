@@ -12,8 +12,9 @@ import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
 import Media from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry, buildImportedWorkoutEntries } from '../sheets.jsx'
+import { cloneHistoryValue, historyWorkoutFromActive, markHistoricalAddition } from '../lib/history-edit.js'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
+import { Button, Check, NumberField, TextArea, TextField } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 
 /* ---------- start chooser (no active workout) ---------- */
@@ -296,6 +297,7 @@ function ActiveWorkout() {
   const undoPersistence = useStore(s => s.undoPersistence)
   const cancelPersistence = useStore(s => s.cancelPersistence)
   const A = S.active
+  const isHistorical = !!A.historicalEdit
   const units = supersetUnits(A.entries)
   const cur = Math.min(A.cur, Math.max(0, A.entries.length - 1))
   const unit = A.entries.length ? unitOf(units, cur) : []
@@ -345,7 +347,13 @@ function ActiveWorkout() {
     resumed.current = true
     focusEntry(A.entries[cur].sid)
   }, [A.entries, cur])
-  useEffect(() => { useUI.getState().resumeRest() }, [])
+  useEffect(() => {
+    if (isHistorical) {
+      stopRest()
+      return
+    }
+    useUI.getState().resumeRest()
+  }, [isHistorical, stopRest])
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
@@ -354,14 +362,14 @@ function ActiveWorkout() {
     if (!s.active?.entries?.[idx]) return
     fn(s.active.entries[idx])
     touchActiveRecord(s.active)
-  }, true)
+  }, !isHistorical)
   const setNote = (idx, raw) => update(s => {
     const entry = s.active?.entries?.[idx]
     if (entry) {
       s.active.entries[idx] = updateExerciseNote(entry, raw)
       touchActiveRecord(s.active)
     }
-  }, true)
+  }, !isHistorical)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
   const setField = (idx, i, field, v, side) => mutEntry(idx, e => {
@@ -382,7 +390,7 @@ function ActiveWorkout() {
       s.active.entries = moved.entries
       s.active.cur = remapCur(before, s.active.cur, moved.entries)
       touchActiveRecord(s.active)
-    })
+    }, !isHistorical)
     const position = result.position + 1
     const moved = A.entries.find(e => e.sid === result.movedSid)
     if (moved) {
@@ -410,7 +418,7 @@ function ActiveWorkout() {
           s.active.entries[idx] = result.entry
           touchActiveRecord(s.active)
         }
-      }, true)
+      }, !isHistorical)
     }, null, routine)
   }
   const removeExercise = idx => {
@@ -439,7 +447,7 @@ function ActiveWorkout() {
           focusSid = result.focusSid
           removed = true
           touchActiveRecord(active)
-        })
+        }, !isHistorical)
         if (!removed) return
         if (hasRemovedRest) stopRest()
         if (focusSid) focusEntry(focusSid)
@@ -490,11 +498,12 @@ function ActiveWorkout() {
       if (!active || !source?.ex?.length) return
       imported = buildImportedWorkoutEntries(s, source, active.entries)
       if (!imported.length) return
+      if (isHistorical) imported = imported.map(markHistoricalAddition)
       const firstIndex = active.entries.length
       active.entries.push(...imported)
       active.cur = firstIndex
       touchActiveRecord(active)
-    })
+    }, !isHistorical)
     if (!imported?.length) {
       useUI.getState().toast(t('That routine is no longer available'))
       return
@@ -502,6 +511,49 @@ function ActiveWorkout() {
     closePicker()
     focusEntry(imported[0].sid)
     useUI.getState().toast(t('{0} exercises added to this workout', imported.length), { kind: 'success' })
+  }
+
+  const cancelHistorical = () => {
+    const context = A.historicalEdit
+    update(s => {
+      const found = s.workouts.find(item => item.id === context.workoutId)
+      if (found && context.originalWorkout) Object.assign(found, cloneHistoryValue(context.originalWorkout))
+      s.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null
+    }, false)
+    stopRest()
+    useUI.getState().stopWork()
+    nav(context.returnPath || '/history')
+  }
+  const saveHistorical = async () => {
+    const active = useStore.getState().S.active
+    const context = active?.historicalEdit
+    const result = historyWorkoutFromActive(active)
+    if (!result.ok || !context) {
+      useUI.getState().toast(t('Could not save your workout'))
+      return
+    }
+    stopRest()
+    useUI.getState().stopWork()
+    const saved = update(s => {
+      const found = s.workouts.find(item => item.id === context.workoutId)
+      if (found) Object.assign(found, result.workout)
+    }, false)
+    if (!saved) {
+      useUI.getState().toast(t('Could not save your workout'))
+      return
+    }
+    if (useStore.getState().user) {
+      const remote = cloneHistoryValue(useStore.getState().S)
+      remote.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null
+      if (!(await useStore.getState().pushState(remote))) return
+    }
+    const restored = update(s => { s.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null }, false)
+    if (!restored) {
+      useUI.getState().toast(t('Could not save your workout'))
+      return
+    }
+    useUI.getState().toast(t('Saved'))
+    nav(context.returnPath || '/history')
   }
 
   const toggle = (idx, i, side) => {
@@ -518,9 +570,9 @@ function ActiveWorkout() {
         beep(S.sound, 1040, 0.12); vibrate(30)
         const isLastExInUnit = idx === unit[unit.length - 1]
           const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => projectSideSet(x).done))
-        if (isLastExInUnit && !unitDone) startRest(S.restSec, A.entries[idx].sid)
-        else if (unitDone) stopRest()
-        if (unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
+        if (!isHistorical && isLastExInUnit && !unitDone) startRest(S.restSec, A.entries[idx].sid)
+        else if (!isHistorical && unitDone) stopRest()
+        if (!isHistorical && unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
         // Only loaded reps training has a "working weight" worth confirming — a bodyweight
         // plank has nothing to put in that slider, and neither does a set of push-ups
         // (issue #32: the fewest taps that still record what happened).
@@ -528,7 +580,7 @@ function ActiveWorkout() {
           const p = projectSideSet(x)
           return p.w > 0 || x.left?.w > 0 || x.right?.w > 0
         }))
-        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (loaded && !e.asked) { e.asked = true; askTop = true } }
+        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (!isHistorical && loaded && !e.asked) { e.asked = true; askTop = true } }
       }
     })
     // reps: topWeight first (it chains into the finish/continue prompt on the last unit).
@@ -542,7 +594,7 @@ function ActiveWorkout() {
   // Live-presence heartbeat so the admin dashboard can show who's training now. Signed-in only —
   // guests have no server session. Reads fresh state each tick so progress stays current.
   useEffect(() => {
-    if (!useStore.getState().user) return
+    if (isHistorical || !useStore.getState().user) return
     let stopped = false
     const ping = active => {
       const A2 = useStore.getState().S.active
@@ -564,7 +616,7 @@ function ActiveWorkout() {
       try { navigator.sendBeacon?.('/api/activity', new Blob([JSON.stringify({ active: false })], { type: 'application/json' })) } catch { /* */ }
       api('/api/activity', { method: 'POST', body: JSON.stringify({ active: false }) }).catch(() => {})
     }
-  }, [])
+  }, [isHistorical])
 
   const renderCard = (entryIdx, unitIndex, members) => {
     const entry = A.entries[entryIdx]
@@ -594,32 +646,47 @@ function ActiveWorkout() {
     let addedSid
     commitPickerSelection(() => update(s => {
       const routine = s.routines.find(r => r.id === s.active.routineId)
-      const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
+      const added = isHistorical
+        ? markHistoricalAddition(buildWorkoutEntry(s, cfg, routine, { id: ex.id }))
+        : buildWorkoutEntry(s, cfg, routine, { id: ex.id })
       addedSid = added.sid
       s.active.entries.push(added)
       s.active.cur = s.active.entries.length - 1
       touchActiveRecord(s.active)
     }), closePicker)
     if (addedSid) focusEntry(addedSid)
-  }, null, S.routines.find(r => r.id === A.routineId)), {
+  }, null, S.routines.find(r => r.id === A.routineId), { submitLabel: 'Add exercise' }), {
     mode: 'active-workout',
     onRoutineImport: importRoutine,
   })
 
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="hdr">
-      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
-      <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
-      <button className="iconbtn acc-ink" aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
+      <button className="iconbtn" aria-label={t(isHistorical ? 'Cancel' : 'Discard')} onClick={isHistorical ? cancelHistorical : () => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
+      <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1>{isHistorical ? <div className="sub">{t('Edit workout')}</div> : <div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div>}</div>
+      <button className="iconbtn acc-ink" aria-label={t(isHistorical ? 'Save changes' : 'Finish')} onClick={isHistorical ? saveHistorical : finishWorkout}><Icon name={isHistorical ? 'check' : 'check'} /></button>
     </div>
+    {isHistorical && <div className="card history-date-fields" style={{ marginBottom: 12 }}>
+      <label className="history-field"><span>{t('Workout day')}</span><TextField type="date" value={A.d || ''} onChange={e => update(s => {
+        if (!s.active || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return
+        s.active.d = e.target.value
+        touchActiveRecord(s.active)
+      }, false)} /></label>
+    </div>}
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
     {persistence?.status === 'failed' && <div className="card persistence-recovery" role="alert" aria-live="assertive">
-      <strong>{t('Could not save your workout')}</strong>
+       <strong>{t('Could not save your workout')}</strong>
       <div>{t('Your changes are still visible. Choose an action to recover.')}</div>
       <div className="row" role="group" aria-label={t('Recovery')}>
-        <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
-        <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
-        <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
+         {isHistorical ? <>
+           <Button size="sm" onClick={saveHistorical}>{t('Retry')}</Button>
+           <Button size="sm" onClick={cancelHistorical}>{t('Undo')}</Button>
+           <Button size="sm" onClick={cancelHistorical}>{t('Cancel')}</Button>
+         </> : <>
+           <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
+           <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
+           <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
+         </>}
       </div>
     </div>}
 
@@ -637,8 +704,8 @@ function ActiveWorkout() {
     {(() => {
        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
       const allDone = A.entries.length > 0 && exDone === A.entries.length
-      return <button className={allDone ? 'btn primary' : 'btn tinted'} onClick={finishWorkout}>
-        {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
+       return <button className={isHistorical ? 'btn primary' : allDone ? 'btn primary' : 'btn tinted'} onClick={isHistorical ? saveHistorical : finishWorkout}>
+         {isHistorical ? t('Save changes') : allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
       </button>
     })()}
     <div style={{ height: 40 }} />

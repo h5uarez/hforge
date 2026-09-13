@@ -29,6 +29,7 @@ const claimVisibleEvent = sessionId => {
 // showing a toast whenever both paths can observe the event.
 export default function InactivityReminder() {
   const sessionId = useStore(s => s.S.active?.id || null)
+  const historical = useStore(s => !!s.S.active?.historicalEdit)
   const editAt = useStore(s => s.S.active?.lastRecordEditAt ?? null)
   const sent = useStore(s => s.S.active?.inactivityReminderSent === true)
   const userId = useStore(s => s.user?.id || null)
@@ -37,6 +38,7 @@ export default function InactivityReminder() {
   const toast = useUI(s => s.toast)
 
   useEffect(() => {
+    if (historical) return undefined
     let disposed = false
     const snapshot = () => {
       const state = useStore.getState()
@@ -187,21 +189,21 @@ export default function InactivityReminder() {
       globalThis.removeEventListener?.('hforge-push-changed', onPushChanged)
       if (MOBILE) void cancelActiveInactivity()
     }
-  }, [sessionId, editAt, sent, userId, restActive, timedWorkActive, toast])
+  }, [sessionId, historical, editAt, sent, userId, restActive, timedWorkActive, toast])
 
   // A session change is the explicit server-side cancellation boundary. Ordinary record edits
   // rerun the scheduling effect but do not cancel first, which preserves a sent marker during
   // that session and lets the API replace only a still-pending deadline.
   useEffect(() => {
-    if (MOBILE || !sessionId || !userId) return undefined
+    if (MOBILE || historical || !sessionId || !userId) return undefined
     const sid = sessionId
     return () => { void cancelInactivityPush(sid).catch(() => {}) }
-  }, [sessionId, userId])
+  }, [sessionId, historical, userId])
 
   // The service worker displays the event once and broadcasts an informational message. Matching
   // pages only recover the sent bit here; recovered sent markers deliberately do not toast.
   useEffect(() => {
-    if (MOBILE || typeof navigator === 'undefined' || !navigator.serviceWorker) return undefined
+    if (MOBILE || historical || typeof navigator === 'undefined' || !navigator.serviceWorker) return undefined
     const onMessage = event => {
       const payload = event.data?.type === 'hforge-push-displayed' ? event.data.payload : null
       const A = useStore.getState().S.active
@@ -216,12 +218,12 @@ export default function InactivityReminder() {
     }
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
-  }, [sessionId, userId, toast])
+  }, [sessionId, historical, userId, toast])
 
   // Capacitor notifies the WebView when a local notification is displayed in the foreground. Mark
   // the durable one-shot bit so a later foreground check cannot emit a second event.
   useEffect(() => {
-    if (!MOBILE) return undefined
+    if (!MOBILE || historical) return undefined
     let disposed = false
     let remove = () => {}
     void listenForActiveInactivity(() => {
@@ -236,7 +238,7 @@ export default function InactivityReminder() {
       else remove = cleanup
     })
     return () => { disposed = true; remove() }
-  }, [])
+  }, [historical])
 
   return null
 }

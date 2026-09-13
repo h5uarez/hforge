@@ -90,8 +90,9 @@ function Shell() {
       removeListener(listener)
     }
   }, [])
-  // bound to the workout, not to the route — checking Stats mid-session keeps the screen on
-  useWakeLock(!!S.active && S.keepAwake !== false)
+  // Bound to a live workout, not to the route. Historical editing reuses the active screen as a
+  // view-model, but must not keep the device awake as if a session were running.
+  useWakeLock(!!S.active && !S.active.historicalEdit && S.keepAwake !== false)
 
   const authed = user || isGuest
   // P0 boot skeleton: same heights as the real home (title band, week strip,
