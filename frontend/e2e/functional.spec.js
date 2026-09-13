@@ -1,6 +1,6 @@
 import { test, expect, assertCriticalVisible, assertNoHorizontalOverflow } from './fixtures.js'
 import { activeState, richState } from './synthetic-data.js'
-import { normalizeExerciseIds } from '../src/lib/exercise-ids.js'
+import { canonicalExerciseId, normalizeExerciseIds } from '../src/lib/exercise-ids.js'
 
 test('responsive navigation reaches every primary view', async ({ page, openApp }) => {
   await openApp({ state: 'rich' })
@@ -237,7 +237,7 @@ test('historical editing restores an already active workout after saving', async
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
-  expect(saved.active).toEqual(activeState.active)
+  expect(saved.active).toEqual(normalizeExerciseIds(activeState).active)
 })
 
 test('historical workout persists additions without mutating protected state', async ({ page, openApp }) => {
@@ -263,7 +263,7 @@ test('historical workout persists additions without mutating protected state', a
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
   expect(saved.routines).toEqual(normalizeExerciseIds(richState).routines)
   expect(saved.active).toBeNull()
-  expect(saved.workouts.some(workout => workout.name === 'Push Day' && workout.entries.filter(entry => entry.id === '0025').length === 2)).toBe(true)
+  expect(saved.workouts.some(workout => workout.name === 'Push Day' && workout.entries.filter(entry => entry.id === canonicalExerciseId('0025')).length === 2)).toBe(true)
 })
 
 test('active workout stays within a narrow mobile viewport', async ({ page, openApp }) => {
