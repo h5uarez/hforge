@@ -146,9 +146,6 @@ export function historyWorkoutFromActive(active) {
     workout: {
       ...original,
       id: context.workoutId,
-      d: active.d,
-      start: active.start,
-      end: active.end,
       entries,
     },
   }

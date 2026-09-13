@@ -991,13 +991,31 @@ describe('history editing foundations', () => {
     active.entries[0].plan = { kind: 'up' }
     active.entries[0].asked = true
     active.d = '2026-08-25'
+    active.start = 3000
+    active.end = 4000
     const result = historyWorkoutFromActive(active)
     expect(result.ok).toBe(true)
-    expect(result.workout).toMatchObject({ id: 'history-1', d: '2026-08-25', start: 1000, end: 2000 })
+    expect(result.workout).toMatchObject({ id: 'history-1', d: '2026-08-24', start: 1000, end: 2000 })
     expect(result.workout.entries[0]).toMatchObject({ id: LIFT, note: 'felt strong', target: { reps: 8, weight: 40 } })
     expect(result.workout.entries[0]).not.toHaveProperty('sid')
     expect(result.workout.entries[0]).not.toHaveProperty('plan')
     expect(result.workout.entries[0]).not.toHaveProperty('asked')
+  })
+
+  it('does not invent legacy timestamps when transient date fields are edited', () => {
+    const active = historicalWorkoutToActive({
+      id: 'history-date-only',
+      d: '2026-08-24',
+      entries: [entry(LIFT)],
+    })
+    active.d = '2026-08-25'
+    active.start = 3000
+    active.end = 4000
+
+    const result = historyWorkoutFromActive(active)
+    expect(result.workout.d).toBe('2026-08-24')
+    expect(result.workout).not.toHaveProperty('start')
+    expect(result.workout).not.toHaveProperty('end')
   })
 
   it('preserves an explicitly marked empty historical addition', () => {

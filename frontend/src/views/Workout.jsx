@@ -14,7 +14,7 @@ import Media from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry, buildImportedWorkoutEntries } from '../sheets.jsx'
 import { cloneHistoryValue, historyWorkoutFromActive, markHistoricalAddition } from '../lib/history-edit.js'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField, TextArea, TextField } from '../components/ui.jsx'
+import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 
 /* ---------- start chooser (no active workout) ---------- */
@@ -666,16 +666,6 @@ function ActiveWorkout() {
       <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1>{isHistorical ? <div className="sub">{t('Edit workout')}</div> : <div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div>}</div>
       <button className="iconbtn acc-ink" aria-label={t(isHistorical ? 'Save changes' : 'Finish')} onClick={isHistorical ? saveHistorical : finishWorkout}><Icon name={isHistorical ? 'check' : 'check'} /></button>
     </div>
-    {isHistorical && <div className="card history-date-fields" style={{ marginBottom: 12 }}>
-      <label className="history-field"><span>{t('Workout day')}</span><span className="history-date-control">
-        <Icon name="calendar" className="history-date-icon" />
-        <TextField className="history-date-input" type="date" value={A.d || ''} onChange={e => update(s => {
-          if (!s.active || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return
-          s.active.d = e.target.value
-          touchActiveRecord(s.active)
-        }, false)} />
-      </span></label>
-    </div>}
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
     {persistence?.status === 'failed' && <div className="card persistence-recovery" role="alert" aria-live="assertive">
        <strong>{t('Could not save your workout')}</strong>

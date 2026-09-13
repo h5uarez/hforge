@@ -451,7 +451,12 @@ function ExerciseDetail({ ex, close }) {
       {last && <div className="exercise-summary-last">
         <span className="exercise-summary-last-marker" aria-hidden="true">·</span>
         <span className="exercise-summary-last-copy"><span className="exercise-summary-last-label">{t('last')} {fmtDate(last.d)}:</span>{' '}
-          <span className="exercise-summary-sets">{last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}</span>
+          <span className="exercise-summary-sets" role="list" aria-label={t('Sets')}>
+            {last.sets.map((s, i) => {
+              const label = setLabel(ex.id, s, last.target)
+              return <span key={i} className="exercise-summary-set" role="listitem" aria-label={t('Set {0}', i + 1) + ': ' + label}>{label}</span>
+            })}
+          </span>
         </span>
       </div>}
     </div>}
