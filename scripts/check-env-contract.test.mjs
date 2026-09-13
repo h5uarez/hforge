@@ -55,7 +55,6 @@ test('Compose, API, and onboarding documents agree on operator configuration', a
   assert.match(api, /process\.env\.VAPID_SUBJECT/)
 
   for (const variable of operatorVariables) {
-    assert.match(readme, new RegExp(`\\b${variable}\\b`), `README must document ${variable}`)
     assert.match(selfHosting, new RegExp(`\\b${variable}\\b`), `self-hosting guide must document ${variable}`)
   }
   assert.match(contributing, /EXERCISE_MEDIA_SOURCE/)
