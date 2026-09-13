@@ -71,4 +71,17 @@ describe('selective workout backups', () => {
     const restored = Object.assign({ unit: 'kg', routines: [], workouts: [] }, JSON.parse(serializeBackup(state)))
     expect(restored.routines[0].ex[0].repsBySet).toEqual([1, 4, 3, 3, 3])
   })
+
+  it('writes legacy built-in IDs under their current Hevy identities', () => {
+    const state = {
+      unit: 'kg',
+      routines: [{ id: 'routine', ex: [{ id: '0025', sets: 3, reps: 8 }] }],
+      workouts: [{ id: 'workout', d: '2026-09-01', routineId: 'routine', entries: [{ id: '0025', target: { id: '0032' } }] }],
+      customEx: [],
+    }
+    const backup = createWorkoutBackup(state, ['2026-09-01'])
+    expect(backup.routines[0].ex[0].id).toBe('79D0BB3A')
+    expect(backup.workouts[0].entries[0]).toMatchObject({ id: '79D0BB3A', target: { id: 'C6272009' } })
+    expect(JSON.parse(serializeBackup(state)).routines[0].ex[0].id).toBe('79D0BB3A')
+  })
 })

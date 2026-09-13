@@ -12,14 +12,18 @@ import { EXIDX, isBodyweightEq, exerciseName } from './exercises.js'
 import { modeOf, fmtSec, isBw, isPerSide, sideReps, normalizeNote, normalizeRepsBySet, repsBySetText, effectiveRepsBySet, hasRepsBySet } from './history.js'
 import { uid, todayISO, DAYN, fmtNum, exCount } from './format.js'
 import { t } from './i18n.js'
+import { canonicalExerciseId } from './exercise-ids.js'
 
 const PLAN_FMT = 1
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]   // Mon-first, matching the Plan screen
 
 // Keep only the meaningful config fields, so the file stays small and readable.
-export function cleanEx(e) {
-  const o = { id: e.id, sets: e.sets }
-  const mode = modeOf(e)
+export function cleanEx(e, resolveId = canonicalExerciseId) {
+  const id = resolveId(e.id)
+  const o = { id, sets: e.sets }
+  // Resolve before deriving mode/bodyweight so an old mapped cardio or bodyweight ID does not
+  // fall through to the generic reps behavior while an old plan is being exported/imported.
+  const mode = modeOf({ ...e, id })
   if (mode === 'cardio') {
     if (e.min != null) o.min = e.min
     if (e.speed != null) o.speed = e.speed
@@ -39,7 +43,7 @@ export function cleanEx(e) {
   }
   // How the exercise is logged travels too (issues #31/#32) — the bodyweight flag only when
   // it disagrees with the catalogue, since agreeing is what the other end already assumes.
-  if (e.bodyweight != null && e.bodyweight !== isBodyweightEq(e.id)) o.bodyweight = e.bodyweight
+  if (e.bodyweight != null && e.bodyweight !== isBodyweightEq(id)) o.bodyweight = e.bodyweight
   // Only on reps work — `side` counts reps, and a timed hold has none to split.
   if (e.side && mode !== 'time' && mode !== 'cardio') o.side = true
   // Progression settings travel with the plan — a shared Greyskull routine that arrives
@@ -68,8 +72,10 @@ export function cleanEx(e) {
 
 /** Build the shareable bundle: every routine, the week schedule, referenced customs. */
 export function buildPlanBundle(S, name) {
+  const customIds = new Set((S.customEx || []).map(c => c.id))
+  const resolveId = id => customIds.has(id) ? id : canonicalExerciseId(id)
   const routines = (S.routines || []).map(r => ({
-    id: r.id, name: r.name, emoji: r.emoji, ...(r.prog ? { prog: r.prog } : {}), ex: (r.ex || []).map(cleanEx)
+    id: r.id, name: r.name, emoji: r.emoji, ...(r.prog ? { prog: r.prog } : {}), ex: (r.ex || []).map(e => cleanEx(e, resolveId))
   }))
   const usedIds = new Set(routines.flatMap(r => r.ex.map(e => e.id)))
   const customEx = (S.customEx || [])
@@ -97,16 +103,17 @@ export function parsePlan(raw) {
   }
   const customEx = (Array.isArray(data.customEx) ? data.customEx : []).filter(c => c && c.id)
   const known = new Set(customEx.map(c => c.id))
+  const resolveId = id => known.has(id) ? id : canonicalExerciseId(id)
   let dropped = 0
   const routines = data.routines.filter(r => r && Array.isArray(r.ex)).map(r => ({
     ...r,
     // Re-clean imported exercises so a hand-edited file cannot smuggle a session `note` into
     // a routine or retain unrelated fields. Old files remain valid because cleanEx is additive.
-    ex: r.ex.filter(e => {
+    ex: r.ex.map(e => e && typeof e === 'object' ? { ...e, id: resolveId(e.id) } : e).filter(e => {
       const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
       if (!ok) dropped++
       return ok
-    }).map(cleanEx)
+    }).map(e => cleanEx(e, id => known.has(id) ? id : canonicalExerciseId(id)))
   }))
   return {
     name: (data.name || '').trim(),
@@ -130,7 +137,9 @@ export function parsePlan(raw) {
 export function mergePlan(s, bundle, { schedule } = {}) {
   s.customEx = s.customEx || []
   const exIdMap = {}
-  bundle.customEx.forEach(c => {
+  const customIds = new Set((bundle.customEx || []).map(c => c.id))
+  const resolveId = id => customIds.has(id) ? id : canonicalExerciseId(id)
+  ;(bundle.customEx || []).forEach(c => {
     const same = s.customEx.find(x => (x.n || '').toLowerCase() === (c.n || '').toLowerCase() && x.bp === c.bp)
     if (same) { exIdMap[c.id] = same.id; return }
     const nid = uid()
@@ -146,7 +155,7 @@ export function mergePlan(s, bundle, { schedule } = {}) {
       name: r.name || t('Shared routine'),
       emoji: r.emoji,
       ...(r.prog ? { prog: r.prog } : {}),
-      ex: (r.ex || []).map(e => ({ ...cleanEx(e), id: exIdMap[e.id] || e.id }))
+      ex: (r.ex || []).map(e => ({ ...cleanEx(e, resolveId), id: exIdMap[e.id] || resolveId(e.id) }))
     })
   })
   if (schedule) {
@@ -197,7 +206,7 @@ function units(ex) {
 function routineHTML(r, unit) {
   const rows = units(r.ex).map(u => {
     const items = u.map(e => {
-      const ex = EXIDX[e.id]
+      const ex = EXIDX[e.id] || EXIDX[canonicalExerciseId(e.id)]
       const name = ex ? exerciseName(ex) : t('Unknown exercise')
       const part = ex && ex.bp && ex.bp !== 'cardio' ? `<span class="part">${esc(t(ex.bp))}</span>` : ''
       return `<div class="ex"><div class="ex-n">${esc(name)}${part}</div><div class="ex-s">${esc(scheme(e, unit))}</div></div>`

@@ -6,9 +6,10 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { EXDB, HEVY_EXDB } from '../frontend/src/lib/catalog.js'
+import { EXDB, HEVY_EXDB, LEGACY_EXDB } from '../frontend/src/lib/catalog.js'
 import { HEVY_CATALOG_META } from '../frontend/src/lib/hevy-exercises-data.js'
 import { HEVY_COMPATIBILITY } from '../frontend/src/lib/hevy-compatibility.js'
+import { LEGACY_TO_HEVY } from '../frontend/src/lib/exercise-ids.js'
 import { HEVY_MEDIA_MANIFEST, HEVY_MEDIA_SUMMARY } from '../frontend/src/lib/hevy-media-manifest.js'
 import { EXERCISE_NAMES_ES } from '../frontend/src/lib/exercise-names.es.js'
 import { default as SPANISH_INSTRUCTIONS } from '../frontend/src/instr/es.js'
@@ -51,13 +52,20 @@ function audit() {
   check(source.length === 451, `source active records: ${source.length}`)
   check(HEVY_EXDB.length === 451, `generated Hevy records: ${HEVY_EXDB.length}`)
   check(new Set(HEVY_EXDB.map(ex => ex.hevyId)).size === HEVY_EXDB.length, 'duplicate source IDs in generated catalog')
-  check(new Set(HEVY_EXDB.map(ex => ex.id)).size === HEVY_EXDB.length, 'duplicate app IDs in generated catalog')
+  check(new Set(HEVY_EXDB.map(ex => ex.id)).size === HEVY_EXDB.length, 'duplicate visible IDs in generated catalog')
+  check(HEVY_EXDB.every(ex => ex.id === ex.hevyId), 'generated Hevy rows still use legacy IDs')
+  check(Object.keys(HEVY_COMPATIBILITY).length === 38, 'compatibility map does not contain 38 reviewed records')
   check(new Set(EXDB.map(ex => ex.id)).size === EXDB.length, 'duplicate visible catalog IDs')
+  check(EXDB.length === 465, `visible catalog records: ${EXDB.length}`)
+  check(Object.entries(HEVY_COMPATIBILITY).every(([hevyId, entry]) =>
+    EXDB.some(ex => ex.id === hevyId) && !EXDB.some(ex => ex.id === entry.appId)), 'mapped legacy rows remain visible')
+  check(LEGACY_EXDB.filter(ex => !LEGACY_TO_HEVY[ex.id]).every(ex => EXDB.some(row => row.id === ex.id)), 'unmapped legacy rows are missing')
   check(!EXDB.some(ex => ex.id === '2330'), 'retired app ID 2330 is visible')
   check(!HEVY_EXDB.some(ex => ex.id === '2330' || ex.hevyId === '2330'), 'retired app ID 2330 is generated')
   check(source.every(ex => HEVY_EXDB.some(record => record.hevyId === ex.id)), 'source record missing from generated catalog')
   check(Object.keys(HEVY_COMPATIBILITY).every(id => sourceById.has(id)), 'compatibility map references an absent source ID')
   check(HEVY_CATALOG_META.sourceRecords === 451, 'generated source metadata is not 451')
+  check(HEVY_CATALOG_META.mappedRecords === 38, 'generated mapped-record metadata is not 38')
   check(HEVY_CATALOG_META.unavailableInstructionRecords === 18, `unavailable instruction metadata: ${HEVY_CATALOG_META.unavailableInstructionRecords}`)
   check(HEVY_CATALOG_META.spanishInstructionRecords === 433, `Spanish instruction metadata: ${HEVY_CATALOG_META.spanishInstructionRecords}`)
 
@@ -76,6 +84,7 @@ function audit() {
     check(isUnavailableInstruction(raw) === !Object.hasOwn(SPANISH_INSTRUCTIONS, record.id), `sentinel coverage mismatch: ${record.hevyId}`)
   }
   check(Object.keys(EXERCISE_NAMES_ES).length === EXDB.length, 'Spanish map does not cover visible catalog exactly')
+  check(HEVY_MEDIA_MANIFEST.every(row => row.appId === row.hevyId), 'media manifest still uses legacy visible IDs')
   check(HEVY_MEDIA_MANIFEST.length === 451, `media manifest records: ${HEVY_MEDIA_MANIFEST.length}`)
   check(HEVY_MEDIA_SUMMARY.records === 451, 'media summary records are not 451')
   check(HEVY_MEDIA_SUMMARY.videos === 449, `media video count: ${HEVY_MEDIA_SUMMARY.videos}`)

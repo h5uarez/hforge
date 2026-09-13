@@ -6,14 +6,17 @@ import {
   EXDB, EXIDX, HEVY_EXDB, exerciseMatchNames, exerciseMatches, exerciseName,
   exerciseNameAudit, registerCustom,
 } from './exercises.js'
+import { LEGACY_EXDB } from './catalog.js'
+import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES } from './hevy-compatibility.js'
 import { matchExercise } from './import-csv.js'
 import { planPrintHTML } from './plan-share.js'
 import { setLang } from './i18n.js'
 import { auditExerciseNames } from '../../scripts/audit-exercise-names.mjs'
 import { stratifiedExerciseNameSample } from '../../scripts/review-exercise-names.mjs'
-import { normalizeExerciseIds } from './exercise-ids.js'
+import { LEGACY_TO_HEVY, canonicalExerciseId, hasLegacyExerciseIds, normalizeExerciseIds } from './exercise-ids.js'
 
 const byId = id => EXIDX[id]
+const visibleId = id => LEGACY_TO_HEVY[id] || id
 const POWERLIFTING_ADDITIONS = [
   { id: '5214', en: 'Chest Supported T Bar Row', es: 'Remo en T con Apoyo de Pecho', aliases: ['remo T pecho apoyado', 'chest supported T bar row'], media: ['6A8D3193.jpg', null], video: '6A8D3193.mp4' },
   { id: '5218', en: 'Hip Thrust (Barbell)', es: 'Empuje de Caderas (Barra)', aliases: ['hip thrust barra'], media: ['D57C2EC7.jpg', null], video: 'D57C2EC7.mp4' },
@@ -37,47 +40,79 @@ afterEach(async () => {
 describe('Spain-Spanish exercise names', () => {
   it('keeps every catalog id unique and canonical English names untouched', () => {
     expect(HEVY_EXDB).toHaveLength(451)
-    expect(EXDB.length).toBeGreaterThanOrEqual(451)
+    expect(EXDB).toHaveLength(465)
     expect(new Set(HEVY_EXDB.map(ex => ex.hevyId)).size).toBe(451)
+    expect(HEVY_EXDB.every(ex => ex.id === ex.hevyId)).toBe(true)
     expect(new Set(EXDB.map(ex => ex.id)).size).toBe(EXDB.length)
     expect(byId('2330')).toBeUndefined()
-    expect(byId('0652').n).toBe('Pull Up')
-    expect(byId('0032').n).toBe('Deadlift (Barbell)')
+    expect(byId(visibleId('0652')).n).toBe('Pull Up')
+    expect(byId(visibleId('0032')).n).toBe('Deadlift (Barbell)')
     expect(Object.keys(EXERCISE_NAMES_ES)).toHaveLength(EXDB.length)
     expect(Object.keys(EXERCISE_NAMES_ES).every(id => !!byId(id))).toBe(true)
     expect(Object.values(EXERCISE_NAMES_ES).every(name => !!name.trim())).toBe(true)
   })
 
-  it('normalizes the merged legacy ID in persisted exercise data', () => {
+  it('normalizes every persisted exercise-ID boundary without touching custom or routine IDs', () => {
     const state = normalizeExerciseIds({
-      routines: [{ ex: [{ id: '2330' }] }],
-      workouts: [{ entries: [{ id: '2330', target: { id: '2330' } }], prs: ['2330'] }],
-      active: { entries: [{ id: '2330' }] },
-      exWeights: { '2330': { w: 40 }, '0198': { w: 50 } },
+      routines: [{ id: '0025', ex: [{ id: '0025', target: { id: '0032' }, unknown: 'keep' }, { id: '0025' }] }],
+      workouts: [{ id: 'workout-0025', routineId: '0025', entries: [{ id: '0198', target: { id: '2330' }, sets: [{ w: 40 }] }], prs: ['0025', '2330'] }],
+      active: { entries: [{ id: '0652', target: { id: '0251' } }] },
+      customEx: [{ id: '0025', n: 'User exercise' }],
+      exWeights: {
+        '0025': { w: 100, d: '2024-01-01', source: 'old' },
+        '79D0BB3A': { w: 90, d: '2025-01-01', source: 'new' },
+        '0198': { w: 75, d: '2024-01-01', source: 'old' },
+        '6A6C31A5': { w: 75, d: '2025-01-01', source: 'new' },
+      },
     })
-    expect(state.routines[0].ex[0].id).toBe('0198')
-    expect(state.workouts[0].entries[0]).toMatchObject({ id: '0198', target: { id: '0198' } })
-    expect(state.workouts[0].prs).toEqual(['0198'])
-    expect(state.active.entries[0].id).toBe('0198')
-    expect(state.exWeights).toEqual({ '0198': { w: 50 } })
+    expect(state.routines[0]).toMatchObject({ id: '0025' })
+    expect(state.routines[0].ex).toEqual([
+      { id: '79D0BB3A', target: { id: 'C6272009' }, unknown: 'keep' },
+      { id: '79D0BB3A' },
+    ])
+    expect(state.workouts[0]).toMatchObject({ id: 'workout-0025', routineId: '0025' })
+    expect(state.workouts[0].entries[0]).toMatchObject({ id: '6A6C31A5', target: { id: '6A6C31A5' } })
+    expect(state.workouts[0].prs).toEqual(['79D0BB3A', '6A6C31A5'])
+    expect(state.active.entries[0]).toMatchObject({ id: '1B2B1E7C', target: { id: '6FCD7755' } })
+    expect(state.customEx).toEqual([{ id: '0025', n: 'User exercise' }])
+    expect(state.exWeights).toEqual({
+      '79D0BB3A': { w: 100, d: '2024-01-01', source: 'old' },
+      '6A6C31A5': { w: 75, d: '2025-01-01', source: 'new' },
+    })
+    expect(canonicalExerciseId('2330')).toBe('6A6C31A5')
+    expect(hasLegacyExerciseIds({ routines: [{ ex: [{ id: '2330' }] }] })).toBe(true)
+    expect(hasLegacyExerciseIds({ routines: [{ ex: [{ id: '6A6C31A5' }] }] })).toBe(false)
+  })
+
+  it('keeps every old mapped name resolving to the new Hevy row', () => {
+    for (const [hevyId, { appId }] of Object.entries(HEVY_COMPATIBILITY)) {
+      const legacy = LEGACY_EXDB.find(ex => ex.id === appId)
+      expect(legacy, appId).toBeDefined()
+      for (const label of [legacy.n, LEGACY_EXERCISE_DISPLAY_ALIASES_ES[appId]]) {
+        expect(exerciseMatches(byId(hevyId), label), `${appId}: ${label}`).toBe(true)
+        // "hip thrust" is also the canonical source name of a distinct unqualified Hevy row;
+        // the explicit barbell alias remains the deterministic way to select this mapped row.
+        if (label !== 'hip thrust') expect(matchExercise(label), `${appId}: ${label}`).toBe(hevyId)
+      }
+    }
   })
 
   it('uses established Spanish terms while retaining variant descriptors', () => {
-    expect(exerciseName(byId('0251'), 'es-ES')).toBe('Fondos')
-    expect(exerciseName(byId('0652'), 'es')).toBe('Dominada')
-    expect(exerciseName(byId('0043'), 'es')).toBe('Sentadilla Profunda')
-    expect(exerciseName(byId('0032'), 'es')).toBe('Peso Muerto (Barra)')
-    expect(exerciseName(byId('0198'), 'es')).toBe('Jalón al Pecho (Cable)')
-    expect(exerciseName(byId('0334'), 'es')).toBe('Elevación Lateral (Mancuerna)')
-    expect(exerciseName(byId('1401'), 'es')).toBe('Muscle Up')
-    expect(exerciseName(byId('0237'), 'es')).toBe('Jalón con cuerda de brazos rectos')
+    expect(exerciseName(byId(visibleId('0251')), 'es-ES')).toBe('Fondos')
+    expect(exerciseName(byId(visibleId('0652')), 'es')).toBe('Dominada')
+    expect(exerciseName(byId(visibleId('0043')), 'es')).toBe('Sentadilla Profunda')
+    expect(exerciseName(byId(visibleId('0032')), 'es')).toBe('Peso Muerto (Barra)')
+    expect(exerciseName(byId(visibleId('0198')), 'es')).toBe('Jalón al Pecho (Cable)')
+    expect(exerciseName(byId(visibleId('0334')), 'es')).toBe('Elevación Lateral (Mancuerna)')
+    expect(exerciseName(byId(visibleId('1401')), 'es')).toBe('Muscle Up')
+    expect(exerciseName(byId(visibleId('0237')), 'es')).toBe('Jalón con cuerda de brazos rectos')
     expect(exerciseName(byId('0184'), 'es')).toBe('Pullover Tumbado con Cuerda en Polea')
     expect(EXDB.some(ex => ex.n === 'Hip Thrust')).toBe(true)
   })
 
   it('adds curated powerlifting variants with deliberate media and matching', () => {
     for (const addition of POWERLIFTING_ADDITIONS) {
-      const ex = byId(addition.id)
+      const ex = byId(visibleId(addition.id))
       expect(ex, addition.id).toBeDefined()
       expect(ex.n, addition.id).toBe(addition.en)
       expect(exerciseName(ex, 'es'), addition.id).toBe(addition.es)
@@ -85,18 +120,18 @@ describe('Spain-Spanish exercise names', () => {
       expect(ex.video, addition.id).toBe(addition.video)
       expect(ex.st.length, addition.id).toBeGreaterThan(0)
       expect(exerciseMatches(ex, addition.es), addition.id).toBe(true)
-      expect(matchExercise(addition.en), addition.en).toBe(addition.id)
-      expect(matchExercise(addition.es), addition.es).toBe(addition.id)
+      expect(matchExercise(addition.en), addition.en).toBe(visibleId(addition.id))
+      expect(matchExercise(addition.es), addition.es).toBe(visibleId(addition.id))
       for (const alias of addition.aliases) {
         expect(exerciseMatches(ex, alias), alias).toBe(true)
-        expect(matchExercise(alias), alias).toBe(addition.id)
+        expect(matchExercise(alias), alias).toBe(visibleId(addition.id))
       }
     }
   })
 
   it('adds the approved catalog corrections with precise names, muscles, media, and matching', () => {
     for (const addition of CATALOG_CORRECTIONS) {
-      const ex = byId(addition.id)
+      const ex = byId(visibleId(addition.id))
       expect(ex, addition.id).toBeDefined()
       expect(ex.n, addition.id).toBe(addition.en)
       expect(exerciseName(ex, 'es'), addition.id).toBe(addition.es)
@@ -107,7 +142,7 @@ describe('Spain-Spanish exercise names', () => {
       expect(ex.st.length, addition.id).toBeGreaterThan(0)
       for (const alias of addition.aliases) {
         expect(exerciseMatches(ex, alias), alias).toBe(true)
-        expect(matchExercise(alias), alias).toBe(addition.id)
+        expect(matchExercise(alias), alias).toBe(visibleId(addition.id))
       }
     }
   })
@@ -136,12 +171,13 @@ describe('Spain-Spanish exercise names', () => {
 
   it('maps the generic hip thrust alias to the barbell record', () => {
     expect(matchExercise('hip thrust')).toBe('92B8C7E1')
-    expect(exerciseMatches(byId('5218'), 'hip thrust barra')).toBe(true)
+    expect(exerciseMatches(byId(visibleId('5218')), 'hip thrust barra')).toBe(true)
+    expect(matchExercise('hip thrust barra')).toBe(visibleId('5218'))
   })
 
   it('keeps existing powerlifting records singular instead of duplicating them', () => {
     const existingIds = [
-      '0025', '0032', '0043', '0085', '0739', '0841', '1435', '1436', '1459',
+      visibleId('0025'), visibleId('0032'), visibleId('0043'), visibleId('0085'), '0739', visibleId('0841'), '1435', '1436', visibleId('1459'),
     ]
     for (const id of existingIds) expect(EXDB.filter(ex => ex.id === id), id).toHaveLength(1)
   })
@@ -154,22 +190,22 @@ describe('Spain-Spanish exercise names', () => {
   })
 
   it('searches localized, accentless Spanish, canonical English and safe aliases', () => {
-    const lateralRaise = byId('0334')
+    const lateralRaise = byId(visibleId('0334'))
     expect(exerciseMatches(lateralRaise, 'elevacion lateral')).toBe(true)
     expect(exerciseMatches(lateralRaise, 'dumbbell lateral raise')).toBe(true)
-    expect(exerciseMatches(byId('0652'), 'dominada')).toBe(true)
-    expect(exerciseMatches(byId('0237'), 'pullover con cuerda')).toBe(true)
-    expect(exerciseMatches(byId('0237'), 'jalón de brazos rectos con cuerda')).toBe(true)
+    expect(exerciseMatches(byId(visibleId('0652')), 'dominada')).toBe(true)
+    expect(exerciseMatches(byId(visibleId('0237')), 'pullover con cuerda')).toBe(true)
+    expect(exerciseMatches(byId(visibleId('0237')), 'jalón de brazos rectos con cuerda')).toBe(true)
   })
 
   it('keeps English imports and adds unambiguous Spanish matching', () => {
-    expect(matchExercise('Barbell Deadlift')).toBe('0032')
-    expect(matchExercise('Bench Press (Barbell)')).toBe('0025')
-    expect(matchExercise('Peso muerto')).toBe('0032')
-    expect(matchExercise('Elevación lateral')).toBe('0334')
-    expect(matchExercise('Jalon al pecho')).toBe('0198')
-    expect(matchExercise('pullover con cuerda')).toBe('0237')
-    expect(matchExercise('jalón de brazos rectos con cuerda')).toBe('0237')
+    expect(matchExercise('Barbell Deadlift')).toBe(visibleId('0032'))
+    expect(matchExercise('Bench Press (Barbell)')).toBe(visibleId('0025'))
+    expect(matchExercise('Peso muerto')).toBe(visibleId('0032'))
+    expect(matchExercise('Elevación lateral')).toBe(visibleId('0334'))
+    expect(matchExercise('Jalon al pecho')).toBe(visibleId('0198'))
+    expect(matchExercise('pullover con cuerda')).toBe(visibleId('0237'))
+    expect(matchExercise('jalón de brazos rectos con cuerda')).toBe(visibleId('0237'))
     expect(matchExercise('pullover tumbado con cuerda')).toBe('0184')
   })
 
@@ -200,11 +236,11 @@ describe('Spain-Spanish exercise names', () => {
       ['Pullover con cuerda en polea', '0237'],
     ]
     for (const [label, id] of aliases) {
-      expect(exerciseMatches(byId(id), label), label).toBe(true)
-      expect(matchExercise(label), label).toBe(id)
+      expect(exerciseMatches(byId(visibleId(id)), label), label).toBe(true)
+      expect(matchExercise(label), label).toBe(visibleId(id))
     }
-    expect(matchExercise('RDL')).toBe('0085')
-    expect(EXDB.length).toBeGreaterThanOrEqual(451)
+    expect(matchExercise('RDL')).toBe(visibleId('0085'))
+    expect(EXDB).toHaveLength(465)
   })
 
   it('leaves ambiguous and missing routine variants unresolved', () => {
@@ -238,6 +274,7 @@ describe('Spain-Spanish exercise names', () => {
     expect(audit.anglicismsAllowed).toBe(Object.keys(EXERCISE_NAME_ANGLICISMS_ES).length)
     expect(audit.anglicismsAllowed).toBeGreaterThan(1)
     expect(audit.unapprovedEnglish).toEqual([])
+    expect(auditExerciseNames().legacyIdFindings).toEqual([])
     expect(new Set(audit.identicalToEnglish)).toEqual(new Set(Object.keys(EXERCISE_NAME_ANGLICISMS_ES)))
   })
 

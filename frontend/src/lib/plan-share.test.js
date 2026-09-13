@@ -54,6 +54,25 @@ describe('buildPlanBundle — plan-share guard', () => {
     expect(target.routines.length).toBe(2)
     expect(result.routines).toBe(2)
   })
+
+  it('normalizes legacy built-in IDs before plan validation and emits the Hevy ID', () => {
+    const source = {
+      routines: [{ id: 'legacy-routine', name: 'Legacy', ex: [{ id: '0025', sets: 3, reps: 8 }] }],
+      customEx: [], week: {},
+    }
+    const bundle = buildPlanBundle(source, 'legacy')
+    expect(bundle.routines[0].ex[0].id).toBe('79D0BB3A')
+
+    const parsed = parsePlan({
+      ...bundle,
+      routines: [{ ...bundle.routines[0], ex: [{ ...bundle.routines[0].ex[0], id: '0025' }] }],
+    })
+    expect(parsed.routines[0].ex[0].id).toBe('79D0BB3A')
+
+    const target = { routines: [], customEx: [], week: {} }
+    mergePlan(target, parsed)
+    expect(target.routines[0].ex[0].id).toBe('79D0BB3A')
+  })
 })
 
 /* ---------- programmed-effort round-trip (Phase 2 — issue: programmed-rpe-rir) ----------

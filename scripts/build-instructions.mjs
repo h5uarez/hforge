@@ -11,7 +11,6 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { hevyAppId } from '../frontend/src/lib/hevy-compatibility.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outDir = join(root, 'frontend', 'src', 'instr')
@@ -159,7 +158,7 @@ export function buildSpanishInstructionPack(exercises) {
   const pack = Object.fromEntries(Object.entries(LEGACY_SPANISH_INSTRUCTIONS).map(([id, steps]) => [id, [...steps]]))
   for (const ex of exercises) {
     const steps = parseInstructionSteps(ex)
-    if (steps.length) pack[hevyAppId(ex.id)] = steps
+    if (steps.length) pack[ex.id] = steps
   }
   return pack
 }

@@ -29,12 +29,17 @@ describe('calculator storage', () => {
   it('round-trips each calculator through separate versioned keys', () => {
     installStorage()
     const oneRm = { open: true, kg: 100, reps: 5, rir: 2, res: null }
-    const warmup = { open: false, exerciseId: '0025', kg: 100, reps: 5, addedKg: 0, rir: null, res: null }
+    const warmup = { open: false, exerciseId: '79D0BB3A', kg: 100, reps: 5, addedKg: 0, rir: null, res: null }
 
     expect(saveCalculatorState(HOME_1RM_STORAGE_KEY, oneRm)).toBe(true)
     expect(saveCalculatorState(HOME_WARMUP_STORAGE_KEY, warmup)).toBe(true)
     expect(loadCalculatorState(HOME_1RM_STORAGE_KEY, null, sanitizeHome1RMState)).toEqual(oneRm)
     expect(loadCalculatorState(HOME_WARMUP_STORAGE_KEY, null, sanitizeHomeWarmupState)).toEqual(warmup)
+  })
+
+  it('accepts a legacy warmup exercise ID but emits the current Hevy ID', () => {
+    const state = sanitizeHomeWarmupState({ exerciseId: '0025', open: true, kg: 100, reps: 5, addedKg: 0, rir: null, res: null })
+    expect(state.exerciseId).toBe('79D0BB3A')
   })
 
   it('falls back without throwing for malformed or unavailable storage', () => {
@@ -67,7 +72,7 @@ describe('calculator storage', () => {
       open: true, exerciseId: 'unknown', kg: 80, reps: 5, addedKg: NaN, rir: 8,
       res: { sets: [{ kg: 20, reps: 10, pct: 20, label: 'Empty bar', restSec: 60 }], topLine: '80 × 5' },
     })).toEqual({
-      open: true, exerciseId: '0025', kg: 80, reps: 5, addedKg: 0, rir: 5,
+      open: true, exerciseId: '79D0BB3A', kg: 80, reps: 5, addedKg: 0, rir: 5,
       res: { sets: [{ kg: 20, reps: 10, pct: 20, label: 'Empty bar', restSec: 60 }], topLine: '80 × 5' },
     })
   })

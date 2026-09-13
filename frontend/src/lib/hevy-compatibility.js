@@ -1,15 +1,16 @@
 // Reviewed compatibility boundary for the Hevy catalog import.
 //
-// Hevy template IDs are eight-character hex strings. Hforge already has numeric IDs in
-// persisted routines, workouts, PRs, exWeights, active sessions, imports, and plan shares.
-// Only the explicit entries below may reuse one of those numeric IDs. The importer never
-// guesses from names, muscles, equipment, or fuzzy similarity: an unmapped Hevy template keeps
-// its Hevy ID, and a legacy Hforge row remains visible when its equivalence is not certain.
+// Hevy template IDs are eight-character identifiers. Hforge historically persisted numeric IDs
+// in routines, workouts, PRs, exWeights, active sessions, imports, and plan shares. The explicit
+// entries below are reviewed migrations from those numeric IDs to Hevy identities. The importer
+// never guesses from names, muscles, equipment, or fuzzy similarity: an unmapped Hevy template
+// keeps its Hevy ID, and a legacy Hforge row remains visible when its equivalence is not certain.
 //
 // 2330 is deliberately absent. It is a retired Hforge alias for 0198 and must not be resurrected.
 export const HEVY_COMPATIBILITY_POLICY = Object.freeze({
   automaticSemanticMapping: false,
-  preserveLegacyIds: true,
+  migrateReviewedLegacyIds: true,
+  preserveUnmappedLegacyIds: true,
   retiredIds: Object.freeze(['2330']),
 })
 

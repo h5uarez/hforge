@@ -9,7 +9,8 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { EXDB as LEGACY_EXDB } from '../frontend/src/lib/exercises-data.js'
 import * as LegacyNames from '../frontend/src/lib/exercise-names.es.js'
-import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES, hevyAppId } from '../frontend/src/lib/hevy-compatibility.js'
+import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES } from '../frontend/src/lib/hevy-compatibility.js'
+import { LEGACY_TO_HEVY } from '../frontend/src/lib/exercise-ids.js'
 import { buildSpanishInstructionPack, isUnavailableInstruction, parseInstructionSteps } from './build-instructions.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -114,7 +115,7 @@ function toRecord(ex, media) {
   const steps = isUnavailableInstruction(ex) ? [] : parseInstructionSteps(ex)
   const assets = mediaFor(ex.id, media)
   return {
-    id: hevyAppId(ex.id), hevyId: ex.id, n: ex.name_en,
+    id: ex.id, hevyId: ex.id, n: ex.name_en,
     bp: normalizeBodyPart(ex.muscle_group), eq: normalizeEquipment(ex), tg: normalizeMuscle(ex.muscle_group),
     mg: others[0] || null, sm: others, st: [], img: assets.thumbnail, gif: null, video: assets.video,
     mode: modeFor(ex), tracking: trackingFor(ex), exerciseType: ex.exercise_type,
@@ -130,14 +131,13 @@ function fold(value) {
 }
 function buildNames(exercises, records) {
   const names = {}
-  const rawById = new Map(exercises.map(ex => [hevyAppId(ex.id), ex]))
-  const recordById = new Map(records.map(ex => [ex.id, ex]))
+  const rawById = new Map(exercises.map(ex => [ex.id, ex]))
   for (const legacy of LEGACY_EXDB) {
-    const imported = recordById.get(legacy.id)
-    names[legacy.id] = rawById.get(legacy.id)?.name || LegacyNames.EXERCISE_NAMES_ES[legacy.id] || legacy.n
-    if (imported && rawById.get(legacy.id)) names[legacy.id] = rawById.get(legacy.id).name
+    // Mapped legacy rows are represented by their Hevy identity below. Only the fourteen
+    // genuinely unmatched legacy rows retain their old visible IDs and names.
+    if (!LEGACY_TO_HEVY[legacy.id]) names[legacy.id] = LegacyNames.EXERCISE_NAMES_ES[legacy.id] || legacy.n
   }
-  for (const record of records) if (!Object.hasOwn(names, record.id)) names[record.id] = rawById.get(record.id)?.name || record.n
+  for (const record of records) names[record.id] = rawById.get(record.hevyId)?.name || record.n
   return names
 }
 function buildCollisions(names) {
@@ -163,18 +163,29 @@ function buildAnglicisms(names, records) {
 }
 
 function buildAliases(names) {
-  const aliases = Object.fromEntries(Object.entries(LegacyNames.EXERCISE_ALIASES_ES || {}).map(([id, values]) => [id, [...values]]))
-  const importedByAppId = new Map()
-  for (const [hevyId, entry] of Object.entries(HEVY_COMPATIBILITY)) importedByAppId.set(entry.appId, hevyId)
+  const aliases = {}
+  const add = (id, values) => {
+    if (!id || !names[id]) return
+    const list = aliases[id] || []
+    for (const value of values || []) if (value && !list.includes(value)) list.push(value)
+    if (list.length) aliases[id] = list
+  }
+
+  for (const [id, values] of Object.entries(LegacyNames.EXERCISE_ALIASES_ES || {})) {
+    add(LEGACY_TO_HEVY[id] || id, values)
+  }
+
   // Preserve the previous Spanish labels as search/import vocabulary when a reviewed Hevy
   // replacement changes the display label. This keeps old CSV and plan language resolvable
   // without violating the source-name display contract.
   for (const legacy of LEGACY_EXDB) {
-    const oldName = LEGACY_EXERCISE_DISPLAY_ALIASES_ES[legacy.id] || LegacyNames.EXERCISE_NAMES_ES[legacy.id]
-    if (!oldName || oldName === names[legacy.id] || !importedByAppId.has(legacy.id)) continue
-    const list = aliases[legacy.id] || []
-    if (!list.includes(oldName)) list.unshift(oldName)
-    aliases[legacy.id] = list
+    const target = LEGACY_TO_HEVY[legacy.id]
+    if (!target) continue
+    add(target, [
+      legacy.n,
+      LEGACY_EXERCISE_DISPLAY_ALIASES_ES[legacy.id],
+      LegacyNames.EXERCISE_NAMES_ES[legacy.id],
+    ])
   }
   return aliases
 }
@@ -206,17 +217,20 @@ function buildManifest(exercises, records, media) {
 function runAudit(source, records, manifest, names) {
   const sourceIds = new Set(source.exercises.map(ex => ex.id))
   const recordIds = new Set(records.map(ex => ex.id))
+  const visibleLegacyIds = new Set(LEGACY_EXDB.filter(ex => !LEGACY_TO_HEVY[ex.id]).map(ex => ex.id))
+  const visibleIds = new Set([...recordIds, ...visibleLegacyIds])
   const errors = []
   if (records.length !== 451) errors.push(`generated Hevy records: ${records.length}`)
   if (new Set(records.map(ex => ex.hevyId)).size !== 451) errors.push('generated Hevy IDs are not unique')
-  if (new Set(records.map(ex => ex.id)).size !== records.length) errors.push('generated app IDs are not unique')
+  if (new Set(records.map(ex => ex.id)).size !== records.length) errors.push('generated visible IDs are not unique')
+  if (records.some(ex => ex.id !== ex.hevyId)) errors.push('generated Hevy records still use legacy IDs')
   if (![...sourceIds].every(id => records.some(ex => ex.hevyId === id))) errors.push('a source record is missing from generated records')
   if (manifest.length !== 451) errors.push(`media manifest records: ${manifest.length}`)
-  if (Object.keys(names).length !== new Set([...LEGACY_EXDB.map(ex => ex.id), ...records.map(ex => ex.id)]).size) errors.push('Spanish name coverage does not match visible catalog')
+  if (Object.keys(names).length !== visibleIds.size) errors.push('Spanish name coverage does not match visible catalog')
   if (records.some(ex => ex.hevyId === '2330' || ex.id === '2330')) errors.push('retired ID 2330 was resurrected')
   if (Object.keys(HEVY_COMPATIBILITY).some(id => !sourceIds.has(id))) errors.push('compatibility map contains a source ID absent from input')
   if (errors.length) throw new Error(errors.join('; '))
-  console.log(JSON.stringify({ sourceRecords: source.exercises.length, generatedRecords: records.length, manifestRecords: manifest.length, names: Object.keys(names).length, mappedRecords: records.filter(ex => ex.id !== ex.hevyId).length }, null, 2))
+  console.log(JSON.stringify({ sourceRecords: source.exercises.length, generatedRecords: records.length, manifestRecords: manifest.length, names: Object.keys(names).length, mappedRecords: Object.keys(HEVY_COMPATIBILITY).length }, null, 2))
 }
 
 async function main() {
@@ -230,7 +244,7 @@ async function main() {
   runAudit(source, records, manifest, names)
   if (auditOnly) return
 
-  writeFileSync(DATA_OUT, `// Generated by scripts/import-hevy-catalog.mjs; do not edit.\nexport const HEVY_CATALOG_META = Object.freeze(${JSON.stringify({ source: source.data.source || null, sourceHash: source.sourceHash, sourceRecords: source.exercises.length, mappedRecords: records.filter(ex => ex.id !== ex.hevyId).length, spanishInstructionRecords: source.exercises.filter(ex => !isUnavailableInstruction(ex)).length, unavailableInstructionRecords: source.exercises.filter(isUnavailableInstruction).length, media: summary }, null, 2)})\nexport const HEVY_EXDB = ${JSON.stringify(records)}\n`)
+  writeFileSync(DATA_OUT, `// Generated by scripts/import-hevy-catalog.mjs; do not edit.\nexport const HEVY_CATALOG_META = Object.freeze(${JSON.stringify({ source: source.data.source || null, sourceHash: source.sourceHash, sourceRecords: source.exercises.length, mappedRecords: Object.keys(HEVY_COMPATIBILITY).length, spanishInstructionRecords: source.exercises.filter(ex => !isUnavailableInstruction(ex)).length, unavailableInstructionRecords: source.exercises.filter(isUnavailableInstruction).length, media: summary }, null, 2)})\nexport const HEVY_EXDB = ${JSON.stringify(records)}\n`)
   writeFileSync(MEDIA_OUT, `// Generated by scripts/import-hevy-catalog.mjs; binary files are staged separately.\nexport const HEVY_MEDIA_SUMMARY = Object.freeze(${JSON.stringify(summary, null, 2)})\nexport const HEVY_MEDIA_MANIFEST = Object.freeze(${JSON.stringify(manifest)} )\n`)
   writeFileSync(NAMES_OUT, generatedNamesModule(names, collisions, anglicisms))
   const pack = buildSpanishInstructionPack(source.exercises)

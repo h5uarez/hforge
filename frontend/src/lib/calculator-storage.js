@@ -1,4 +1,5 @@
 import { WARMUP_OPTIONS } from './warmup.js'
+import { canonicalExerciseId } from './exercise-ids.js'
 
 export const HOME_1RM_STORAGE_KEY = 'hforge_home_1rm_v1'
 export const HOME_WARMUP_STORAGE_KEY = 'hforge_home_warmup_v1'
@@ -66,9 +67,10 @@ export function sanitizeHome1RMState(value) {
 
 export function sanitizeHomeWarmupState(value) {
   if (!isRecord(value)) return null
+  const exerciseId = canonicalExerciseId(value.exerciseId)
   return {
     open: value.open === true,
-    exerciseId: WARMUP_EXERCISE_IDS.has(value.exerciseId) ? value.exerciseId : WARMUP_OPTIONS[0].id,
+    exerciseId: WARMUP_EXERCISE_IDS.has(exerciseId) ? exerciseId : WARMUP_OPTIONS[0].id,
     kg: nonNegative(value.kg),
     reps: integerNonNegative(value.reps),
     addedKg: nonNegative(value.addedKg),

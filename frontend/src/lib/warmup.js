@@ -23,29 +23,28 @@ export const DEFAULT_WARMUP_CONFIG = {
   deadliftMode: 'reps',       // 'reps' | 'singles'
 }
 
-// Catalog ids behind each family (see lib/exercises.js): bench 0025, squat 0043,
-// deadlift 0032, pull-up 0652, dip 0251 (chest dip), dumbbell overhead press 0426.
-// Short keys are accepted too so callers are not forced to know catalog ids;
-// anything unknown falls through to the generic barbell ladder.
+import { canonicalExerciseId } from './exercise-ids.js'
+
+// Catalog ids behind each family (see lib/exercises.js) are the Hevy IDs below. The legacy
+// numeric IDs remain accepted through canonicalExerciseId for calculator state compatibility.
+// The options emit the current Hevy IDs. Short keys and the old numeric IDs are accepted by
+// resolveKind so calculator state from before the catalog migration keeps its family.
 export const WARMUP_OPTIONS = [
-  { key: 'bench', id: '0025' },
-  { key: 'squat', id: '0043' },
-  { key: 'deadlift', id: '0032' },
-  { key: 'ohp', id: '0426' },
-  { key: 'pullup', id: '0652' },
-  { key: 'dip', id: '0251' },
+  { key: 'bench', id: '79D0BB3A' },
+  { key: 'squat', id: '1283BBA6' },
+  { key: 'deadlift', id: 'C6272009' },
+  { key: 'ohp', id: '6AC96645' },
+  { key: 'pullup', id: '1B2B1E7C' },
+  { key: 'dip', id: '6FCD7755' },
 ]
 
-const KIND_BY_ID = {
-  '0025': 'bench', bench: 'bench',
-  '0043': 'squat', squat: 'squat',
-  '0032': 'deadlift', deadlift: 'deadlift',
-  '0426': 'ohp', ohp: 'ohp', overhead: 'ohp',
-  '0652': 'pullup', pullup: 'pullup', 'pull-up': 'pullup',
-  '0251': 'dip', dip: 'dip', dips: 'dip',
-}
+const KIND_BY_ID = Object.fromEntries(WARMUP_OPTIONS.flatMap(({ key, id }) => [[id.toLowerCase(), key], [key, key]]))
+Object.assign(KIND_BY_ID, { overhead: 'ohp', 'pull-up': 'pullup', dips: 'dip' })
 
-export const resolveKind = exerciseId => KIND_BY_ID[String(exerciseId || '').toLowerCase()] || 'generic'
+export const resolveKind = exerciseId => {
+  const value = String(exerciseId || '').toLowerCase()
+  return KIND_BY_ID[value] || KIND_BY_ID[String(canonicalExerciseId(exerciseId) || '').toLowerCase()] || 'generic'
+}
 
 export const isBodyweightKind = kind => kind === 'pullup' || kind === 'dip'
 

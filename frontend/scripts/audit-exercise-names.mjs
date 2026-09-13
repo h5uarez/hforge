@@ -1,9 +1,11 @@
 import { pathToFileURL } from 'node:url'
-import { EXDB } from '../src/lib/catalog.js'
+import { EXDB, LEGACY_EXDB } from '../src/lib/catalog.js'
 import {
-  EXERCISE_NAMES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
+  EXERCISE_NAMES_ES, EXERCISE_ALIASES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
   EXERCISE_NAME_LOW_CONFIDENCE_ES,
 } from '../src/lib/exercise-names.es.js'
+import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES } from '../src/lib/hevy-compatibility.js'
+import { LEGACY_TO_HEVY } from '../src/lib/exercise-ids.js'
 
 const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -81,6 +83,18 @@ export function auditExerciseNames() {
   const fallback = missingIds.length
   const lowConfidence = Object.entries(EXERCISE_NAME_LOW_CONFIDENCE_ES)
     .map(([id, reason]) => ({ id, reason }))
+  const legacyIdFindings = []
+  for (const [hevyId, { appId }] of Object.entries(HEVY_COMPATIBILITY)) {
+    if (!catalogIds.has(hevyId)) legacyIdFindings.push({ id: hevyId, issue: 'missing Hevy catalog row' })
+    if (catalogIds.has(appId)) legacyIdFindings.push({ id: appId, issue: 'legacy catalog row is still visible' })
+    const legacy = LEGACY_EXDB.find(ex => ex.id === appId)
+    const aliases = EXERCISE_ALIASES_ES[hevyId] || []
+    for (const label of [legacy?.n, LEGACY_EXERCISE_DISPLAY_ALIASES_ES[appId]]) {
+      if (label && !aliases.includes(label)) legacyIdFindings.push({ id: hevyId, issue: `missing legacy alias: ${label}` })
+    }
+  }
+  if (Object.keys(LEGACY_TO_HEVY).length !== Object.keys(HEVY_COMPATIBILITY).length)
+    legacyIdFindings.push({ issue: 'derived legacy-to-Hevy map is incomplete' })
   const linguisticFindings = linguisticQualityFindings()
   return {
     total: EXDB.length,
@@ -98,6 +112,7 @@ export function auditExerciseNames() {
     unapprovedEnglish,
     staleAnglicismAllowlist,
     lowConfidence,
+    legacyIdFindings,
     linguisticFindings,
   }
 }
@@ -106,7 +121,7 @@ export function auditFailed(report) {
   return report.translated !== report.total || report.fallback !== 0 || [
     report.missingIds, report.unknownIds, report.emptyIds, report.collisions,
     report.staleCollisionAllowlist, report.unapprovedEnglish, report.staleAnglicismAllowlist,
-    report.lowConfidence, report.linguisticFindings,
+    report.lowConfidence, report.legacyIdFindings, report.linguisticFindings,
   ].some(items => items.length)
 }
 

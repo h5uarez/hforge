@@ -19,6 +19,7 @@
 // building a DOM.
 
 import { EXDB, EXIDX, exerciseMatchNames } from './exercises.js'
+import { canonicalExerciseId } from './exercise-ids.js'
 import { uid } from './format.js'
 
 /* ----------------------------------------------------------------- CSV ---- */
@@ -132,6 +133,29 @@ function wordsOf(name) {
 const keyOf = name => wordsOf(name).sort().join(' ')
 
 let INDEX = null
+let EXACT_ALIAS_IDX = null
+
+// Keep qualifiers such as "weighted" for exact aliases. The fuzzy matcher intentionally treats
+// them as filler, but doing that before the exact lookup makes weighted and unweighted pull-ups
+// collapse onto whichever catalog row happened to be indexed first.
+const exactKey = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+function exactAliasIndex() {
+  if (EXACT_ALIAS_IDX) return EXACT_ALIAS_IDX
+  EXACT_ALIAS_IDX = new Map()
+  EXDB.forEach(e => {
+    exerciseMatchNames(e).forEach(name => {
+      const key = exactKey(name)
+      if (!key) return
+      const previous = EXACT_ALIAS_IDX.get(key)
+      if (previous === undefined) EXACT_ALIAS_IDX.set(key, e.id)
+      else if (previous !== e.id) EXACT_ALIAS_IDX.set(key, null)
+    })
+  })
+  return EXACT_ALIAS_IDX
+}
+
 function buildIndex() {
   if (INDEX) return INDEX
   INDEX = { exact: new Map(), all: [] }
@@ -204,11 +228,14 @@ export function matchExercise(name) {
   const idx = buildIndex()
   const w = wordsOf(name)
   if (!w.length) return null
+  const exactAlias = exactAliasIndex().get(exactKey(name))
+  if (exactAlias && EXIDX[exactAlias]) return exactAlias
   // Compared as a sorted bag of words, so "Squat (Barbell)" finds the 'barbell squat'
   // alias — the exporters disagree about whether the equipment leads or trails.
   const sorted = w.slice().sort().join(' ')
   const aliased = aliasIndex().get(sorted)
-  if (aliased && EXIDX[aliased]) return aliased
+  const canonicalAlias = canonicalExerciseId(aliased)
+  if (canonicalAlias && EXIDX[canonicalAlias]) return canonicalAlias
   const exact = idx.exact.get(sorted)
   if (exact) return exact
   const q = new Set(w)

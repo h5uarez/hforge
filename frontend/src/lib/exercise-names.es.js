@@ -3,16 +3,8 @@
 export const EXERCISE_NAMES_ES = Object.freeze({
   "1323": "Remo Sentado con Cuerda en Polea",
   "1349": "Remo Invertido con Barra T en Máquina de Palancas",
-  "1401": "Muscle Up",
   "1435": "Sentadilla Low Bar con Barra",
   "1436": "Sentadilla High Bar con Barra",
-  "1452": "Abdominal Corto (Máquina)",
-  "1459": "Peso Muerto Rumano (Mancuerna)",
-  "2335": "Press de Pantorrilla (Máquina)",
-  "5214": "Remo en T con Apoyo de Pecho",
-  "5218": "Empuje de Caderas (Barra)",
-  "5223": "Extensión de Espalda (Hiperextensión con peso)",
-  "5225": "Patada de Glúteo con Cable",
   "5226": "remo Gironda",
   "12017185": "Aperturas (Mancuerna)",
   "29083183": "Dominada Supina",
@@ -22,54 +14,35 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "89304423": "Arrancada con Pesa Rusa",
   "99507114": "Peso Muerto (Banda)",
   "0007": "Remo Sentado con Agarre Prono en Polea",
-  "0025": "Press de Banca (Barra)",
-  "0027": "Remo Inclinado (Barra)",
-  "0031": "Curl de Bíceps (Barra)",
-  "0032": "Peso Muerto (Barra)",
-  "0043": "Sentadilla Profunda",
-  "0047": "Press de Banca Inclinado (Barra)",
-  "0085": "Peso Muerto Rumano (Barra)",
-  "0868": "Curl de Bíceps (Cable)",
   "0175": "Encogimientos Abdominales de Rodillas en Polea",
-  "0178": "Elevación Lateral (Cable)",
   "0184": "Pullover Tumbado con Cuerda en Polea",
-  "0198": "Jalón al Pecho (Cable)",
-  "0201": "Jalón de Tríceps en Polea",
-  "0200": "Jalón de tríceps con cuerda",
-  "0237": "Jalón con cuerda de brazos rectos",
   "0241": "Jalón de Tríceps en Polea con Barra V",
-  "0251": "Fondos",
   "0311": "Elevación Lateral Full Can con Mancuernas",
-  "0313": "Curl Martillo (Mancuerna)",
-  "0315": "Curl de Bíceps Inclinado (Mancuerna)",
-  "0334": "Elevación Lateral (Mancuerna)",
   "0410": "Sentadilla Búlgara a una Pierna con Mancuernas",
-  "0426": "Press de Hombros (Mancuerna)",
   "0582": "Curl Femoral de Rodillas en Máquina de Palancas",
   "0584": "Elevación Lateral en Máquina de Palancas",
-  "0585": "Extensión de Pierna",
-  "0586": "Curl de Piernas Acostado (Máquina)",
-  "0597": "Abducción de Cadera (Máquina)",
-  "0598": "Aducción de Cadera (Máquina)",
-  "0602": "Vuelos Posteriores (Máquina)",
-  "0603": "Press de Hombros Sentado (Máquina)",
-  "0605": "Elevación de Gemelos de Pie (Máquina)",
-  "0606": "Remo en T",
-  "0652": "Dominada",
-  "0684": "Correr",
   "0739": "Prensa de Piernas a 45°",
-  "0757": "Press de Banca Inclinado (Máquina Smith)",
-  "0841": "Dominada (Con Peso Añadido)",
   "4F5866F8": "Extensión de Espalda (Hiperextensión)",
+  "79D0BB3A": "Press de Banca (Barra)",
+  "55E6546F": "Remo Inclinado (Barra)",
+  "A5AC6449": "Curl de Bíceps (Barra)",
   "B582299E": "Vuelos Posteriores con Apoyo de Pecho (Mancuerna)",
   "DCF3B31B": "Abdominal Corto",
+  "C6272009": "Peso Muerto (Barra)",
   "F1E57334": "Remo con Mancuerna",
   "BE640BA0": "Tirón a la Cara",
   "8293E554": "Elevación Frontal (Mancuerna)",
+  "7E3BC8B6": "Curl Martillo (Mancuerna)",
   "07B38369": "Press de Banca Inclinado (Mancuerna)",
+  "6A6C31A5": "Jalón al Pecho (Cable)",
+  "422B08F1": "Elevación Lateral (Mancuerna)",
+  "75A4F6C4": "Extensión de Pierna",
   "0EB695C9": "Press de Piernas Sentado",
+  "B8127AD1": "Curl de Piernas Acostado (Máquina)",
   "7B8D84E8": "Press de Hombros (Barra)",
+  "1B2B1E7C": "Dominada",
   "392887AA": "Flexiones",
+  "AC1BB830": "Correr",
   "F1D60854": "Remo Sentado con Cable - Agarre Recto",
   "878CD1D0": "Press de Hombros (Mancuerna)",
   "ABEC557F": "Encogimiento de Hombros (Mancuerna)",
@@ -79,7 +52,10 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "D04AC939": "Sentadilla (Barra)",
   "4377A52B": "Máquina Escaladora",
   "4377A52C": "Máquina Escaladora",
+  "93A552C6": "Jalón de Tríceps en Polea",
+  "94B7239B": "Jalón de tríceps con cuerda",
   "33EDD7DB": "Caminar",
+  "091737FA": "Extensión de Espalda (Hiperextensión con peso)",
   "3601968B": "Press de Banca (Mancuerna)",
   "37FCC2BB": "Curl de Bíceps (Mancuerna)",
   "651F844C": "Cables Cruzados",
@@ -91,11 +67,15 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "B2398CD1": "Abdominal Corto en Banco Declinado (Con Peso Añadido)",
   "01A35BF9": "Curl con Barra EZ",
   "567FB505": "Abdominales Toque al Talón",
+  "D57C2EC7": "Empuje de Caderas (Barra)",
+  "50DFDFAB": "Press de Banca Inclinado (Barra)",
   "D3E2AB55": "Aperturas Inclinadas (Mancuerna)",
   "39C99849": "Flexiones Inclinadas",
   "6D54A050": "L-Sit Sostenido",
   "473CF5B8": "Jalón al Pecho (Máquina)",
   "C7973E0E": "Press de Piernas",
+  "6AC96645": "Press de Hombros (Mancuerna)",
+  "729237D1": "Dominada (Con Peso Añadido)",
   "1DF4A847": "Remo Sentado (Máquina)",
   "026FD047": "Flexión Lateral (Mancuerna)",
   "8347DFD1": "Extensión de Tríceps de un Brazo (Mancuerna)",
@@ -114,10 +94,12 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "4F942934": "Curl predicador (barra)",
   "19372ABC": "Flexiones (Con Peso Añadido)",
   "E5988A0A": "Vuelos Posteriores (Mancuerna)",
+  "D8281C62": "Vuelos Posteriores (Máquina)",
   "046E25A2": "Jalón al Pecho con Agarre Invertido (Cable)",
   "0222DB42": "Máquina de Remo",
   "062AB91A": "Elevación de Gemelos Sentado",
   "6127A3AD": "Patada de Tríceps (Mancuerna)",
+  "ADA8623C": "Curl de Bíceps (Cable)",
   "28BB4A95": "Fondo de Tríceps",
   "10347BAC": "Fondo de Tríceps (Con Peso Añadido)",
   "C43825EA": "Flexión Declinada",
@@ -165,11 +147,14 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "92D858EA": "Giro con cable (de abajo hacia arriba)",
   "A2D838BD": "Giro con cable (de arriba hacia abajo)",
   "47B9DF13": "Extensión de Pantorrilla (Máquina)",
+  "91237BDD": "Press de Pantorrilla (Máquina)",
+  "6FCD7755": "Fondos",
   "E9E4089F": "Fondos (Asistidos)",
   "29472BE1": "Fondos (Con Peso Añadido)",
   "DDB7C19F": "Aperturas (Banda)",
   "720B0D70": "Aperturas de pecho (Suspensión)",
   "EAC7D9C5": "Press de Pecho (Banda)",
+  "6A8D3193": "Remo en T con Apoyo de Pecho",
   "F21D5693": "Elevación en Y con Soporte en el Pecho (Mancuerna)",
   "D23C609B": "Dominada Supina (Asistida)",
   "CC016611": "Almeja",
@@ -181,6 +166,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "E23F1F2B": "Escalada",
   "724CDE60": "Curls de Concentración",
   "32C4D4A2": "Curl de Martillo Cruzado",
+  "EB43ADD4": "Abdominal Corto (Máquina)",
   "D39EC9EB": "Zancada Curtsy (Mancuerna)",
   "D8F7F851": "Bicicleta",
   "D8911FC4": "Dead Bug",
@@ -215,6 +201,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "DBB91A3C": "Elevación Frontal (Cable)",
   "796E8E2C": "Elevación Frontal (Suspensión)",
   "5046D0A9": "Sentadilla Frontal",
+  "1283BBA6": "Sentadilla Profunda",
   "CDA23948": "Puente de Glúteos",
   "49C922A1": "Puente de Glúteos (Barra)",
   "68B83EE0": "Elevación de glúteos y femorales",
@@ -239,12 +226,15 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "023947AB": "HIIT",
   "1C34A172": "Senderismo",
   "C469EA70": "Abducción de Cadera (Cable)",
+  "F4B4C6EE": "Abducción de Cadera (Máquina)",
   "22578A94": "Aducción de Cadera (Cable)",
+  "8BEBFED6": "Aducción de Cadera (Máquina)",
   "92B8C7E1": "Empuje de Caderas",
   "DA5430FC": "Empuje de Cadera (Mancuerna)",
   "68CE0B9B": "Empuje de Cadera (Máquina)",
   "291ABA92": "Empuje de Cadera (Máquina Smith)",
   "970ADF87": "Hollow Rock",
+  "3A6FA3D1": "Press de Banca Inclinado (Máquina Smith)",
   "FBF92739": "Press de Pecho Inclinado (Máquina)",
   "425805F4": "Remo Invertido",
   "24706DCD": "Press de Pecho Iso-Lateral (Máquina)",
@@ -281,6 +271,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "DC59D143": "Elevaciones Laterales de Pierna",
   "F2A37357": "Zancada Lateral",
   "DF200976": "Elevación Lateral (Banda)",
+  "BE289E45": "Elevación Lateral (Cable)",
   "D5D0354D": "Elevación Lateral (Máquina)",
   "D731CCA8": "Sentadilla Lateral",
   "0482DA98": "Elevación de Piernas en Barras Paralelas",
@@ -296,6 +287,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "D6A73CF2": "Extensión de Cuello Acostado (Con Peso)",
   "C732C341": "Remo Meadows (Barra)",
   "F49E31D6": "Escaladores",
+  "9F9C164B": "Muscle Up",
   "F60BDDF8": "Dominada Negativa",
   "108D7A14": "Curls Nórdicos de Isquiotibiales",
   "DBE341AA": "Abdominales Cortos Oblicuos",
@@ -351,8 +343,11 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "51A0EDAA": "Fondos en Anillas",
   "5F09F0FC": "Dominada en anillas",
   "AEA56BDC": "Flexión en anillas",
+  "2B4B7310": "Peso Muerto Rumano (Barra)",
+  "72CFFAD5": "Peso Muerto Rumano (Mancuerna)",
   "0B9B92BA": "Peso Muerto Rumano (Máquina Smith)",
   "234897AB": "Curl con Cuerda (Cable)",
+  "9273BA17": "Jalón con cuerda de brazos rectos",
   "BB83BDDE": "Giro Ruso (Peso Corporal)",
   "2982AA23": "Giro Ruso (Con Peso Añadido)",
   "C7AE420A": "Dominadas Escapulares",
@@ -362,12 +357,14 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "0393F233": "Remo Sentado con Agarre en V (Cable)",
   "6B4C797E": "Aperturas de Pecho Sentado (Cable)",
   "5122E7D9": "Máquina para Fondos Sentado",
+  "8BAB2735": "Curl de Bíceps Inclinado (Mancuerna)",
   "C01F58D1": "Curl Martillo Inclinado Sentado (Mancuerna)",
   "9372FFAA": "Elevación Lateral Sentado (Mancuerna)",
   "11A123F3": "Curl de Pierna Sentado",
   "91AF29E0": "Press de Hombros Sentado (Barra)",
   "9930DF71": "Press de Hombros Sentado (Mancuerna)",
   "1006DF48": "Curl de Muñeca Palmas arriba",
+  "9237BAD1": "Press de Hombros Sentado (Máquina)",
   "234BC743": "Press de Tríceps Sentado (Máquina)",
   "95F2E076": "Curl de Muñeca Sentado (Barra)",
   "9202CC23": "Extensión de Muñeca Sentado (Barra)",
@@ -417,9 +414,11 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "DDCC3821": "Sentadilla (Máquina Smith)",
   "B82D6418": "Sentadilla (Suspensión)",
   "A8814C06": "Sentadilla con Remo",
+  "ACB2751D": "Patada de Glúteo con Cable",
   "06745E58": "Elevación de Gemelos de Pie",
   "E53CCBE5": "Elevación de Gemelos de Pie (Barra)",
   "6DA40660": "Elevación de Gemelos de Pie (Mancuerna)",
+  "E05C2C38": "Elevación de Gemelos de Pie (Máquina)",
   "AA52E8D2": "Elevación de Gemelos de Pie (Máquina Smith)",
   "6120CAAB": "Curls de Piernas de Pie",
   "073032BB": "Press Militar de Pie (Barra)",
@@ -436,6 +435,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "5E10D0E6": "Sentadilla Sumo (Pesa Rusa)",
   "218DA87C": "Superman",
   "B60A678F": "Natación",
+  "08A2974E": "Remo en T",
   "90E506D5": "Thruster (Barra)",
   "10313AFD": "Thruster (Pesa Rusa)",
   "75BAC5C3": "Abdominales Toque de Pies",
@@ -470,11 +470,6 @@ export const EXERCISE_NAMES_ES = Object.freeze({
 
 // Existing import/search vocabulary remains explicit and does not create catalog records.
 export const EXERCISE_ALIASES_ES = Object.freeze({
-  "1401": [
-    "Muscle-up en Barra",
-    "muscle up",
-    "muscle-up técnico"
-  ],
   "1435": [
     "sq low-bar",
     "sentadilla con barra baja"
@@ -482,127 +477,177 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
   "1436": [
     "sentadilla con barra alta"
   ],
-  "1452": [
-    "Encogimientos Abdominales Sentado en Máquina de Palancas"
-  ],
-  "1459": [
-    "Peso Muerto Rumano con Mancuernas",
-    "rdl con mancuernas"
-  ],
-  "2335": [
-    "Prensa de Gemelos Sentado en Máquina de Palancas"
-  ],
-  "5214": [
-    "remo en T con pecho apoyado",
-    "remo T pecho apoyado",
-    "chest supported T bar row"
-  ],
-  "5218": [
-    "hip thrust",
-    "hip thrust barra"
-  ],
-  "5223": [
-    "hiperextensión lastrada",
-    "hiperextensión con lastre",
-    "weighted back extension"
-  ],
-  "5225": [
-    "patada de glúteo",
-    "glute kickback"
-  ],
   "5226": [
     "remo Gironda",
     "gironda row"
   ],
-  "0198": [
+  "9F9C164B": [
+    "Muscle-up en Barra",
+    "muscle up",
+    "muscle-up técnico",
+    "muscle-up (on vertical bar)",
+    "Muscle Up"
+  ],
+  "EB43ADD4": [
+    "Encogimientos Abdominales Sentado en Máquina de Palancas",
+    "lever seated crunch",
+    "Abdominal Corto (Máquina)"
+  ],
+  "72CFFAD5": [
+    "Peso Muerto Rumano con Mancuernas",
+    "rdl con mancuernas",
+    "dumbbell romanian deadlift",
+    "Peso Muerto Rumano (Mancuerna)"
+  ],
+  "91237BDD": [
+    "Prensa de Gemelos Sentado en Máquina de Palancas",
+    "lever seated calf press",
+    "Press de Pantorrilla (Máquina)"
+  ],
+  "6A8D3193": [
+    "remo en T con pecho apoyado",
+    "remo T pecho apoyado",
+    "chest supported T bar row",
+    "chest-supported t-bar row",
+    "Remo en T con Apoyo de Pecho"
+  ],
+  "D57C2EC7": [
+    "hip thrust",
+    "hip thrust barra",
+    "Empuje de Caderas (Barra)"
+  ],
+  "091737FA": [
+    "hiperextensión lastrada",
+    "hiperextensión con lastre",
+    "weighted back extension",
+    "Extensión de Espalda (Hiperextensión con peso)"
+  ],
+  "ACB2751D": [
+    "patada de glúteo",
+    "glute kickback",
+    "Patada de Glúteo con Cable"
+  ],
+  "6A6C31A5": [
     "jalón al pecho",
     "jalón en polea",
-    "jalón al pecho en polea con recorrido completo"
+    "jalón al pecho en polea con recorrido completo",
+    "cable pulldown",
+    "Jalón al Pecho (Cable)"
   ],
   "0007": [
     "jalón lateral alterno"
   ],
-  "0025": [
+  "79D0BB3A": [
     "Press de Banca con Barra",
     "press banca",
     "press de banca",
-    "bp"
+    "bp",
+    "barbell bench press",
+    "Press de Banca (Barra)"
   ],
-  "0027": [
+  "55E6546F": [
     "Remo Inclinado con Barra",
-    "remo con barra"
+    "remo con barra",
+    "barbell bent over row",
+    "Remo Inclinado (Barra)"
   ],
-  "0032": [
+  "C6272009": [
     "Peso Muerto con Barra",
     "peso muerto",
-    "dl"
+    "dl",
+    "barbell deadlift",
+    "Peso Muerto (Barra)"
   ],
-  "0043": [
+  "1283BBA6": [
     "Sentadilla Trasera Completa con Barra",
     "sentadilla trasera",
-    "sentadilla con barra"
+    "sentadilla con barra",
+    "barbell full squat",
+    "Sentadilla Profunda"
   ],
-  "0085": [
+  "2B4B7310": [
     "Peso Muerto Rumano con Barra",
     "peso muerto rumano",
-    "rdl"
+    "rdl",
+    "barbell romanian deadlift",
+    "Peso Muerto Rumano (Barra)"
   ],
   "0184": [
     "pullover tumbado",
     "pullover tumbado con cuerda"
   ],
-  "0237": [
+  "9273BA17": [
     "Pullover de Pie con Cuerda en Polea",
     "pullover con cuerda",
     "pullover de pie con cuerda",
     "jalón de brazos rectos con cuerda",
     "jalón con brazos extendidos con cuerda",
-    "pullover con cuerda en polea"
+    "pullover con cuerda en polea",
+    "cable straight arm pulldown (with rope)",
+    "Jalón con cuerda de brazos rectos"
   ],
   "0241": [
     "jalón de tríceps",
     "extensión de tríceps en polea",
     "tríceps polea"
   ],
-  "0251": [
+  "6FCD7755": [
     "Fondos de Pecho",
-    "fondos de pecho"
+    "fondos de pecho",
+    "chest dip",
+    "Fondos"
   ],
-  "0313": [
+  "7E3BC8B6": [
     "Curl Martillo con Mancuernas",
     "curl martillo",
-    "curl martillo con mancuerna"
+    "curl martillo con mancuerna",
+    "dumbbell hammer curl",
+    "Curl Martillo (Mancuerna)"
   ],
-  "0334": [
+  "422B08F1": [
     "Elevación Lateral con Mancuernas",
     "elevación lateral",
-    "elevaciones laterales"
+    "elevaciones laterales",
+    "dumbbell lateral raise",
+    "Elevación Lateral (Mancuerna)"
   ],
-  "0585": [
+  "75A4F6C4": [
     "Extensión de Piernas en Máquina",
-    "extensión de cuádriceps"
+    "extensión de cuádriceps",
+    "lever leg extension",
+    "Extensión de Pierna"
   ],
-  "0586": [
+  "B8127AD1": [
     "Curl Femoral Tumbado en Máquina",
-    "curl femoral"
+    "curl femoral",
+    "lever lying leg curl",
+    "Curl de Piernas Acostado (Máquina)"
   ],
-  "0597": [
+  "F4B4C6EE": [
     "Abducción de Cadera Sentado en Máquina de Palancas",
     "abductor máquina",
-    "abducción en máquina"
+    "abducción en máquina",
+    "lever seated hip abduction",
+    "Abducción de Cadera (Máquina)"
   ],
-  "0602": [
+  "D8281C62": [
     "Aperturas Inversas Sentado en Máquina de Palancas",
-    "pájaro máquina"
+    "pájaro máquina",
+    "lever seated reverse fly",
+    "Vuelos Posteriores (Máquina)"
   ],
-  "0603": [
+  "9237BAD1": [
     "Press de Hombros en Máquina",
     "press de hombros",
-    "press hombro en máquina"
+    "press hombro en máquina",
+    "lever shoulder press",
+    "Press de Hombros Sentado (Máquina)"
   ],
-  "0652": [
+  "1B2B1E7C": [
     "Dominadas",
-    "dominada"
+    "dominada",
+    "pull-up",
+    "Dominada"
   ],
   "0739": [
     "Prensa de Piernas a 45° en Trineo",
@@ -610,53 +655,82 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
     "prensa 45 grados",
     "prensa"
   ],
-  "0757": [
+  "3A6FA3D1": [
     "Press de Banca en Banco Inclinado en Máquina Smith",
     "press inclinado multipower",
-    "press inclinado en multipower"
+    "press inclinado en multipower",
+    "smith incline bench press",
+    "Press de Banca Inclinado (Máquina Smith)"
   ],
-  "0841": [
+  "729237D1": [
     "Dominadas Lastradas",
     "dominada lastrada",
-    "dominadas con lastre"
+    "dominadas con lastre",
+    "weighted pull-up",
+    "Dominada (Con Peso Añadido)"
   ],
-  "0031": [
-    "Curl con Barra"
+  "A5AC6449": [
+    "Curl con Barra",
+    "barbell curl",
+    "Curl de Bíceps (Barra)"
   ],
-  "0047": [
-    "Press de Banca Inclinado con Barra"
+  "50DFDFAB": [
+    "Press de Banca Inclinado con Barra",
+    "barbell incline bench press",
+    "Press de Banca Inclinado (Barra)"
   ],
-  "0868": [
-    "Curl en Polea"
+  "ADA8623C": [
+    "Curl en Polea",
+    "cable curl",
+    "Curl de Bíceps (Cable)"
   ],
-  "0178": [
-    "Elevación Lateral en Polea"
+  "BE289E45": [
+    "Elevación Lateral en Polea",
+    "cable lateral raise",
+    "Elevación Lateral (Cable)"
   ],
-  "0200": [
-    "Jalón de Tríceps con Cuerda en Polea"
+  "94B7239B": [
+    "Jalón de Tríceps con Cuerda en Polea",
+    "cable pushdown (with rope attachment)",
+    "Jalón de tríceps con cuerda"
   ],
-  "0315": [
-    "Curl de Bíceps en Banco Inclinado con Mancuernas"
+  "8BAB2735": [
+    "Curl de Bíceps en Banco Inclinado con Mancuernas",
+    "dumbbell incline biceps curl",
+    "Curl de Bíceps Inclinado (Mancuerna)"
   ],
-  "0426": [
-    "Press por Encima de la Cabeza de Pie con Mancuernas"
+  "6AC96645": [
+    "Press por Encima de la Cabeza de Pie con Mancuernas",
+    "dumbbell standing overhead press",
+    "Press de Hombros (Mancuerna)"
   ],
-  "0598": [
-    "Aducción de Cadera Sentado en Máquina de Palancas"
+  "8BEBFED6": [
+    "Aducción de Cadera Sentado en Máquina de Palancas",
+    "lever seated hip adduction",
+    "Aducción de Cadera (Máquina)"
   ],
-  "0605": [
-    "Elevación de Gemelos de Pie en Máquina"
+  "E05C2C38": [
+    "Elevación de Gemelos de Pie en Máquina",
+    "lever standing calf raise",
+    "Elevación de Gemelos de Pie (Máquina)"
   ],
-  "0606": [
-    "Remo con Barra T en Máquina de Palancas"
+  "08A2974E": [
+    "Remo con Barra T en Máquina de Palancas",
+    "lever t bar row",
+    "Remo en T"
   ],
-  "0684": [
-    "Carrera en Máquina"
+  "AC1BB830": [
+    "Carrera en Máquina",
+    "run (equipment)",
+    "Correr"
+  ],
+  "93A552C6": [
+    "cable pushdown",
+    "Jalón de Tríceps en Polea"
   ]
 })
 
 export const EXERCISE_NAME_ANGLICISMS_ES = Object.freeze({
-  "1401": "The source Spanish name is an established term and is retained verbatim: Muscle Up.",
   "BD0AD077": "The source Spanish name is an established term and is retained verbatim: Bird Dog.",
   "BB792A36": "The source Spanish name is an established term and is retained verbatim: Burpee.",
   "D8911FC4": "The source Spanish name is an established term and is retained verbatim: Dead Bug.",
@@ -665,6 +739,7 @@ export const EXERCISE_NAME_ANGLICISMS_ES = Object.freeze({
   "023947AB": "The source Spanish name is an established term and is retained verbatim: HIIT.",
   "970ADF87": "The source Spanish name is an established term and is retained verbatim: Hollow Rock.",
   "D410F649": "The source Spanish name is an established term and is retained verbatim: Jack Knife (Suspensión).",
+  "9F9C164B": "The source Spanish name is an established term and is retained verbatim: Muscle Up.",
   "EC2510CD": "The source Spanish name is an established term and is retained verbatim: Pilates.",
   "C10A5AC9": "The source Spanish name is an established term and is retained verbatim: Spiderman.",
   "213AB238": "The source Spanish name is an established term and is retained verbatim: Spinning.",
@@ -678,7 +753,7 @@ export const EXERCISE_NAME_LOW_CONFIDENCE_ES = Object.freeze({})
 export const EXERCISE_NAME_COLLISIONS_ES = Object.freeze([
   {
     "ids": [
-      "0426",
+      "6AC96645",
       "878CD1D0"
     ],
     "reason": "Distinct Hevy templates share the source Spanish display name: press de hombros mancuerna."

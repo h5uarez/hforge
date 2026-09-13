@@ -1,4 +1,5 @@
 import { MOBILE, shareExport } from './mobile.js'
+import { normalizeExerciseIds } from './exercise-ids.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
 
@@ -38,10 +39,10 @@ export function createWorkoutBackup(state, selectedDates) {
   ].filter(id => id !== undefined && id !== null))
   const customEx = clone(source.customEx || []).filter(exercise => customIds.has(exercise.id))
 
-  return { unit: source.unit, routines, workouts, customEx }
+  return normalizeExerciseIds({ unit: source.unit, routines, workouts, customEx })
 }
 
-export const serializeBackup = state => JSON.stringify(cleanBackupState(state), null, 2)
+export const serializeBackup = state => JSON.stringify(normalizeExerciseIds(cleanBackupState(state)), null, 2)
 export const backupFilename = date => 'hforge-backup-' + date + '.json'
 
 // WKWebView cannot download blob URLs, so native builds use the existing OS share sheet.

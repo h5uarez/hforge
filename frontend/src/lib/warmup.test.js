@@ -6,6 +6,12 @@ const gaps = sets => sets.slice(1).map((s, i) => Math.round((s.kg - sets[i].kg) 
 
 describe('resolveKind', () => {
   it('maps catalog ids and short keys to lift families', () => {
+    expect(resolveKind('79D0BB3A')).toBe('bench')
+    expect(resolveKind('1283BBA6')).toBe('squat')
+    expect(resolveKind('C6272009')).toBe('deadlift')
+    expect(resolveKind('6AC96645')).toBe('ohp')
+    expect(resolveKind('1B2B1E7C')).toBe('pullup')
+    expect(resolveKind('6FCD7755')).toBe('dip')
     expect(resolveKind('0025')).toBe('bench')
     expect(resolveKind('0043')).toBe('squat')
     expect(resolveKind('0032')).toBe('deadlift')
@@ -26,6 +32,9 @@ describe('resolveKind', () => {
 
   it('lists one option per supported family', () => {
     expect(WARMUP_OPTIONS.map(o => o.key)).toEqual(['bench', 'squat', 'deadlift', 'ohp', 'pullup', 'dip'])
+    expect(WARMUP_OPTIONS.map(o => o.id)).toEqual([
+      '79D0BB3A', '1283BBA6', 'C6272009', '6AC96645', '1B2B1E7C', '6FCD7755',
+    ])
   })
 })
 

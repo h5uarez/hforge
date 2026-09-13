@@ -6,7 +6,7 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { getExplicitLang, getInitialLang, getLang, normalizeLang } from '../lib/i18n.js'
 import { normalizeActiveSession } from '../lib/session.js'
-import { normalizeExerciseIds } from '../lib/exercise-ids.js'
+import { hasLegacyExerciseIds, normalizeExerciseIds } from '../lib/exercise-ids.js'
 import { normalizeActiveInactivity } from '../lib/inactivity.js'
 import { cancelInactivityPush } from '../lib/push.js'
 import { rebuildHistory } from '../lib/history-rebuild.js'
@@ -87,12 +87,12 @@ export const useStore = create((set, get) => {
     saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
   }
 
-  const persist = (S, push = true, transaction = null) => {
+  const persist = (S, push = true, transaction = null, { rebuild = true } = {}) => {
     const previous = transaction?.previous || get().S
     const previousKeys = transaction?.previousStorage || new Map([KEY, LAST_VALID_KEY].map(key => [key, localStorage.getItem(key)]))
     try {
       S = normalizeState(S)
-      S = rebuildHistory(S)
+      if (rebuild) S = rebuildHistory(S)
       S._ts = Date.now()
       registerCustom(S.customEx)
       const serialized = JSON.stringify(S)
@@ -221,12 +221,16 @@ export const useStore = create((set, get) => {
         const S = get().S
         const dirty = localStorage.getItem('gym_dirty') === '1'
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
+          const migrated = hasLegacyExerciseIds(state)
           const active = S.active
           const next = normalizeState(state)
           const explicitLang = getExplicitLang()
           next.lang = explicitLang || normalizeLang(next.lang) || getInitialLang()
           if (active) next.active = active
-          persist(next, false)
+          // Persist the normalized remote copy locally first. Only a successful local write may
+          // trigger the repair PUT; an offline/failed local write must never overwrite the server
+          // with a partially persisted migration.
+          if (persist(next, false, null, { rebuild: !migrated }) && migrated) await get().pushState(get().S)
         } else if (hasData(S)) { await get().pushState() }
       } catch (e) { /* offline — keep local */ }
     },

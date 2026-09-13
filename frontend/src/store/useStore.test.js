@@ -267,6 +267,62 @@ describe('bodyweightCheckEnabled compatibility', () => {
 })
 
 describe('server boot and synchronization boundaries', () => {
+  it('persists a remote legacy-ID migration locally before repairing the server', async () => {
+    const remote = {
+      _ts: Date.now() + 10_000,
+      routines: [{ id: 'routine-legacy', ex: [{ id: '0025', target: { id: '0032' }, sets: 3, reps: 8 }] }],
+      workouts: [{ id: 'workout-legacy', d: '2026-09-01', entries: [{ id: '0198', target: { id: '2330' }, sets: [] }], prs: ['0025', '2330'] }],
+      active: { entries: [{ id: '0652', target: { id: '0251' } }] },
+      exWeights: { '0025': { w: 100, d: '2026-01-01' } },
+    }
+    globalThis.fetch = vi.fn(async (_path, options = {}) =>
+      options.method === 'PUT'
+        ? { ok: true, json: async () => ({}) }
+        : { ok: true, json: async () => ({ state: remote }) })
+    useStore.getState().setUser({ id: 'u1' })
+
+    await useStore.getState().pullState()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2)
+    const local = JSON.parse(storage.get(KEY))
+    const pushed = JSON.parse(globalThis.fetch.mock.calls[1][1].body).state
+    expect(pushed).toEqual(local)
+    expect(local.routines[0].ex[0]).toMatchObject({ id: '79D0BB3A', target: { id: 'C6272009' } })
+    expect(local.workouts[0].entries[0]).toMatchObject({ id: '6A6C31A5', target: { id: '6A6C31A5' } })
+    expect(local.active.entries[0]).toMatchObject({ id: '1B2B1E7C', target: { id: '6FCD7755' } })
+    expect(local.workouts[0].prs).toEqual(['79D0BB3A', '6A6C31A5'])
+    expect(local.exWeights).toEqual({ '79D0BB3A': { w: 100, d: '2026-01-01' } })
+  })
+
+  it('keeps the normalized local copy and marks it dirty when the repair PUT fails', async () => {
+    const remote = {
+      _ts: Date.now() + 10_000,
+      routines: [{ id: 'routine-legacy', ex: [{ id: '0025', sets: 3, reps: 8 }] }],
+      workouts: [],
+    }
+    globalThis.fetch = vi.fn(async (_path, options = {}) => {
+      if (options.method === 'PUT') throw new Error('offline during repair')
+      return { ok: true, json: async () => ({ state: remote }) }
+    })
+    useStore.getState().setUser({ id: 'u1' })
+
+    await useStore.getState().pullState()
+
+    expect(useStore.getState().S.routines[0].ex[0].id).toBe('79D0BB3A')
+    expect(localStorage.getItem('gym_dirty')).toBe('1')
+    expect(useStore.getState().persistence.status).toBe('failed')
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not issue a repair PUT when the remote state is already canonical', async () => {
+    const remote = { _ts: Date.now() + 10_000, routines: [{ id: 'routine', ex: [{ id: '79D0BB3A', sets: 3, reps: 8 }] }], workouts: [] }
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ state: remote }) }))
+
+    await useStore.getState().pullState()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
   it('boots an authenticated profile and accepts a newer remote state', async () => {
     const remote = { _ts: Date.now() + 10_000, unit: 'lb', routines: [{ id: 'remote', ex: [] }], workouts: [] }
     globalThis.fetch = vi.fn()
