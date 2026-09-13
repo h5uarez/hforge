@@ -19,7 +19,7 @@ const byId = id => EXIDX[id]
 const visibleId = id => LEGACY_TO_HEVY[id] || id
 const POWERLIFTING_ADDITIONS = [
   { id: '5214', en: 'Chest Supported T Bar Row', es: 'Remo en T con Apoyo de Pecho', aliases: ['remo T pecho apoyado', 'chest supported T bar row'], media: ['6A8D3193.jpg', null], video: '6A8D3193.mp4' },
-  { id: '5218', en: 'Hip Thrust (Barbell)', es: 'Empuje de Caderas (Barra)', aliases: ['hip thrust barra'], media: ['D57C2EC7.jpg', null], video: 'D57C2EC7.mp4' },
+  { id: '5218', en: 'Hip Thrust (Barbell)', es: 'Hip thrust (Barra)', aliases: ['hip thrust barra'], media: ['D57C2EC7.jpg', null], video: 'D57C2EC7.mp4' },
   { id: '5223', en: 'Back Extension (Weighted Hyperextension)', es: 'Extensión de Espalda (Hiperextensión con peso)', aliases: ['hiperextensión con lastre', 'weighted back extension'], media: ['091737FA.jpg', null], video: '091737FA.mp4' },
 ]
 

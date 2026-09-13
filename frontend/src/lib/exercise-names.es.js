@@ -67,7 +67,7 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "B2398CD1": "Abdominal Corto en Banco Declinado (Con Peso Añadido)",
   "01A35BF9": "Curl con Barra EZ",
   "567FB505": "Abdominales Toque al Talón",
-  "D57C2EC7": "Empuje de Caderas (Barra)",
+  "D57C2EC7": "Hip thrust (Barra)",
   "50DFDFAB": "Press de Banca Inclinado (Barra)",
   "D3E2AB55": "Aperturas Inclinadas (Mancuerna)",
   "39C99849": "Flexiones Inclinadas",
@@ -229,10 +229,10 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "F4B4C6EE": "Abducción de Cadera (Máquina)",
   "22578A94": "Aducción de Cadera (Cable)",
   "8BEBFED6": "Aducción de Cadera (Máquina)",
-  "92B8C7E1": "Empuje de Caderas",
-  "DA5430FC": "Empuje de Cadera (Mancuerna)",
-  "68CE0B9B": "Empuje de Cadera (Máquina)",
-  "291ABA92": "Empuje de Cadera (Máquina Smith)",
+  "92B8C7E1": "Hip thrust",
+  "DA5430FC": "Hip thrust (Mancuerna)",
+  "68CE0B9B": "Hip thrust (Máquina)",
+  "291ABA92": "Hip thrust (Máquina Smith)",
   "970ADF87": "Hollow Rock",
   "3A6FA3D1": "Press de Banca Inclinado (Máquina Smith)",
   "FBF92739": "Press de Pecho Inclinado (Máquina)",
@@ -385,8 +385,8 @@ export const EXERCISE_NAMES_ES = Object.freeze({
   "552AB030": "Extensión de Tríceps a un Brazo (Cable)",
   "629AE73D": "Extensiones a Una Pierna",
   "CBC0D834": "Puente de Glúteos con Una Pierna",
-  "487B3755": "Empuje de Cadera a Una Pierna",
-  "D1CD146F": "Empuje de Cadera a Una Pierna (Mancuerna)",
+  "487B3755": "Hip thrust a Una Pierna",
+  "D1CD146F": "Hip thrust a Una Pierna (Mancuerna)",
   "3FD83744": "Press a Una Pierna",
   "93472AC1": "Peso Muerto Rumano a Una Pierna (Barra)",
   "937292AB": "Peso Muerto Rumano a Una Pierna (Mancuerna)",
@@ -514,7 +514,7 @@ export const EXERCISE_ALIASES_ES = Object.freeze({
   "D57C2EC7": [
     "hip thrust",
     "hip thrust barra",
-    "Empuje de Caderas (Barra)"
+    "Hip thrust (Barra)"
   ],
   "091737FA": [
     "hiperextensión lastrada",
@@ -745,7 +745,8 @@ export const EXERCISE_NAME_ANGLICISMS_ES = Object.freeze({
   "213AB238": "The source Spanish name is an established term and is retained verbatim: Spinning.",
   "9283BABA": "The source Spanish name is an established term and is retained verbatim: Sprints.",
   "218DA87C": "The source Spanish name is an established term and is retained verbatim: Superman.",
-  "8C9D2928": "The source Spanish name is an established term and is retained verbatim: Yoga."
+  "8C9D2928": "The source Spanish name is an established term and is retained verbatim: Yoga.",
+  "92B8C7E1": "The source Spanish name is an established term and is retained verbatim: Hip thrust."
 })
 
 export const EXERCISE_NAME_LOW_CONFIDENCE_ES = Object.freeze({})
