@@ -189,7 +189,7 @@ test('historical workout reuses the active editor and cancels without changing h
   const editor = page.locator('main.workout-session')
   await expect(page).toHaveURL(/#\/workout$/)
   await expect(editor.getByText('Edit workout', { exact: true })).toBeVisible()
-  await expect(editor.getByLabel('Workout day')).toBeVisible()
+  await expect(editor.getByLabel('Workout day')).toHaveCount(0)
   await editor.getByRole('button', { name: 'Edit', exact: true }).first().click()
   const config = page.getByRole('dialog').last()
   await expect(config).toBeVisible()
