@@ -231,11 +231,11 @@ export default function Stats() {
         <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
       </div>
 
-      <div className="card">
+      <div className="card exercise-progress">
         <h2>{t('Exercise progress')}</h2>
         {exHist.length ? <>
-          <div className="sect-b" style={{ marginBottom: 10 }}>
-            <SelectRow title={t('Exercise')} sheetTitle={t('Exercise progress')} value={curEx} onChange={setExId}
+          <div className="sect-b exercise-progress-selector" style={{ marginBottom: 10 }}>
+            <SelectRow className="exercise-progress-row" title={t('Exercise')} sheetTitle={t('Exercise progress')} value={curEx} onChange={setExId}
               options={exHist.map(id => ({ value: id, label: sentenceCaseFirst(exerciseName(EXIDX[id])) }))} />
           </div>
           {exOpts.length > 1 && <Segmented className="seg-range" value={onEff ? 'effort' : onE1 ? 'e1rm' : 'top'} onChange={setExMetric} options={exOpts} />}

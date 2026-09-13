@@ -667,11 +667,14 @@ function ActiveWorkout() {
       <button className="iconbtn acc-ink" aria-label={t(isHistorical ? 'Save changes' : 'Finish')} onClick={isHistorical ? saveHistorical : finishWorkout}><Icon name={isHistorical ? 'check' : 'check'} /></button>
     </div>
     {isHistorical && <div className="card history-date-fields" style={{ marginBottom: 12 }}>
-      <label className="history-field"><span>{t('Workout day')}</span><TextField type="date" value={A.d || ''} onChange={e => update(s => {
-        if (!s.active || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return
-        s.active.d = e.target.value
-        touchActiveRecord(s.active)
-      }, false)} /></label>
+      <label className="history-field"><span>{t('Workout day')}</span><span className="history-date-control">
+        <Icon name="calendar" className="history-date-icon" />
+        <TextField className="history-date-input" type="date" value={A.d || ''} onChange={e => update(s => {
+          if (!s.active || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return
+          s.active.d = e.target.value
+          touchActiveRecord(s.active)
+        }, false)} />
+      </span></label>
     </div>}
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
     {persistence?.status === 'failed' && <div className="card persistence-recovery" role="alert" aria-live="assertive">

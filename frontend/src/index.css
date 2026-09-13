@@ -312,6 +312,13 @@ h4.sec{
 .lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
 .lrow-k{color:var(--acc);font-size:17px;flex:none;--icon-stroke:2.4}
 .lrow.danger,.lrow.danger .lrow-t{color:var(--red)}
+/* The exercise progress picker has two pieces of meaning on one row: keep its
+   short label intact while the selected exercise owns the flexible, wrapping area. */
+.exercise-progress-row{align-items:flex-start}
+.exercise-progress-row .lrow-m{flex:0 1 auto;max-width:42%;min-width:0}
+.exercise-progress-row .lrow-t{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:normal;line-height:1.29}
+.exercise-progress-row .lrow-v{flex:1 1 0;min-width:0;white-space:normal;overflow:hidden;text-overflow:clip;overflow-wrap:anywhere;text-align:right;line-height:1.29}
+.exercise-progress-row .lrow-c{margin-top:2px}
 /* an (i) before a row's control: painted small and dim so the control stays the loud thing,
    but with a finger-sized target like everything else — the padding is the hit area and the
    vertical negative margin keeps it from making the row taller. The horizontal ones pull the
@@ -637,6 +644,38 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 }
 .timef::-webkit-calendar-picker-indicator{filter:invert(.5)}
 :root[data-theme="light"] .timef::-webkit-calendar-picker-indicator{filter:none}
+
+/* Historical dates keep the native date semantics/picker, but the painted control is ours:
+   a compact, token-backed field with an explicit icon rail instead of platform-sized text. */
+.history-date-control{
+  display:flex;align-items:center;gap:8px;min-width:0;min-height:44px;
+  padding:0 10px 0 12px;border:1px solid var(--sep);border-radius:var(--r-sm);
+  background:var(--surface-2);color:var(--label);
+}
+.history-date-control:focus-within{box-shadow:inset 0 0 0 2px var(--acc)}
+.history-date-icon{flex:none;color:var(--label-2);font-size:17px}
+.history-date-control .history-date-input{
+  flex:1 1 auto;min-width:0;width:auto;min-height:42px;padding:9px 0;
+  border:0;border-radius:0;background:transparent;font-size:17px;line-height:1.29;
+  font-variant-numeric:tabular-nums;appearance:none;-webkit-appearance:none;
+}
+.history-date-control .history-date-input:focus{box-shadow:none}
+.history-date-input::-webkit-datetime-edit{padding:0}
+.history-date-input::-webkit-date-and-time-value{min-height:1.29em;text-align:left}
+.history-date-input::-webkit-calendar-picker-indicator{width:18px;height:18px;margin-left:8px;opacity:.7}
+:root[data-theme="light"] .history-date-input::-webkit-calendar-picker-indicator{opacity:.65}
+
+/* Exercise detail summaries are intentionally two lines: the best value stays an
+   unbroken numeric unit, while the historical set list gets its own reading width. */
+.exercise-summary{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0;margin:10px 0 8px;line-height:1.38}
+.exercise-summary-best{display:flex;align-items:baseline;gap:5px;min-width:0}
+.exercise-summary-best .icn{align-self:center;flex:none}
+.exercise-summary-value{flex:none;white-space:nowrap}
+.exercise-summary-last{display:flex;align-items:flex-start;gap:6px;min-width:0;line-height:1.45;overflow-wrap:anywhere}
+.exercise-summary-last-marker{flex:none;color:var(--label-3)}
+.exercise-summary-last-copy{min-width:0;overflow-wrap:anywhere}
+.exercise-summary-last-label{white-space:normal}
+.exercise-summary-sets{overflow-wrap:anywhere}
 
 /* --- stepper --- */
 .stp-w{display:flex;flex-direction:column;gap:6px;min-width:0}
