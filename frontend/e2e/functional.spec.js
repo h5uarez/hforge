@@ -175,7 +175,9 @@ test('history opens a workout detail dialog', async ({ page, openApp }) => {
 
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Push Day', exact: true })).toBeVisible()
-  await expect(dialog.getByText('Bench Press (Barbell) PR', { exact: true })).toBeVisible()
+  const benchPress = dialog.getByText('Bench Press (Barbell)', { exact: true })
+  await expect(benchPress).toBeVisible()
+  await expect(benchPress.locator('..').getByText('PR', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Delete workout', exact: true })).toBeVisible()
 })
 
