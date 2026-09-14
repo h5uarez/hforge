@@ -71,7 +71,9 @@ describe('legacy state normalization', () => {
     expect(restored.getState().S).not.toHaveProperty('blocks')
     expect(restored.getState().S).not.toHaveProperty('activeBlock')
     expect(restored.getState().S.workouts[0]).not.toHaveProperty('block')
-    expect(JSON.parse(storage.get(KEY))).not.toHaveProperty('blocks')
+    // Load no longer writes back: normalization is in-memory only, so the raw
+    // stored copy keeps its legacy fields until the next real change persists.
+    expect(JSON.parse(storage.get(KEY))).toHaveProperty('blocks')
   })
 
   it('removes legacy schedule fields and workout snapshots on replacement', () => {

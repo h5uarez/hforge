@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useStore } from './store/useStore.js'
@@ -20,14 +20,16 @@ import InactivityReminder from './components/InactivityReminder.jsx'
 import { handleAndroidBack } from './lib/android-back.js'
 import Login from './views/Login.jsx'
 import Home from './views/Home.jsx'
-import Plan from './views/Plan.jsx'
-import RoutineEdit from './views/RoutineEdit.jsx'
-import Workout from './views/Workout.jsx'
-import Stats from './views/Stats.jsx'
-import History from './views/History.jsx'
-import Library from './views/Library.jsx'
-import Settings from './views/Settings.jsx'
-import Admin from './views/Admin.jsx'
+// Route code-splitting: Home and Login stay in the entry chunk so first paint
+// never waits on the network; every other view lazy-loads on navigation.
+const Plan = lazy(() => import('./views/Plan.jsx'))
+const RoutineEdit = lazy(() => import('./views/RoutineEdit.jsx'))
+const Workout = lazy(() => import('./views/Workout.jsx'))
+const Stats = lazy(() => import('./views/Stats.jsx'))
+const History = lazy(() => import('./views/History.jsx'))
+const Library = lazy(() => import('./views/Library.jsx'))
+const Settings = lazy(() => import('./views/Settings.jsx'))
+const Admin = lazy(() => import('./views/Admin.jsx'))
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
@@ -37,6 +39,21 @@ function applyPrefs(theme, accent) {
   de.dataset.accent = ACCENTS[accent] ? accent : 'lime'
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.content = de.dataset.theme === 'light' ? '#f2f2f7' : '#000000'
+}
+
+function BootSkeleton() {
+  // No #app wrapper of its own: the boot branch provides it, and the Suspense
+  // fallback below already renders inside #app — a nested duplicate id would
+  // break strict-mode selectors during chunk loads.
+  return (
+    <>
+      <Skeleton className="skel-hdr" />
+      <Skeleton className="skel-week" />
+      <div style={{ height: 12 }} />
+      <div className="skel-tiles"><Skeleton /><Skeleton /><Skeleton /><Skeleton /></div>
+      <Skeleton className="skel-row" /><Skeleton className="skel-row" />
+    </>
+  )
 }
 
 function Shell() {
@@ -98,15 +115,8 @@ function Shell() {
   // P0 boot skeleton: same heights as the real home (title band, week strip,
   // tiles, rows), so first paint never shifts when the store lands. The store
   // hydrates synchronously after this, so this is the >1s branch of the rule.
-  if (!ready && !authed) return (
-    <div id="app" aria-busy="true">
-      <Skeleton className="skel-hdr" />
-      <Skeleton className="skel-week" />
-      <div style={{ height: 12 }} />
-      <div className="skel-tiles"><Skeleton /><Skeleton /><Skeleton /><Skeleton /></div>
-      <Skeleton className="skel-row" /><Skeleton className="skel-row" />
-    </div>
-  )
+  // It also covers lazy route chunks below via Suspense.
+  if (!ready && !authed) return <div id="app" aria-busy="true"><BootSkeleton /></div>
 
   return (
     <>
@@ -115,6 +125,7 @@ function Shell() {
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
           {!authed ? <Login /> : (
+            <Suspense fallback={<BootSkeleton />}>
             <Routes>
               <Route path="/home" element={<Home />} />
               <Route path="/plan" element={<Plan />} />
@@ -127,6 +138,7 @@ function Shell() {
               <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
+            </Suspense>
           )}
         </ErrorBoundary>
       </div>
