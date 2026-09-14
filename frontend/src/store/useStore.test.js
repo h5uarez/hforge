@@ -183,11 +183,24 @@ describe('remote persistence snapshots', () => {
 
     const local = structuredClone(useStore.getState().S.active)
     const snapshot = structuredClone(useStore.getState().S)
-    snapshot.active = null
     expect(await useStore.getState().pushState(snapshot)).toBe(true)
 
     const pushed = JSON.parse(globalThis.fetch.mock.calls[0][1].body)
-    expect(pushed.state.active).toBeNull()
+    expect(pushed.state).not.toHaveProperty('active')
+    expect(useStore.getState().S.active).toEqual(local)
+  })
+
+  it('omits the locally visible active session from implicit remote snapshots', async () => {
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({}) }))
+    const active = { id: 'local-session', entries: [entry('squat')] }
+    useStore.getState().replaceState({ routines: [], workouts: [], active })
+    useStore.getState().setUser({ id: 'server-user' })
+    const local = structuredClone(useStore.getState().S.active)
+
+    expect(await useStore.getState().pushState()).toBe(true)
+
+    const pushed = JSON.parse(globalThis.fetch.mock.calls[0][1].body)
+    expect(pushed.state).not.toHaveProperty('active')
     expect(useStore.getState().S.active).toEqual(local)
   })
 
@@ -286,7 +299,8 @@ describe('server boot and synchronization boundaries', () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(2)
     const local = JSON.parse(storage.get(KEY))
     const pushed = JSON.parse(globalThis.fetch.mock.calls[1][1].body).state
-    expect(pushed).toEqual(local)
+    const { active, ...persisted } = local
+    expect(pushed).toEqual(persisted)
     expect(local.routines[0].ex[0]).toMatchObject({ id: '79D0BB3A', target: { id: 'C6272009' } })
     expect(local.workouts[0].entries[0]).toMatchObject({ id: '6A6C31A5', target: { id: '6A6C31A5' } })
     expect(local.active.entries[0]).toMatchObject({ id: '1B2B1E7C', target: { id: '6FCD7755' } })
