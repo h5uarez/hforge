@@ -198,14 +198,15 @@ export const useStore = create((set, get) => {
       return updated
     },
 
-    // Push an optional snapshot without replacing the locally visible state. Historical editing
-    // uses this to keep the transient active view out of the server payload until the remote save
-    // succeeds; ordinary callers omit the argument and push the current state as before.
+    // Push an optional snapshot without replacing the locally visible state. The active session is
+    // browser-local, so never include it in a server payload (historical edits may nest it).
     async pushState(snapshot = null) {
       if (!get().user) return
       clearTimeout(pushTm)
       try {
-        await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: snapshot || get().S }) })
+        const state = { ...(snapshot || get().S) }
+        delete state.active
+        await api('/api/data', { method: 'PUT', body: JSON.stringify({ state }) })
         localStorage.removeItem('gym_dirty')
         return true
       } catch (e) {
