@@ -1120,13 +1120,11 @@ export function startHistoricalWorkoutEdit(workout) {
   return true
 }
 
-// History keeps the note written during a workout separate from the exercise's planned note.
+// History shows only the note written during a workout, never the exercise's planned note.
 // Resolve the visible note once so whitespace-only values never create an empty note box.
 export function historicalEntryNote(entry) {
   const workoutNote = typeof entry?.note === 'string' ? entry.note.trim() : ''
   if (workoutNote) return { label: 'Workout note', text: workoutNote }
-  const exerciseNote = typeof entry?.target?.planNote === 'string' ? entry.target.planNote.trim() : ''
-  if (exerciseNote) return { label: 'Exercise note', text: exerciseNote }
   return null
 }
 
