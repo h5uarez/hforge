@@ -29,6 +29,14 @@ export const DEF = {
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
+// The historical editor is a transient view-model. Persist the session it will restore, not the
+// editor itself, while leaving the supplied state untouched for the current in-memory draft.
+export const stateForStorage = state => {
+  const next = structuredClone(state || {})
+  if (next.active?.historicalEdit) next.active = next.active.historicalEdit.returnActive || null
+  return next
+}
+
 // Backups and server/mobile restores predate the preference. Only an explicit false disables
 // the timer; malformed or absent values retain the historical enabled behavior.
 const normalizeState = state => {
@@ -58,7 +66,7 @@ function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      const state = normalizeState(JSON.parse(raw))
+      const state = stateForStorage(normalizeState(JSON.parse(raw)))
       state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
       // No write-back here: loading must not churn localStorage. Normalization
       // is in-memory only; the next real change persists via persist().
@@ -68,7 +76,7 @@ function loadState() {
     // A partial/quota-corrupted primary must not erase the last known valid session.
     try {
       const fallback = localStorage.getItem(LAST_VALID_KEY)
-      if (fallback) return normalizeState(JSON.parse(fallback))
+      if (fallback) return stateForStorage(normalizeState(JSON.parse(fallback)))
     } catch { /* ignore malformed fallback too */ }
   }
   return normalizeState({ lang: getInitialLang() })
@@ -85,7 +93,7 @@ export const useStore = create((set, get) => {
   // storage eviction) and keep the native reminder schedule in step with the weekly plan.
   const nativePersist = () => {
     clearTimeout(saveTm)
-    saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
+    saveTm = setTimeout(() => { saveTm = null; nativeSave(stateForStorage(get().S)); syncReminder(get().S) }, 800)
   }
 
   const persist = (S, push = true, transaction = null, { rebuild = true } = {}) => {
@@ -96,7 +104,7 @@ export const useStore = create((set, get) => {
       if (rebuild) S = rebuildHistory(S)
       S._ts = Date.now()
       registerCustom(S.customEx)
-      const serialized = JSON.stringify(S)
+      const serialized = JSON.stringify(stateForStorage(S))
       localStorage.setItem(KEY, serialized)
       localStorage.setItem(LAST_VALID_KEY, serialized)
       lastTransaction = { previous: structuredClone(previous), draft: structuredClone(S), previousStorage: previousKeys }
