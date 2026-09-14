@@ -60,12 +60,17 @@ jobs:
       - name: Install application dependencies
         shell: pwsh
         run: |
-          npm ci --prefix frontend
+          # PowerShell does not reliably stop after a native npm command fails.
+          $ErrorActionPreference = 'Stop'
+          # Browser checks do not use capacitor-assets; skip its flaky sharp/libvips install hook.
+          npm ci --prefix frontend --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm ci --prefix api
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install pinned Playwright browsers
         working-directory: frontend
-        run: npx playwright install chromium firefox webkit
+        run: .\node_modules\.bin\playwright.cmd install chromium firefox webkit
 
       - name: Verify real media server and Vite proxy
         working-directory: frontend
