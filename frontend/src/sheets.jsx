@@ -1337,7 +1337,7 @@ export function beginWorkout(routineId, bw) {
   prefetchWorkoutMedia(entries)
   update(s => {
     s.active = { id: uid(), d: todayISO(), start: startedAt, lastRecordEditAt: startedAt, inactivityReminderSent: false, routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
-  })
+  }, false)
   useUI.getState().stopRest()
   nav('/workout')
 }
