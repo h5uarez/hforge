@@ -37,7 +37,7 @@ function fakeBrowser() {
 // the module sees the stub globals.
 const KEY = 'gym_state_v1'
 
-let storage, useStore
+let storage, useStore, stateForStorage
 
 beforeEach(async () => {
   storage = fakeBrowser()
@@ -45,6 +45,7 @@ beforeEach(async () => {
   vi.doUnmock('../lib/mobile.js')
   const storeMod = await import('./useStore.js')
   useStore = storeMod.useStore
+  stateForStorage = storeMod.stateForStorage
   // Reset S to a known generic overlay. replaceState persists immediately, so each scenario
   // starts from a clean slate regardless of what prior tests left behind.
   useStore.getState().replaceState({ routines: [], workouts: [] })
@@ -105,6 +106,57 @@ describe('legacy state normalization', () => {
     expect(S.active.entries.map(e => e.sid)).toEqual(['session-squat-0', 'session-squat-1'])
     expect(S.routines).toEqual(routines)
     expect(S.dayPlan).toEqual(dayPlan)
+  })
+})
+
+describe('historical editor persistence boundary', () => {
+  const live = { id: 'live-session', entries: [entry('squat')] }
+  const historical = returnActive => ({
+    id: 'history-session',
+    entries: [entry('squat')],
+    historicalEdit: { workoutId: 'history-session', originalWorkout: { id: 'history-session', entries: [] }, returnActive },
+  })
+
+  it('keeps a normal active session unchanged in durable state', () => {
+    const active = { id: 'live-only', entries: [entry('bench')] }
+    const durable = stateForStorage({ active })
+
+    expect(durable.active).toEqual(active)
+    expect(durable.active).not.toBe(active)
+  })
+
+  it('stores the return session while keeping the historical draft in memory', () => {
+    const draft = historical(live)
+    const durable = stateForStorage({ active: draft })
+
+    expect(durable.active).toEqual(live)
+    expect(draft).toHaveProperty('historicalEdit')
+    expect(draft).not.toBe(durable.active)
+
+    useStore.getState().replaceState({ routines: [], workouts: [], active: draft })
+    expect(useStore.getState().S.active).toHaveProperty('historicalEdit')
+    expect(JSON.parse(storage.get(KEY)).active).toMatchObject(live)
+
+    useStore.getState().update(state => { state.active.entries[0].sets[0].r = 9 }, false)
+    expect(useStore.getState().S.active.entries[0].sets[0].r).toBe(9)
+    expect(JSON.parse(storage.get(KEY)).active).toMatchObject(live)
+  })
+
+  it('does not reload a stale historical editor snapshot', async () => {
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], active: historical(live) }))
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+
+    expect(restored.getState().S.active).toMatchObject(live)
+    expect(restored.getState().S.active).not.toHaveProperty('historicalEdit')
+  })
+
+  it('persists no active session when a historical edit had nothing to restore', () => {
+    const draft = historical(null)
+    useStore.getState().replaceState({ routines: [], workouts: [], active: draft })
+
+    expect(useStore.getState().S.active).toHaveProperty('historicalEdit')
+    expect(JSON.parse(storage.get(KEY)).active).toBeNull()
   })
 })
 
