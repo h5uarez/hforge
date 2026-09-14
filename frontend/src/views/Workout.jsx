@@ -351,7 +351,9 @@ function ActiveWorkout() {
   useEffect(() => {
     if (resumed.current || !A.entries[cur]) return
     resumed.current = true
-    focusEntry(A.entries[cur].sid)
+    // Reopening a saved session should restore focus for keyboard and screen-reader users without
+    // moving the viewport. Explicit reorder/remove/add actions still request the visible scroll.
+    focusEntry(A.entries[cur].sid, false)
   }, [A.entries, cur])
   useEffect(() => {
     if (isHistorical) {
@@ -368,14 +370,14 @@ function ActiveWorkout() {
     if (!s.active?.entries?.[idx]) return
     fn(s.active.entries[idx])
     touchActiveRecord(s.active)
-  }, !isHistorical)
+  }, false)
   const setNote = (idx, raw) => update(s => {
     const entry = s.active?.entries?.[idx]
     if (entry) {
       s.active.entries[idx] = updateExerciseNote(entry, raw)
       touchActiveRecord(s.active)
     }
-  }, !isHistorical)
+  }, false)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
   const setField = (idx, i, field, v, side) => mutEntry(idx, e => {
@@ -396,7 +398,7 @@ function ActiveWorkout() {
       s.active.entries = moved.entries
       s.active.cur = remapCur(before, s.active.cur, moved.entries)
       touchActiveRecord(s.active)
-    }, !isHistorical)
+    }, false)
     const position = result.position + 1
     const moved = A.entries.find(e => e.sid === result.movedSid)
     if (moved) {
@@ -424,7 +426,7 @@ function ActiveWorkout() {
           s.active.entries[idx] = result.entry
           touchActiveRecord(s.active)
         }
-      }, !isHistorical)
+      }, false)
     }, null, routine)
   }
   const removeExercise = idx => {
@@ -453,7 +455,7 @@ function ActiveWorkout() {
           focusSid = result.focusSid
           removed = true
           touchActiveRecord(active)
-        }, !isHistorical)
+        }, false)
         if (!removed) return
         if (hasRemovedRest) stopRest()
         if (focusSid) focusEntry(focusSid)
@@ -509,7 +511,7 @@ function ActiveWorkout() {
       active.entries.push(...imported)
       active.cur = firstIndex
       touchActiveRecord(active)
-    }, !isHistorical)
+    }, false)
     if (!imported?.length) {
       useUI.getState().toast(t('That routine is no longer available'))
       return
@@ -660,7 +662,7 @@ function ActiveWorkout() {
       s.active.entries.push(added)
       s.active.cur = s.active.entries.length - 1
       touchActiveRecord(s.active)
-    }), closePicker)
+    }, false), closePicker)
     if (addedSid) focusEntry(addedSid)
   }, null, S.routines.find(r => r.id === A.routineId), { submitLabel: 'Add exercise' }), {
     mode: 'active-workout',
@@ -669,7 +671,7 @@ function ActiveWorkout() {
 
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="hdr">
-      <button className="iconbtn" aria-label={t(isHistorical ? 'Cancel' : 'Discard')} onClick={isHistorical ? cancelHistorical : () => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
+      <button className="iconbtn" aria-label={t(isHistorical ? 'Cancel' : 'Discard')} onClick={isHistorical ? cancelHistorical : () => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }, false); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
       <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1>{isHistorical ? <div className="sub">{t('Edit workout')}</div> : <div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div>}</div>
       <button className="iconbtn acc-ink" aria-label={t(isHistorical ? 'Save changes' : 'Finish')} onClick={isHistorical ? saveHistorical : finishWorkout}><Icon name={isHistorical ? 'check' : 'check'} /></button>
     </div>

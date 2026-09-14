@@ -67,7 +67,7 @@ describe('mobile accessibility and layout contracts', () => {
     const modal = source('components/Modals.jsx')
     expect(modal).toContain("e.key === 'Escape' && !sheet.locked")
     expect(modal).toContain("!sheet.locked && <button type=\"button\" className=\"iconbtn modal-close\"")
-    expect(modal).toContain('returnFocus.current.focus()')
+    expect(modal).toContain('returnFocus.current.focus({ preventScroll: true })')
   })
 
   it('uses native buttons for the audited Home and scheduling actions', () => {

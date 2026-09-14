@@ -52,6 +52,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   delete globalThis.localStorage
   delete globalThis.document
   delete globalThis.window
@@ -454,6 +455,48 @@ describe('server boot and synchronization boundaries', () => {
     expect(useStore.getState().S.routines).toEqual([])
     expect(localStorage.getItem('gym_guest')).toBeNull()
     expect(localStorage.getItem('gym_dirty')).toBeNull()
+  })
+
+  it('defers a queued remote push while active and releases it after the session is cleared', async () => {
+    vi.useFakeTimers()
+    useStore.getState().setUser({ id: 'u1' })
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) }))
+    useStore.getState().replaceState({ routines: [], workouts: [], active: { id: 'live', entries: [entry('squat')] } })
+    useStore.getState().update(state => { state.unit = 'lb' })
+
+    vi.advanceTimersByTime(1500)
+    await Promise.resolve()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+
+    useStore.getState().update(state => { state.active = null }, false)
+    vi.advanceTimersByTime(1499)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body).state.unit).toBe('lb')
+  })
+
+  it('requeues rather than flushing a queued push when hiding during an active session', async () => {
+    vi.useFakeTimers()
+    useStore.getState().setUser({ id: 'u1' })
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) }))
+    useStore.getState().replaceState({ routines: [], workouts: [], active: { id: 'live', entries: [entry('squat')] } })
+    useStore.getState().update(state => { state.unit = 'lb' })
+    document.visibilityState = 'hidden'
+
+    document.listeners.get('visibilitychange')()
+    await Promise.resolve()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+
+    useStore.getState().update(state => { state.active = null }, false)
+    vi.advanceTimersByTime(1500)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('flushes a pending authenticated state push when the document becomes hidden', async () => {

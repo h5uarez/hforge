@@ -6,6 +6,7 @@ import { FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } fro
 const source = readFileSync(resolve(process.cwd(), 'src/views/Workout.jsx'), 'utf8')
 const session = readFileSync(resolve(process.cwd(), 'src/lib/session.js'), 'utf8')
 const media = readFileSync(resolve(process.cwd(), 'src/components/Media.jsx'), 'utf8')
+const sheets = readFileSync(resolve(process.cwd(), 'src/sheets.jsx'), 'utf8')
 
 describe('scrollable workout composition contracts', () => {
   it('renders every ordered unit and treats cur as a focus hint', () => {
@@ -179,6 +180,36 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('onClick={cancelPersistence}')
   })
 
+  it('keeps active-session-only workout edits out of the remote save queue', () => {
+    // Set logging mutates only the browser-local active session. The remote snapshot strips active,
+    // so scheduling /api/data for each set can report a false save failure while localStorage is safe.
+    const activeMutationBlock = source.match(/const mutEntry[\s\S]*?const cancelHistorical/)
+    expect(activeMutationBlock?.[0]).toContain('const mutEntry')
+    expect(activeMutationBlock?.[0]).not.toContain('}, !isHistorical)')
+    const pickerMutationBlock = source.match(/const pickExercise[\s\S]*?return <main/)
+    expect(pickerMutationBlock?.[0]).toContain('}, false), closePicker)')
+    const topWeightBlock = sheets.match(/function TopWeight[\s\S]*?export const workoutCompleteSheet/)
+    expect(topWeightBlock?.[0]).toContain('else update(s => { s.active.cur = units[unitIdx + 1][0] }, false)')
+    const topWeightCommit = topWeightBlock?.[0].match(/const commit = advance =>[\s\S]*?close\(\)/)?.[0]
+    expect(topWeightCommit).toContain('s.exWeights[entry.id] = { w: Math.max(n, cur ? cur.w : 0), d: todayISO() }')
+    expect(topWeightCommit).toContain('}, false)')
+  })
+
+  it('keeps set completion anchored and lets sheets own completion focus', () => {
+    const toggleBlock = source.match(/const toggle = [\s\S]*?\/\/ Live-presence/)
+    const ui = readFileSync(resolve(process.cwd(), 'src/components/ui.jsx'), 'utf8')
+    const flashBlock = ui.match(/export function scheduleSetRowFlash[\s\S]*?export function Check/)
+    // Checking a set must not run the exercise-card focus/scroll path; only the expected
+    // top-weight or whole-workout sheet may take focus after the state update.
+    expect(toggleBlock?.[0]).not.toContain('focusEntry(')
+    expect(toggleBlock?.[0]).toContain('if (askTop) topWeightSheet(idx)')
+    expect(toggleBlock?.[0]).toContain('else if (workoutDone) workoutCompleteSheet()')
+    expect(flashBlock?.[0]).not.toContain('scrollIntoView')
+    // Row keys remain index-stable while the done-run wrapper owns only the visual fusion.
+    expect(source).toContain('return <Fragment key={i}>')
+    expect(source).toContain("key={'g' + k + '-' + j}")
+  })
+
   it('restores only sid-keyed rest metadata and keeps work timer separate', () => {
     expect(source).toContain('useUI.getState().resumeRest()')
     expect(source).toContain('startRest(S.restSec, A.entries[idx].sid)')
@@ -229,6 +260,19 @@ describe('scrollable workout composition contracts', () => {
     expect(calls.map(([kind]) => kind)).toEqual(['focus', 'scroll', 'focus'])
     expect(calls[2][1]).toEqual({ preventScroll: true })
     expect(source).toContain('restoreFocusedEntry(target, pendingFocus.scroll)')
+  })
+
+  it('restores resume focus without requesting a viewport scroll', () => {
+    const calls = []
+    const target = {
+      focus: options => calls.push(['focus', options]),
+      scrollIntoView: options => calls.push(['scroll', options])
+    }
+    expect(restoreFocusedEntry(target, false)).toBe(true)
+    expect(calls.map(([kind]) => kind)).toEqual(['focus', 'focus'])
+    expect(source).toContain('focusEntry(A.entries[cur].sid, false)')
+    expect(source).toContain('focusEntry(moved.sid)')
+    expect(source).toContain('if (focusSid) focusEntry(focusSid)')
   })
 
   it('stacks unilateral sides with fluid sub-rows at every width', () => {

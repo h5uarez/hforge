@@ -23,11 +23,10 @@ import Home from './views/Home.jsx'
 import Workout from './views/Workout.jsx'
 // Route code-splitting: Home, Login and Workout stay in the entry chunk so first
 // paint never waits on the network. Workout is deliberately eager: ActiveWorkout
-// auto-focuses the current card (scrollIntoView nearest) on mount, and that scroll
-// offset is only screenshot-deterministic when the view mounts synchronously with
-// the shell — a lazy chunk lets image decode win or lose the race and shifts the
-// captured viewport by a few px (visual workout-active flakes). Every other view
-// lazy-loads on navigation.
+// restores focus to the current card on mount, and loading it with the shell keeps
+// the captured layout deterministic — a lazy chunk lets image decode win or lose
+// the race and shifts the captured viewport by a few px (visual workout-active flakes).
+// Every other view lazy-loads on navigation.
 const Plan = lazy(() => import('./views/Plan.jsx'))
 const RoutineEdit = lazy(() => import('./views/RoutineEdit.jsx'))
 const Stats = lazy(() => import('./views/Stats.jsx'))

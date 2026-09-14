@@ -14,7 +14,7 @@ function Sheet({ sheet }) {
   const restoreFocus = () => {
     const opener = sheet.opener
     const target = opener && typeof opener.focus === 'function' ? opener : returnFocus.current
-    if (target?.isConnected && typeof target.focus === 'function') setTimeout(() => target.focus(), 0)
+    if (target?.isConnected && typeof target.focus === 'function') setTimeout(() => target.focus({ preventScroll: true }), 0)
   }
   const close = (fast) => {
     // P0 exit: 160ms fade+settle on the dialog and backdrop fade, transform/opacity
@@ -44,7 +44,7 @@ function Sheet({ sheet }) {
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      if (returnFocus.current?.isConnected && returnFocus.current !== document.activeElement) returnFocus.current.focus()
+      if (returnFocus.current?.isConnected && returnFocus.current !== document.activeElement) returnFocus.current.focus({ preventScroll: true })
     }
   }, [sheet.id, sheet.locked])
 
