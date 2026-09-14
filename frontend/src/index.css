@@ -507,8 +507,22 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .field.area,textarea.input{min-height:92px;resize:vertical;line-height:1.42}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
-  line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);
+  line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;margin-bottom:10px;color:var(--label-2);
 }
+
+/* Historical detail: reserve the sheet close-button rail, keep action controls intact, and let
+   both workout and exercise names wrap naturally before they can collide with anything beside them. */
+.historical-workout-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0;margin-bottom:8px;padding-right:48px}
+.historical-workout-name{flex:1 1 auto;min-width:0;margin:0;line-height:1.2;overflow-wrap:anywhere;text-wrap:pretty}
+.sheet .historical-workout-name{padding-right:0;margin-bottom:0}
+.historical-workout-head>.btn{flex:0 0 auto;align-self:flex-start}
+.historical-workout-entry{align-items:flex-start;min-width:0}
+.historical-entry-content{flex:1 1 auto;min-width:0}
+.historical-exercise-head{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px;min-width:0;margin-bottom:4px}
+.historical-exercise-name{flex:1 1 12ch;min-width:0;font-weight:600;line-height:1.25;overflow-wrap:anywhere;text-wrap:pretty}
+.historical-exercise-head>.pr{flex:none;margin-top:1px}
+.historical-sets{align-items:flex-start;margin:0 0 8px}
+.historical-no-sets{display:block;padding:3px 0;line-height:1.35}
 
 /* --- login language control --- */
 .login-lang{
@@ -656,7 +670,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .exercise-summary-last-copy{min-width:0;overflow-wrap:anywhere}
 .exercise-summary-last-label{white-space:normal}
 .exercise-summary-sets{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0;max-width:100%;overflow-wrap:anywhere}
-.exercise-summary-set{display:inline-flex;align-items:center;max-width:100%;min-height:24px;padding:3px 8px;border:1px solid var(--sep);border-radius:999px;background:var(--surface-3);color:var(--label);line-height:1.35;white-space:nowrap;overflow-wrap:anywhere}
+.exercise-summary-set{display:inline-flex;align-items:center;max-width:100%;min-height:24px;padding:3px 8px;border:1px solid var(--sep);border-radius:999px;background:var(--surface-3);color:var(--label);line-height:1.35;white-space:normal;overflow-wrap:anywhere}
 
 /* --- stepper --- */
 .stp-w{display:flex;flex-direction:column;gap:6px;min-width:0}

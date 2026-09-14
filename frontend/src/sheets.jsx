@@ -1120,20 +1120,42 @@ export function startHistoricalWorkoutEdit(workout) {
   return true
 }
 
+// History keeps the note written during a workout separate from the exercise's planned note.
+// Resolve the visible note once so whitespace-only values never create an empty note box.
+export function historicalEntryNote(entry) {
+  const workoutNote = typeof entry?.note === 'string' ? entry.note.trim() : ''
+  if (workoutNote) return { label: 'Workout note', text: workoutNote }
+  const exerciseNote = typeof entry?.target?.planNote === 'string' ? entry.target.planNote.trim() : ''
+  if (exerciseNote) return { label: 'Exercise note', text: exerciseNote }
+  return null
+}
+
+// Keep the historical summary limited to completed sets while preserving their stored order and
+// original set number for assistive labels.
+export function historicalCompletedSets(entry) {
+  return (Array.isArray(entry?.sets) ? entry.sets : [])
+    .map((set, index) => set && setIsDone(set) ? { index, label: setLabel(entry.id, set, entry.target) } : null)
+    .filter(Boolean)
+}
+
 function WorkoutDetail({ w, close }) {
   const st = useStore(s => s.S)
   const current = st.workouts.find(item => item.id === w.id) || w
   return <>
-    <div className="row between" style={{ marginBottom: 8, paddingRight: 48 }}><h3 style={{ margin: 0, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{current.name}</h3><Button size="sm" icon="pencil" onClick={() => { close(); startHistoricalWorkoutEdit(current) }} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
+    <div className="historical-workout-head"><h3 className="historical-workout-name">{current.name}</h3><Button size="sm" icon="pencil" onClick={() => { close(); startHistoricalWorkoutEdit(current) }} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {current.entries.map((e, i) => {
       const ex = EXIDX[e.id]
-      return <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
+      const completedSets = historicalCompletedSets(e)
+      const note = historicalEntryNote(e)
+      return <div key={i} className="historical-workout-entry row" style={{ marginBottom: 12 }}>
         {ex && <Thumb ex={ex} />}
-        <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseName(ex) : (e.n || e.id)} {current.prs && current.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-          <div className="ss">{e.sets.filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
-          {e.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{e.target.planNote}</div>}
-          {e.note && <div className="exnote" role="note"><div className="small dim">{t('Workout note')}</div>{e.note}</div>}
+        <div className="historical-entry-content"><div className="historical-exercise-head"><div className="historical-exercise-name capitalize">{ex ? exerciseName(ex) : (e.n || e.id)}</div>{current.prs && current.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
+          <div className="exercise-summary-sets historical-sets" role="list" aria-label={t('Sets')}>
+            {completedSets.length ? completedSets.map(set => <span key={set.index} className="exercise-summary-set" role="listitem" aria-label={t('Set {0}', set.index + 1) + ': ' + set.label}>{set.label}</span>)
+              : <span className="historical-no-sets small dim" role="listitem">{t('no sets')}</span>}
+          </div>
+          {note && <div className="exnote" role="note"><div className="small dim">{t(note.label)}</div>{note.text}</div>}
         </div>
       </div>
     })}
