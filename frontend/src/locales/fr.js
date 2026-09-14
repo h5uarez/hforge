@@ -369,6 +369,7 @@ export default {
   'Add a note for this exercise': 'Add a note for this exercise',
   'Workout note': 'Workout note',
   'Add a comment about this exercise': 'Add a comment about this exercise',
+  'Only this completed history record will change. Saved routines and your active workout are untouched.': 'Only this completed history record will change. Saved routines and your active workout are untouched.',
   'Delete exercise': 'Supprimer l’exercice',
   'Edit or delete this exercise': 'Modifier ou supprimer cet exercice',
   'Remove from routine': 'Retirer de la routine',
