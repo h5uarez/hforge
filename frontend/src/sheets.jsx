@@ -1371,11 +1371,11 @@ function TopWeight({ entryIdx, close }) {
       touchActiveRecord(s.active)
       const cur = s.exWeights[entry.id]
       s.exWeights[entry.id] = { w: Math.max(n, cur ? cur.w : 0), d: todayISO() }
-    })
+    }, false)
     close()
     if (advance && unitDone) {
       if (isLastUnit) workoutCompleteSheet()               // whole workout done → finish/continue prompt
-      else update(s => { s.active.cur = units[unitIdx + 1][0] })
+      else update(s => { s.active.cur = units[unitIdx + 1][0] }, false)
     } else toast(t('Tracked — next time starts at {0}', fmtWeight(S().exWeights[entry.id].w, true) + ' ' + st.unit))
   }
   return <>

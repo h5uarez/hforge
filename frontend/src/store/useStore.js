@@ -89,6 +89,19 @@ export const useStore = create((set, get) => {
   let saveTm = null
   let lastTransaction = null
 
+  // Keep the normal debounce window for remote writes, but do not flush a queued write while the
+  // current workout is browser-local. The latest state remains available through get().S, so the
+  // requeued callback will send it once the session has been finished or discarded.
+  const schedulePush = () => {
+    clearTimeout(pushTm)
+    pushTm = setTimeout(() => {
+      pushTm = null
+      if (!get().user) return
+      if (get().S.active) { schedulePush(); return }
+      get().pushState()
+    }, 1500)
+  }
+
   // Mobile build: mirror the state into a file in the app's data directory (survives WebView
   // storage eviction) and keep the native reminder schedule in step with the weekly plan.
   const nativePersist = () => {
@@ -119,8 +132,7 @@ export const useStore = create((set, get) => {
     }
     if (MOBILE) nativePersist()
     if (push && get().user) {
-      clearTimeout(pushTm)
-      pushTm = setTimeout(() => get().pushState(), 1500)
+      schedulePush()
     }
     return true
   }
@@ -139,7 +151,8 @@ export const useStore = create((set, get) => {
     if (pushTm) {
       clearTimeout(pushTm)
       pushTm = null
-      get().pushState()
+      if (get().S.active && get().user) schedulePush()
+      else get().pushState()
     }
   })
 
