@@ -9,6 +9,8 @@
 // touches none of them, so the stub is just an import-time enabler.
 
 import { describe, it, expect, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { EXDB } from './lib/exercises.js'
 
 const mocks = vi.hoisted(() => ({
@@ -20,11 +22,12 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries } = await import('./sheets.jsx')
+const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
 const ACTIVE_LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
+const sheetsSource = readFileSync(resolve(process.cwd(), 'src/sheets.jsx'), 'utf8')
 
 const activeState = () => ({ unit: 'kg', exWeights: {}, workouts: [], routines: [], active: null })
 
@@ -92,6 +95,40 @@ describe('Historical workout conversion contracts', () => {
     expect(entry.sets).toEqual([{ r: 8, w: 20, done: true }])
   })
 
+})
+
+describe('Historical workout detail presentation', () => {
+  it('shows a trimmed workout note', () => {
+    expect(historicalEntryNote({ note: '  felt strong today  ' }))
+      .toEqual({ label: 'Workout note', text: 'felt strong today' })
+  })
+
+  it('does not show an exercise plan note on its own', () => {
+    expect(historicalEntryNote({ target: { planNote: '  Keep the tempo  ' } })).toBeNull()
+  })
+
+  it('shows only the workout note when both notes exist', () => {
+    expect(historicalEntryNote({ note: '  felt strong today  ', target: { planNote: 'Keep the tempo' } }))
+      .toEqual({ label: 'Workout note', text: 'felt strong today' })
+  })
+
+  it('does not create a note for a whitespace-only workout note', () => {
+    expect(historicalEntryNote({ note: '\t\n  ', target: { planNote: 'Keep the tempo' } })).toBeNull()
+    expect(historicalEntryNote({})).toBeNull()
+  })
+
+  it('keeps only completed set labels in their original order', () => {
+    expect(historicalCompletedSets({
+      id: ACTIVE_LIFT,
+      sets: [{ w: 40, r: 8, done: true }, { w: 45, r: 6, done: false }, { w: 50, r: 4, done: true }],
+    })).toEqual([{ index: 0, label: '40×8' }, { index: 2, label: '50×4' }])
+  })
+
+  it('renders completed series as labeled list items instead of a joined line', () => {
+    expect(sheetsSource).toContain('role="list" aria-label={t(\'Sets\')}')
+    expect(sheetsSource).toContain('role="listitem" aria-label={t(\'Set {0}\', set.index + 1) + \': \' + set.label}')
+    expect(sheetsSource).not.toContain(".filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ')")
+  })
 })
 
 describe('active workout routine imports', () => {
