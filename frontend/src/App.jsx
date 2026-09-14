@@ -68,7 +68,11 @@ function Shell() {
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
-  useEffect(() => { setLang(S.lang || getLang()) }, [S.lang])
+  useEffect(() => {
+    const runtimeLang = getLang()
+    const selectedLang = S.lang || runtimeLang
+    if (selectedLang !== runtimeLang) setLang(selectedLang)
+  }, [S.lang])
   useEffect(() => { document.documentElement.lang = getLang() }, [langV, S.lang])
   // every tab/route change starts at the top of the page
   useEffect(() => { window.scrollTo(0, 0) }, [loc.pathname])
