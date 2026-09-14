@@ -98,18 +98,22 @@ describe('Historical workout conversion contracts', () => {
 })
 
 describe('Historical workout detail presentation', () => {
-  it('prefers a non-empty workout note over the exercise plan note', () => {
+  it('shows a trimmed workout note', () => {
+    expect(historicalEntryNote({ note: '  felt strong today  ' }))
+      .toEqual({ label: 'Workout note', text: 'felt strong today' })
+  })
+
+  it('does not show an exercise plan note on its own', () => {
+    expect(historicalEntryNote({ target: { planNote: '  Keep the tempo  ' } })).toBeNull()
+  })
+
+  it('shows only the workout note when both notes exist', () => {
     expect(historicalEntryNote({ note: '  felt strong today  ', target: { planNote: 'Keep the tempo' } }))
       .toEqual({ label: 'Workout note', text: 'felt strong today' })
   })
 
-  it('falls back to a trimmed plan note when the workout note is empty', () => {
-    expect(historicalEntryNote({ note: ' \n ', target: { planNote: '  Keep the tempo  ' } }))
-      .toEqual({ label: 'Exercise note', text: 'Keep the tempo' })
-  })
-
-  it('does not create a note when both note values are missing or whitespace-only', () => {
-    expect(historicalEntryNote({ note: '\t', target: { planNote: '  ' } })).toBeNull()
+  it('does not create a note for a whitespace-only workout note', () => {
+    expect(historicalEntryNote({ note: '\t\n  ', target: { planNote: 'Keep the tempo' } })).toBeNull()
     expect(historicalEntryNote({})).toBeNull()
   })
 

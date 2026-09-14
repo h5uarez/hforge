@@ -77,6 +77,8 @@ describe('Spanish translation and instruction contracts', () => {
     expect(t('Exercise')).toBe('Ejercicio')
     expect(t('Exercise note')).toBe('Nota del ejercicio')
     expect(t('Workout note')).toBe('Nota del entrenamiento')
+    expect(t('Only this completed history record will change. Saved routines and your active workout are untouched.'))
+      .toBe('Solo cambiará este registro completado del historial. Las rutinas guardadas y tu entrenamiento activo no se modificarán.')
     expect(t('a key absent from every locale')).toBe('a key absent from every locale')
   })
 
