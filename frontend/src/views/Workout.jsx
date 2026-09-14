@@ -10,7 +10,7 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
-import Media from '../components/Media.jsx'
+import Media, { prefetchWorkoutMedia } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry, buildImportedWorkoutEntries } from '../sheets.jsx'
 import { cloneHistoryValue, historyWorkoutFromActive, markHistoricalAddition } from '../lib/history-edit.js'
 import Icon from '../components/Icon.jsx'
@@ -32,10 +32,16 @@ function StartChooser() {
         <div><div className="big">{todayR.name}</div><div className="muted small">{exCount(todayR.ex.length)}</div></div>
         <span className="lrow-i" style={{ width: 38, height: 38, borderRadius: 9, fontSize: 22 }}><Icon name={glyphOf(todayR.emoji)} /></span>
       </div>
-      <Button variant="primary" icon="play" onClick={() => startFlow(todayR.id)}>{t('Start')}</Button>
+      <Button variant="primary" icon="play"
+        onMouseEnter={() => todayR && prefetchWorkoutMedia(todayR.ex)}
+        onFocus={() => todayR && prefetchWorkoutMedia(todayR.ex)}
+        onTouchStart={() => todayR && prefetchWorkoutMedia(todayR.ex)}
+        onClick={() => startFlow(todayR.id)}>{t('Start')}</Button>
     </div>}
     {others.length > 0 && <><h4 className="sec">{t('Other routines')}</h4>
-      <div className="list">{others.map(r => <div key={r.id} className="item" onClick={() => startFlow(r.id)}>
+      <div className="list">{others.map(r => <div key={r.id} className="item" tabIndex={0}
+        onMouseEnter={() => prefetchWorkoutMedia(r.ex)} onFocus={() => prefetchWorkoutMedia(r.ex)}
+        onTouchStart={() => prefetchWorkoutMedia(r.ex)} onClick={() => startFlow(r.id)}>
         <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
         <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
         <span className="tag acc">{t('Start')}</span></div>)}</div></>}
@@ -56,7 +62,7 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemoveExercise, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onEdit, onRemoveExercise, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -172,7 +178,7 @@ function ExerciseBlock({ entryIdx, sid, compact, heading = 'h2', onEdit, onRemov
     </button>
   </span>
   return <>
-    <Media ex={ex} key={entry.id} compact={compact} minimizable />
+    <Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />
     <div className="row between" style={{ marginBottom: 6 }}>
       {heading === 'h3' ? <h3 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h3> : <h2 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h2>}
       <div className="row" style={{ gap: 4 }}>
@@ -635,6 +641,7 @@ function ActiveWorkout() {
       {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
         {superset && k > 0 && <div className="ss-amp">+</div>}
         <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
+          priority={unitIndex === 0 && k === 0}
           onEdit={() => editExercise(idx)} onRemoveExercise={() => removeExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
       </div>)}
     </article>

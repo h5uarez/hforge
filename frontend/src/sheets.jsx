@@ -8,7 +8,7 @@ import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { starterRoutines } from './lib/starter.js'
-import Media, { Thumb } from './components/Media.jsx'
+import Media, { Thumb, prefetchWorkoutMedia } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
 import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, TextArea, SearchField } from './components/ui.jsx'
@@ -1309,6 +1309,9 @@ export function startFlow(routineId) {
     if (S().bodyweightCheckEnabled === false) beginWorkout(routineId, null)
     else bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
   }
+  // Intent prefetch: warm the first media of this routine while the confirm
+  // sheet is on screen — non-blocking, so the dialog opens instantly.
+  if (r?.ex) prefetchWorkoutMedia(r.ex)
   confirmSheet({
     title: t('Start workout?'),
     message: r
@@ -1329,6 +1332,9 @@ export function beginWorkout(routineId, bw) {
   // kept on the entry purely so the workout can explain the number it chose.
   const entries = (r ? r.ex : []).map(cfg => buildWorkoutEntry(st, cfg, r))
   const startedAt = Date.now()
+  // Warm first-exercise media ahead of the /workout mount — idle-scheduled,
+  // so state commit + navigation below are never delayed by it.
+  prefetchWorkoutMedia(entries)
   update(s => {
     s.active = { id: uid(), d: todayISO(), start: startedAt, lastRecordEditAt: startedAt, inactivityReminderSent: false, routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
   })
