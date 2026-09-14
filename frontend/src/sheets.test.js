@@ -401,7 +401,7 @@ describe('centralized workout start flow', () => {
       routines: [{ id: 'today-routine', name: 'Today', ex: [] }, { id: 'other-routine', name: 'Other', ex: [] }],
       exWeights: {}, workouts: [], bodyweight: [],
     },
-    update(mut) { mut(this.S) },
+    update(mut, push = true) { this.lastPush = push; mut(this.S) },
   })
   // confirmSheet renders through the mocked openSheet: invoking the captured
   // render fn yields the ConfirmDialog element, whose props carry onConfirm.
@@ -451,6 +451,7 @@ describe('centralized workout start flow', () => {
     expect(state.S.active).toBeNull()
     confirmDialog().props.onConfirm()
     expect(state.S.active).toEqual(expect.objectContaining({ routineId, bw: null }))
+    expect(state.lastPush).toBe(false)
   })
 
   it('resumes instead of confirming when a session is already active', () => {
