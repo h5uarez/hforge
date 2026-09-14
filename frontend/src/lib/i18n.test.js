@@ -26,24 +26,46 @@ describe('language matching', () => {
   it('normalizes regional and underscore-separated browser tags', async () => {
     const { normalizeLang } = await import('./i18n.js')
     expect(normalizeLang('es-MX')).toBe('es')
-    expect(normalizeLang('ZH_hant_TW')).toBe('zh')
+    expect(normalizeLang('ES_mx')).toBe('es')
+    expect(normalizeLang('en-US')).toBe('en')
     expect(normalizeLang('nl-NL')).toBeNull()
+  })
+
+  it('rejects removed legacy languages so old preferences fall back to English', async () => {
+    const { normalizeLang } = await import('./i18n.js')
+    for (const legacy of ['de', 'de-DE', 'fr', 'pt-BR', 'it', 'zh-TW', 'ko', 'hi', 'pl', 'tr', 'ru']) {
+      expect(normalizeLang(legacy)).toBeNull()
+    }
   })
 
   it('uses the first supported language in the browser preference order', async () => {
     const { matchLang } = await import('./i18n.js')
-    expect(matchLang(['nl-NL', 'pt-BR', 'es-ES'])).toBe('pt')
+    expect(matchLang(['nl-NL', 'pt-BR', 'es-ES'])).toBe('es')
+    expect(matchLang(['de-DE', 'fr-FR'])).toBeNull()
   })
 })
 
 describe('initial language selection', () => {
   it('prefers an explicit app choice over profile state and browser language', async () => {
-    values.set('gym_lang_v1', 'fr')
+    values.set('gym_lang_v1', 'en')
+    values.set('gym_state_v1', JSON.stringify({ lang: 'es' }))
+    setNavigator({ languages: ['es-ES'], language: 'es-ES' })
+    const { getInitialLang, getLang } = await import('./i18n.js')
+    expect(getInitialLang()).toBe('en')
+    expect(getLang()).toBe('en')
+  })
+
+  it('ignores stale removed-language prefs and falls through to profile, browser, then English', async () => {
+    values.set('gym_lang_v1', 'de')
     values.set('gym_state_v1', JSON.stringify({ lang: 'es' }))
     setNavigator({ languages: ['de-DE'], language: 'de-DE' })
-    const { getInitialLang, getLang } = await import('./i18n.js')
-    expect(getInitialLang()).toBe('fr')
-    expect(getLang()).toBe('fr')
+    const { getInitialLang } = await import('./i18n.js')
+    expect(getInitialLang()).toBe('es')
+    values.delete('gym_state_v1')
+    setNavigator({ languages: ['es-MX'], language: 'es-MX' })
+    expect(getInitialLang()).toBe('es')
+    setNavigator({ languages: ['de-DE'], language: 'de-DE' })
+    expect(getInitialLang()).toBe('en')
   })
 
   it('uses a legacy persisted profile language before browser detection', async () => {
@@ -66,6 +88,8 @@ describe('initial language selection', () => {
     expect(saveLangPreference('es-ES')).toBe('es')
     expect(getExplicitLang()).toBe('es')
     expect(values.get('gym_lang_v1')).toBe('es')
+    expect(saveLangPreference('de')).toBe('en')
+    expect(values.get('gym_lang_v1')).toBe('en')
   })
 })
 
@@ -96,7 +120,7 @@ describe('Spanish translation and instruction contracts', () => {
     await setLang('es')
     expect(instrFor(exercise)[0]).toBe('Colócate en una máquina de extensión lumbar. Apoya las caderas y los muslos contra el acolchado y bloquea los tobillos en el soporte para los pies.')
     for (const id of legacyProductionIds) expect(instrFor({ id, st: ['English fallback'] }), id).not.toEqual(['English fallback'])
-    await setLang('pt')
+    await setLang('de')
     expect(instrFor(exercise)).toEqual(exercise.st)
     await setLang('es')
     expect(instrFor({ id: 'E23F1F2B', st: [] })).toEqual([])

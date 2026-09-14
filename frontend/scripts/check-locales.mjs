@@ -71,7 +71,9 @@ export async function runChecks({ cwd = frontendDir, log = console } = {}) {
   const errors = []
   for (const [lang, keys] of locales) {
     const missing = union.filter(key => !keys.has(key))
-    const orphans = union.filter(key => seen.get(key) === 1)
+    // With a single locale every key is trivially unique to it; the orphan
+    // check only detects cross-locale drift, so it applies to 2+ locales.
+    const orphans = locales.size > 1 ? union.filter(key => seen.get(key) === 1) : []
     if (missing.length || orphans.length) errors.push(`${lang}.js: missing ${missing.join(', ')}; only here ${orphans.join(', ')}`)
   }
   const spanishKeys = locales.get('es')

@@ -5,16 +5,14 @@
 // language pack claims coverage until independently translated source data is supplied.
 import { useSyncExternalStore } from 'react'
 
-// UI languages. Only English and Spanish have exercise instruction packs.
+// UI languages. Only English and Spanish are supported; legacy preferences for
+// removed languages resolve to null and fall back to English via getInitialLang.
 export const LANGS = {
-  en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
-  pt: 'Português', pl: 'Polski', tr: 'Türkçe', ru: 'Русский', zh: '中文',
-  ko: '한국어', hi: 'हिन्दी'
+  en: 'English', es: 'Español'
 }
 export const INSTR_LANGS = ['en', 'es']
 const DATE_LOCALES = {
-  en: 'en-GB', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT',
-  pl: 'pl-PL', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', ko: 'ko-KR', hi: 'hi-IN'
+  en: 'en-GB', es: 'es-ES'
 }
 
 export const LANG_PREF_KEY = 'gym_lang_v1'

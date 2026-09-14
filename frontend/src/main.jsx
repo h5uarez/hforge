@@ -5,18 +5,41 @@ import { getLang, setLang } from './lib/i18n.js'
 import { registerPwa } from './lib/pwa.js'
 import './index.css'
 
-async function bootstrap() {
-  // Load the detected locale before React mounts so the login never paints English for one frame.
-  // setLang has a bounded pack timeout and falls back to English on any loading error.
-  try { await setLang(getLang()) } catch { await setLang('en') }
+function removeSplash() {
+  document.getElementById('splash')?.remove()
+}
 
-  createRoot(document.getElementById('root')).render(
-    <StrictMode><App /></StrictMode>
-  )
+// Deferred work (PWA registration, version prefetch) must never delay first
+// paint: requestIdleCallback when available, setTimeout as the fallback.
+function deferIdle(task) {
+  const run = () => { try { task() } catch { /* deferred work never breaks boot */ } }
+  try {
+    if (typeof requestIdleCallback === 'function') { requestIdleCallback(run, { timeout: 2000 }); return }
+  } catch { /* fall through to the timer fallback */ }
+  setTimeout(run, 0)
+}
+
+function bootstrap() {
+  // Mount React immediately so first paint comes from the localStorage cache.
+  // The locale pack resolves async afterwards; useLang in App re-renders when
+  // it lands. Accepted tradeoff: an `es` device may paint one frame of English
+  // before the Spanish pack arrives — speed now wins over that single frame.
+  // setLang keeps its 4s pack timeout and falls back to English on any error.
+  try {
+    createRoot(document.getElementById('root')).render(
+      <StrictMode><App /></StrictMode>
+    )
+  } catch {
+    // A failed mount must never trap the user on the splash logo.
+  } finally {
+    removeSplash()
+  }
+
+  setLang(getLang()).catch(() => setLang('en'))
 
   // PWA registration (mobile-build and secure-origin guards live in registerPwa).
   // Update UX is user-approved: the banner in App.jsx offers the reload moment.
-  registerPwa()
+  deferIdle(() => registerPwa())
 }
 
-void bootstrap()
+bootstrap()

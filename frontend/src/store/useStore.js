@@ -60,7 +60,8 @@ function loadState() {
     if (raw) {
       const state = normalizeState(JSON.parse(raw))
       state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
-      localStorage.setItem(KEY, JSON.stringify(state))
+      // No write-back here: loading must not churn localStorage. Normalization
+      // is in-memory only; the next real change persists via persist().
       return state
     }
   } catch (e) {
@@ -265,7 +266,13 @@ export const useStore = create((set, get) => {
       persist(normalizeState(Object.assign(buildDemoState(), { lang: language })), false)
     },
 
-    // Boot: ask the server who we are, then pull.
+    // Boot: the shell already paints the localStorage cache, so unlock first
+    // paint immediately and refresh from the server without blocking it.
+    // /api/me and /api/data both authenticate via the session cookie, but the
+    // remote snapshot (plus its legacy-ID repair PUT) must only apply to an
+    // authenticated profile — so the refresh stays sequential me -> data while
+    // `ready` no longer gates either call. Repair-PUT semantics in pullState
+    // are unchanged.
     async boot() {
       // Mobile build: no backend either — restore from the file mirror (the durable copy;
       // localStorage may have been evicted since the last run) and go straight in.
@@ -294,6 +301,8 @@ export const useStore = create((set, get) => {
         set({ ready: true })
         return
       }
+      // Non-blocking refresh: first paint already happened from cache.
+      set({ ready: true })
       try {
         const me = await api('/api/me')
         get().setUser(me.user)
