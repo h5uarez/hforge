@@ -1,4 +1,5 @@
 import { uid } from './format.js'
+import { modeOf, isPerSide, sideReps } from './history.js'
 
 const validSid = sid => typeof sid === 'string' && sid.length > 0
 const legacySid = (entry, index) => `session-${String(entry?.id ?? 'entry').replace(/[^a-zA-Z0-9_-]/g, '_')}-${index}`
@@ -91,6 +92,38 @@ export function moveSessionUnit(entries, unitIndex, delta) {
 }
 
 export const newSessionSid = () => uid()
+
+// Build the next set from an active-session entry without mutating the entry. The logger carries
+// forward only the mode-specific values that were previously carried by ActiveWorkout; completion
+// and optional fields stay out of the new set so it starts as an unlogged set.
+export function nextSet(entry) {
+  const target = entry?.target || {}
+  const last = Array.isArray(entry?.sets) ? entry.sets[entry.sets.length - 1] : undefined
+  const mode = modeOf({ ...target, id: entry?.id })
+
+  if (mode === 'cardio') return {
+    min: last ? last.min : (target.min || 20),
+    speed: last ? last.speed : (target.speed || 8),
+    done: false,
+  }
+  if (mode === 'time') return {
+    sec: last ? last.sec : target.sec,
+    w: last ? (last.w || 0) : (target.weight || 0),
+    done: false,
+  }
+  if (isPerSide(target)) return {
+    left: { w: last?.left?.w ?? 0, r: last?.left?.r ?? sideReps(target.reps), done: false },
+    right: { w: last?.right?.w ?? 0, r: last?.right?.r ?? sideReps(target.reps), done: false },
+    w: target.weight || 0,
+    r: target.reps,
+    done: false,
+  }
+  return {
+    w: last ? last.w : 0,
+    r: last ? last.r : target.reps,
+    done: false,
+  }
+}
 
 export const FOCUS_REF_RETRY_LIMIT = 3
 

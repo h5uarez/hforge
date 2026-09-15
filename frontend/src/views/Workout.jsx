@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
-import { moveSessionUnit, remapCur, removeSessionEntry, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
+import { moveSessionUnit, remapCur, removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
@@ -463,14 +463,7 @@ function ActiveWorkout() {
       }
     })
   }
-  const addSet = idx => mutEntry(idx, e => {
-    const l = e.sets[e.sets.length - 1]
-    const m = modeOf({ ...(e.target || {}), id: e.id })
-    if (m === 'cardio') e.sets.push({ min: l ? l.min : (e.target.min || 20), speed: l ? l.speed : (e.target.speed || 8), done: false })
-    else if (m === 'time') e.sets.push({ sec: l ? l.sec : e.target.sec, w: l ? (l.w || 0) : (e.target.weight || 0), done: false })
-    else if (isPerSide(e.target)) e.sets.push({ left: { w: l?.left?.w ?? 0, r: l?.left?.r ?? sideReps(e.target.reps), done: false }, right: { w: l?.right?.w ?? 0, r: l?.right?.r ?? sideReps(e.target.reps), done: false }, w: e.target.weight || 0, r: e.target.reps, done: false })
-    else e.sets.push({ w: l ? l.w : 0, r: l ? l.r : e.target.reps, done: false })
-  })
+  const addSet = idx => mutEntry(idx, e => { e.sets.push(nextSet(e)) })
   const removeSet = idx => {
     const sets = A.entries[idx]?.sets || []
     if (sets.length <= 1) return
