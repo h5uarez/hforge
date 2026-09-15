@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur, removeSessionEntry } from './session.js'
+import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur, removeSessionEntry, nextSet } from './session.js'
 import { copyHistoryEntry } from './history.js'
 import { isBw, isTimed, modeOf } from './history.js'
 
@@ -92,5 +92,46 @@ describe('active session identity and units', () => {
     expect(history).not.toHaveProperty('sid')
     expect(history).toMatchObject({ id: 'a', sets: activeEntry.sets })
     expect(activeEntry).toMatchObject({ sid: 'stable-a', activity: 3, rest: 90 })
+  })
+})
+
+describe('next active-session set', () => {
+  it('preserves mode-specific carry-forward and defaults without mutating entries', () => {
+    const cases = [
+      {
+        source: entry('run', { target: { mode: 'cardio', min: 20, speed: 8 }, sets: [{ min: 32, speed: 7.5, done: true }] }),
+        expected: { min: 32, speed: 7.5, done: false },
+      },
+      {
+        source: entry('run', { target: { mode: 'cardio', min: 0, speed: 0 }, sets: [] }),
+        expected: { min: 20, speed: 8, done: false },
+      },
+      {
+        source: entry('plank', { target: { mode: 'time', sec: 45, weight: 20 }, sets: [{ sec: 60, w: 0, done: true }] }),
+        expected: { sec: 60, w: 0, done: false },
+      },
+      {
+        source: entry('plank', { target: { mode: 'time', sec: 45, weight: 0 }, sets: [] }),
+        expected: { sec: 45, w: 0, done: false },
+      },
+      {
+        source: entry('carry', {
+          target: { mode: 'reps', side: true, weight: 40, reps: 12 },
+          sets: [{ left: { w: 35, r: 6, done: true }, right: { w: 30, r: 6, done: true }, w: 35, r: 12, done: true }],
+          historicalEdit: { workoutId: 'history-1' },
+        }),
+        expected: { left: { w: 35, r: 6, done: false }, right: { w: 30, r: 6, done: false }, w: 40, r: 12, done: false },
+      },
+      {
+        source: entry('bench', { target: { mode: 'reps', reps: 8, weight: 40 }, sets: [{ w: 50, r: 6, done: true }] }),
+        expected: { w: 50, r: 6, done: false },
+      },
+    ]
+
+    for (const { source, expected } of cases) {
+      const before = structuredClone(source)
+      expect(nextSet(source)).toEqual(expected)
+      expect(source).toEqual(before)
+    }
   })
 })
