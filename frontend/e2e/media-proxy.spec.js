@@ -28,39 +28,48 @@ test('serves image, GIF, and rangeable MP4 fixtures through the Vite media proxy
   await expect(page.locator('#animation')).toHaveJSProperty('naturalWidth', 160)
 })
 
-test('keeps MP4 exercise media bounded at phone and desktop widths', async ({ page }) => {
-  for (const viewport of [{ width: 320, normalHeight: '210px' }, { width: 1440, normalHeight: '380px' }]) {
-    await page.setViewportSize({ width: viewport.width, height: 800 })
+test('keeps exercise media full-width while preserving expanded and minimized behavior', async ({ page }) => {
+  const wideImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160"><rect width="320" height="160" fill="#30d158"/></svg>')
+  for (const width of [320, 375, 414, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 800 })
     await page.setContent(`
       <link rel="stylesheet" href="http://localhost:4173/src/index.css">
       <main id="app">
-        <div class="exmedia" id="normal"><video></video></div>
-        <div class="exmedia compact" id="compact"><video></video></div>
-        <div class="exmedia mini" id="mini"><video></video></div>
+        <div class="exmedia" id="normal" style="--media-ratio:2"><img src="${wideImage}" alt=""></div>
+        <div class="exmedia compact" id="compact" style="--media-ratio:2"><img src="${wideImage}" alt=""></div>
+        <div class="exmedia mini" id="mini" style="--media-ratio:2"><img src="${wideImage}" alt=""></div>
       </main>
     `)
     await page.locator('link').evaluate(link => link.sheet ? true : new Promise(resolve => link.addEventListener('load', () => resolve(true), { once: true })))
+    await Promise.all((await page.locator('.exmedia img').all()).map(image => image.evaluate(node => node.decode())))
 
-    const styles = await page.locator('#normal video').evaluate(video => {
-      const style = getComputedStyle(video)
-      const parent = video.parentElement.getBoundingClientRect()
-      const box = video.getBoundingClientRect()
+    const boxes = await page.locator('.exmedia').evaluateAll(nodes => nodes.map(node => {
+      const media = node.firstElementChild.getBoundingClientRect()
+      const box = node.getBoundingClientRect()
+      const style = getComputedStyle(node.firstElementChild)
+      const container = node.closest('#app')
+      const containerStyle = getComputedStyle(container)
       return {
-        display: style.display,
-        objectFit: style.objectFit,
-        width: style.width,
-        height: style.height,
         boxWidth: box.width,
-        parentWidth: parent.width,
+        boxHeight: box.height,
+        mediaWidth: media.width,
+        mediaHeight: media.height,
+        containerWidth: container.clientWidth - Number.parseFloat(containerStyle.paddingLeft) - Number.parseFloat(containerStyle.paddingRight),
+        objectFit: style.objectFit,
         documentWidth: document.documentElement.scrollWidth,
         bodyWidth: document.body.scrollWidth,
       }
-    })
-    expect(styles).toMatchObject({ display: 'block', objectFit: 'contain', width: expect.stringMatching(/px$/), height: viewport.normalHeight })
-    expect(styles.boxWidth).toBeLessThanOrEqual(styles.parentWidth + 1)
-    expect(styles.documentWidth).toBeLessThanOrEqual(viewport.width + 1)
-    expect(styles.bodyWidth).toBeLessThanOrEqual(viewport.width + 1)
-    await expect(page.locator('#compact video')).toHaveCSS('height', '120px')
-    await expect(page.locator('#mini video')).toHaveCSS('height', '84px')
+    }))
+    for (const box of boxes) {
+      expect(box.boxWidth).toBeCloseTo(box.containerWidth, 0)
+      expect(box.mediaWidth).toBeCloseTo(box.boxWidth, 0)
+      expect(box.mediaHeight).toBeCloseTo(box.boxHeight, 0)
+      expect(box.objectFit).toBe('contain')
+      expect(box.documentWidth).toBeLessThanOrEqual(width + 1)
+      expect(box.bodyWidth).toBeLessThanOrEqual(width + 1)
+    }
+    expect(boxes[0].boxWidth / boxes[0].boxHeight).toBeCloseTo(2, 2)
+    expect(boxes[1].boxHeight).toBeCloseTo(120, 0)
+    expect(boxes[2].boxHeight).toBeCloseTo(Math.min(120, Math.max(84, width * .15)), 0)
   }
 })

@@ -746,7 +746,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 /* enlarged hit area without changing visual sizes — the ::after extends the
    tappable region; hosts stay the same size */
 .iconbtn,.chk,.ck,.setrow .setgo,.helpbtn{position:relative}
-.iconbtn::after,.modal-close::after,.chk::after,.ck::after,.setrow .setgo::after,.helpbtn::after,.exmedia .giftoggle::after{content:'';position:absolute;inset:-6px}
+.iconbtn::after,.modal-close::after,.chk::after,.ck::after,.setrow .setgo::after,.helpbtn::after,.exmedia .gifhint::after,.exmedia .giftoggle::after{content:'';position:absolute;inset:-6px}
 /* 30px painted checks/starts need a 7px margin to reach a real 44px target
    (30 + 2×7 = 44); the 44px hosts above keep their 6px slop untouched. */
 .chk::after,.ck::after,.setrow .setgo::after{inset:-7px}
@@ -761,15 +761,20 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
 .workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat));transform:translateZ(0);backface-visibility:hidden;will-change:transform}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
-.exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2);margin-bottom:12px}
-.exmedia img,.exmedia video,.exmedia .exmedia-x{width:100%;max-width:100%;height:clamp(200px,60vw,320px)}
-.exmedia img,.exmedia video{object-fit:contain;display:block}
+.exmedia{
+  --media-ratio:1.333333;--media-max-height:clamp(200px,60vw,320px);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  width:100%;max-width:100%;
+  aspect-ratio:var(--media-ratio);border-radius:var(--r-lg);overflow:hidden;
+  background:var(--surface-2);margin:0 auto 12px;
+}
+.exmedia>img:not(.exmedia-poster),.exmedia>video,.exmedia>.exmedia-x{width:100%;max-width:100%;height:100%}
+.exmedia>img:not(.exmedia-poster),.exmedia>video{object-fit:contain;display:block}
 /* failed-asset placeholder: the same box the img would have filled, with the
    Thumb's surface-2/glyph treatment instead of a broken-image icon */
 .exmedia .exmedia-x{display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--label-2);font-size:32px}
-/* Instant-load reserve: aspect-ratio holds the box before poster/video bytes
-   arrive (no CLS). Compact/mini keep their fixed small heights untouched. */
-.exmedia:not(.compact):not(.mini){aspect-ratio:4/3}
+/* Instant-load reserve: the fallback ratio holds the box before poster/video bytes
+   arrive (no CLS); loaded media replaces it with its intrinsic ratio. */
 /* Poster-first blur-up: the poster fills the box blurred until the first video
    frame is ready, then fades under the video. The shimmer covers the load gap;
    both are static (no animation) under prefers-reduced-motion. */
@@ -782,8 +787,9 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 @keyframes exmedia-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 .exmedia .gifhint,.exmedia .giftoggle{
   position:absolute;bottom:9px;display:inline-flex;align-items:center;gap:4px;
-  background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:5px 11px;
+  min-height:44px;background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:0 11px;
   font-size:12px;font-weight:500;
+  white-space:nowrap;
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
 .exmedia .gifhint{right:9px}
@@ -791,8 +797,13 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .exmedia .gifhint .icn,.exmedia .giftoggle .icn{font-size:13px}
 /* superset: both exercises are on screen together, so the animations have to give way —
    at 180px you had to scroll a full screen between two exercises done back-to-back */
-.exmedia.compact img,.exmedia.compact video,.exmedia.compact .exmedia-x{height:120px}
-.exmedia.mini img,.exmedia.mini video,.exmedia.mini .exmedia-x{height:84px}
+.exmedia.compact,.exmedia.mini{
+  width:100%;height:var(--media-max-height);aspect-ratio:auto;
+}
+.exmedia.compact{--media-max-height:120px}
+/* A minimized workout stays aligned with the card while shrinking only its
+   height. The responsive cap keeps the strip useful on tablets and desktop. */
+.exmedia.mini{--media-max-height:clamp(84px,15vw,120px)}
 
 /* --- set grid: one fluid system, zero horizontal scroll ---
    Nothing here scrolls: every stepper track is minmax(0,1fr) so tracks shrink
@@ -1827,7 +1838,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   #app{max-width:700px}
   .tiles{grid-template-columns:repeat(3,1fr)}
 }
-/* very narrow phones: single-column grids, wrapped config rows/nav, smaller media + calendar */
+/* very narrow phones: single-column grids, wrapped config rows/nav, smaller calendar */
 @media (max-width:360px){
   .grid2{grid-template-columns:1fr}
   .cfgrow{flex-wrap:wrap}
@@ -1835,7 +1846,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   .workout-session-nav{flex-wrap:wrap}
   .cal-d{font-size:13px}
   .cal-grid{gap:4px}
-  .exmedia img,.exmedia video,.exmedia .exmedia-x{height:210px}
+  .exmedia:not(.compact):not(.mini){--media-max-height:210px}
 }
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
@@ -1860,7 +1871,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   /* 520px fits the clock, the bar and all three controls on one line again */
   #timer.rest{flex-direction:row;align-items:center;gap:14px}
   #timer.rest .head{flex:1;min-width:0}
-  .exmedia img,.exmedia video,.exmedia .exmedia-x{height:clamp(240px,30vw,380px)}
+   .exmedia:not(.compact):not(.mini){--media-max-height:clamp(240px,30vw,380px)}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
 }
 
