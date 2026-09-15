@@ -142,7 +142,9 @@ test('session cookies reject tampering, expiry, unknown users, disabled users, a
     status: 200, body: { user: { id: 'admin', name: 'Administrator', admin: true } },
   });
   assert.equal((await me(memberCookie)).status, 401);
-  assert.equal((await me(signedCookie('member', secret, { version: 2 }))).status, 200);
+  assert.deepEqual(responseBody(await me(signedCookie('member', secret, { version: 2 }))), {
+    status: 200, body: { user: { id: 'member', name: 'Member', admin: false } },
+  });
   assert.equal((await me(signedCookie('legacy', secret, { includeVersion: false }))).status, 200);
   assert.equal((await me(signedCookie('member', secret, { version: 1 }))).status, 401);
   assert.equal((await me(signedCookie('member', secret, { expiry: 0, version: 2 }))).status, 401);
@@ -183,7 +185,9 @@ test('profile updates enforce authentication, validation, and mutation boundarie
   let db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
   assert.equal(db.users.find(user => user.id === 'member').name, 'Member');
   const renamed = await request(fixture.server.port, 'PATCH', '/api/me', { cookie: memberCookie, body: { name: '  New Name  ' } });
-  assert.equal(renamed.body.user.name, 'New Name');
+  assert.deepEqual(responseBody(renamed), {
+    status: 200, body: { user: { id: 'member', name: 'New Name', admin: false } },
+  });
 
   db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
   assert.equal(db.users.find(user => user.id === 'member').name, 'New Name');
