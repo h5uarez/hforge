@@ -7,9 +7,8 @@ import Icon from './Icon.jsx'
 // Big autoplaying animation; tap toggles play/pause. `compact` shrinks it (superset cards).
 // MP4 is preferred, with the legacy GIF as a fallback when an old row still has one.
 // Custom exercises have no media — the animation stays blank by design (issue #11).
-// `minimizable` (workout view) adds a persistent minimize/expand control so the animation stops
-// eating the screen; the chosen size is saved to settings and carries across exercises and
-// future workouts (issue #12).
+// `minimizable` (workout view) adds persistent minimize/expand and animation controls so the
+// animation stops eating the screen; the chosen preferences carry across exercises and workouts.
 // Shared error flag for media <img>s: when the backend asset server is absent
 // (offline/demo) the <img> would render as a broken glyph on a white box.
 // Both Media and Thumb collapse to the same styled placeholder instead.
@@ -80,18 +79,24 @@ export function prefetchWorkoutMedia(entries, limit = 3) {
   } catch { /* prefetch never blocks navigation */ }
 }
 export default function Media({ ex, id, compact, minimizable, priority }) {
+  const workoutScoped = !!minimizable
+  // Sheets, library cards, and exercise details keep their existing local playback behavior.
+  // Only the active workout subscribes to the persisted animation preference.
+  const workoutMediaEnabled = useStore(s => workoutScoped ? s.S.workoutMediaEnabled !== false : true)
+  const gifSize = useStore(s => s.S.gifSize)
+  const update = useStore(s => s.update)
   // Reduced-motion users get a paused first frame; tap still plays manually.
   const [reduced] = useState(reducedMotionPreferred)
-  const [playing, setPlaying] = useState(() => !reducedMotionPreferred())
+  const [playing, setPlaying] = useState(() => !reduced && workoutMediaEnabled)
   const [visible, setVisible] = useState(true)
   const [ready, setReady] = useState(false)
+  const [mediaRatio, setMediaRatio] = useState(null)
   const [err, onErr] = useMediaErr()
   const [gifErr, onGifErr] = useMediaErr()
   const video = useRef(null)
   const box = useRef(null)
-  const gifSize = useStore(s => s.gifSize)
-  const update = useStore(s => s.update)
   const hasVideo = !!ex.video
+  const mediaPlaying = workoutScoped ? workoutMediaEnabled && playing : playing
   // Offscreen videos pause; on-screen ones resume (unless the user paused them
   // or reduced motion is on). Keeps one autoplay visible instead of N at once.
   useEffect(() => {
@@ -104,27 +109,51 @@ export default function Media({ ex, id, compact, minimizable, priority }) {
     return () => io.disconnect()
   }, [])
   useEffect(() => {
+    if (workoutScoped) setPlaying(workoutMediaEnabled && !reduced)
+  }, [workoutScoped, workoutMediaEnabled, reduced])
+  useEffect(() => {
     if (!hasVideo || err || !video.current) return
     const node = video.current
-    if (playing && visible && !reduced) {
+    if (mediaPlaying && visible && !reduced) {
       const promise = node.play()
       promise?.catch(() => {})
     } else node.pause()
-  }, [err, hasVideo, playing, visible, reduced])
-  useEffect(() => { setReady(false) }, [ex?.video, ex?.img])
+  }, [err, hasVideo, mediaPlaying, visible, reduced])
+  useEffect(() => {
+    setReady(false)
+    setMediaRatio(null)
+  }, [ex?.video, ex?.gif, ex?.img])
   if (!ex.video && !ex.gif && !ex.img) return null
   const mini = minimizable && gifSize === 'mini'
-  const toggleSize = e => { e.stopPropagation(); update(s => { s.gifSize = mini ? 'full' : 'mini' }) }
+  const setRatioFromMedia = node => {
+    const width = node?.naturalWidth || node?.videoWidth
+    const height = node?.naturalHeight || node?.videoHeight
+    if (width > 0 && height > 0) setMediaRatio(width / height)
+  }
+  const togglePlaying = () => {
+    const next = !mediaPlaying
+    setPlaying(next)
+    if (workoutScoped) update(s => { s.workoutMediaEnabled = next })
+  }
+  const toggleSize = e => {
+    e.stopPropagation()
+    const expanding = mini
+    update(s => { s.gifSize = s.gifSize === 'mini' ? 'full' : 'mini' })
+    // Expanding is an explicit request to see the exercise again, but it must
+    // never override the workout-wide animation preference or reduced motion.
+    if (expanding && workoutScoped && workoutMediaEnabled && !reduced) setPlaying(true)
+  }
   const cls = 'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '')
+  const mediaStyle = mediaRatio ? { '--media-ratio': String(mediaRatio) } : undefined
   // Same pattern as Thumb: a failed asset collapses to the glyph placeholder
   // (same box, same sizes — see .exmedia-x), never a broken-image icon.
   if (err && !ex.gif) return (
-    <div className={cls} id={id}>
+    <div className={cls} id={id} style={mediaStyle}>
       <div className="exmedia-x" role="img" aria-label={exerciseName(ex)}><Icon name="dumbbell" /></div>
     </div>
   )
   return (
-    <div ref={box} className={cls + (ready ? ' is-ready' : ' is-loading')} id={id} onClick={() => setPlaying(p => !p)}>
+    <div ref={box} className={cls + (ready ? ' is-ready' : ' is-loading')} id={id} style={mediaStyle} onClick={togglePlaying}>
       {hasVideo && !err ? <>
         {/* Poster-first: the eager poster (blurred until first frame) paints instantly
             while the deferred video loads underneath. It stays mounted so the
@@ -132,25 +161,27 @@ export default function Media({ ex, id, compact, minimizable, priority }) {
             CSS). fetchPriority degrades to a no-op on browsers without support. */}
         {ex.img && <img className="exmedia-poster" src={imgSrc(ex)} alt="" aria-hidden="true"
           loading={priority ? 'eager' : 'lazy'} decoding="async"
-          fetchPriority={priority ? 'high' : undefined} />}
-        <video ref={video} src={videoSrc(ex)} autoPlay={!reduced} loop muted playsInline
+          fetchPriority={priority ? 'high' : undefined} onLoad={e => setRatioFromMedia(e.currentTarget)} />}
+        <video ref={video} src={videoSrc(ex)} autoPlay={!reduced && mediaPlaying} loop muted playsInline
           preload={priority ? 'auto' : 'metadata'} fetchPriority={priority ? 'high' : undefined}
           poster={ex.img ? imgSrc(ex) : undefined} aria-label={exerciseName(ex)}
+          onLoadedMetadata={e => setRatioFromMedia(e.currentTarget)}
           onLoadedData={() => setReady(true)} onError={onErr} />
       </>
         : ex.gif && !gifErr ? <img decoding="async" loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : undefined}
-          src={playing ? gifSrc(ex) : imgSrc(ex)} alt={exerciseName(ex)} onError={onGifErr} />
+          src={mediaPlaying ? gifSrc(ex) : imgSrc(ex)} alt={exerciseName(ex)} onLoad={e => setRatioFromMedia(e.currentTarget)} onError={onGifErr} />
           : <div className="exmedia-x" role="img" aria-label={exerciseName(ex)}><Icon name="dumbbell" /></div>}
       {minimizable && (
-        <button className="giftoggle" onClick={toggleSize}>
+        <button type="button" className="giftoggle" aria-label={mini ? t('Expand') : t('Minimize')} aria-pressed={mini} onClick={toggleSize}>
           <Icon name={mini ? 'expand' : 'minimize'} />{mini ? t('Expand') : t('Minimize')}
         </button>
       )}
-      {!mini && (hasVideo || ex.gif) && (
-        <span className="gifhint">
-          <Icon name={playing ? 'pause' : 'play'} />{playing ? t('tap to pause') : t('tap to play')}
-        </span>
+      {(hasVideo || ex.gif) && (
+        <button type="button" className="gifhint" aria-label={mediaPlaying ? t('tap to pause') : t('tap to play')}
+          aria-pressed={mediaPlaying} onClick={e => { e.stopPropagation(); togglePlaying() }}>
+          <Icon name={mediaPlaying ? 'pause' : 'play'} />{mediaPlaying ? t('tap to pause') : t('tap to play')}
+        </button>
       )}
     </div>
   )

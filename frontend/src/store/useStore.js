@@ -17,7 +17,7 @@ export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
   theme: 'dark', accent: 'lime', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
-  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
+  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
@@ -37,12 +37,13 @@ export const stateForStorage = state => {
   return next
 }
 
-// Backups and server/mobile restores predate the preference. Only an explicit false disables
-// the timer; malformed or absent values retain the historical enabled behavior.
+// Backups and server/mobile restores predate these compatibility preferences. Only an explicit
+// false disables them; malformed or absent values retain the historical enabled behavior.
 const normalizeState = state => {
   const next = normalizeExerciseIds(Object.assign(clone(DEF), state || {}))
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
+  next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
   next.warmupConfig = { ...DEF.warmupConfig, ...(state?.warmupConfig || {}) }
   delete next.blocks
   delete next.activeBlock

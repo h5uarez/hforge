@@ -185,6 +185,28 @@ describe('restTimerEnabled compatibility', () => {
   })
 })
 
+describe('workoutMediaEnabled compatibility', () => {
+  it('defaults old profiles to enabled and persists a disabled choice', () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+
+    expect(useStore.getState().S.workoutMediaEnabled).toBe(true)
+    useStore.getState().update(s => { s.workoutMediaEnabled = false }, false)
+
+    expect(useStore.getState().S.workoutMediaEnabled).toBe(false)
+    expect(JSON.parse(storage.get(KEY)).workoutMediaEnabled).toBe(false)
+  })
+
+  it('restores the persisted disabled choice and normalizes malformed values to enabled', async () => {
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], workoutMediaEnabled: false }))
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+    expect(restored.getState().S.workoutMediaEnabled).toBe(false)
+
+    restored.getState().replaceState({ routines: [], workouts: [], workoutMediaEnabled: 'false' })
+    expect(restored.getState().S.workoutMediaEnabled).toBe(true)
+  })
+})
+
 describe('active-session persistence recovery', () => {
   it('keeps a failed active draft available for retry and leaves plans unchanged', () => {
     const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]
