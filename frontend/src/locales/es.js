@@ -104,7 +104,8 @@ export default {
   'Add to routine': 'Añadir a la rutina',
   'Remove exercise': 'Quitar ejercicio',
   'Remove exercise?': '¿Quitar ejercicio?',
-  'Remove “{0}” from this active workout? The saved routine will not change.': '¿Quitar «{0}» de este entrenamiento activo? La rutina guardada no cambiará.',
+  '“{0}” will be removed from this active workout. The saved routine will not change.': '«{0}» se quitará de este entrenamiento activo. La rutina guardada no cambiará.',
+  'Remove': 'Quitar',
   'Pick an icon': 'Elige un icono',
   'Back to weekly plan': 'Volver al plan semanal',
   '{0} set to rest': '{0} marcado como descanso',
@@ -699,7 +700,8 @@ export default {
    'End time must be on or after start time': 'La hora de finalización debe ser igual o posterior a la de inicio',
    'Enter valid start and end times': 'Introduce horas de inicio y finalización válidas',
    'Workout timestamps updated': 'Horas del entrenamiento actualizadas',
-   'Save changes': 'Guardar cambios',
+    'Save changes': 'Guardar cambios',
+   'Only the time changes. The date stays the same.': 'Solo cambia la hora. La fecha se mantiene.',
   // --- localized push & server errors (popup-notifications-spanish) ---
    'Push notifications are not supported in this browser': 'Las notificaciones push no son compatibles con este navegador',
    'Notifications permission was not granted': 'No se concedió el permiso de notificaciones',
@@ -730,4 +732,11 @@ export default {
     'unsupported locale': 'Idioma no compatible',
     'active workout push requires HTTPS or localhost': 'El push del entrenamiento activo requiere HTTPS o localhost',
     'active push subscription required': 'Se requiere una suscripción push activa',
+    // --- exercise options menu & reorder screen ---
+    'Exercise options': 'Opciones del ejercicio',
+    'Edit exercise': 'Editar ejercicio',
+    'Exercise information': 'Información del ejercicio',
+    'Reorder exercises': 'Reordenar ejercicios',
+    'Reorder': 'Reordenar',
+    'Drag with the handle, or focus it and use the arrow keys to reorder.': 'Arrastra con el asa, o enfócala y usa las flechas para reordenar.',
 }

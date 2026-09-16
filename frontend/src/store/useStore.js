@@ -29,14 +29,6 @@ export const DEF = {
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
-// The historical editor is a transient view-model. Persist the session it will restore, not the
-// editor itself, while leaving the supplied state untouched for the current in-memory draft.
-export const stateForStorage = state => {
-  const next = structuredClone(state || {})
-  if (next.active?.historicalEdit) next.active = next.active.historicalEdit.returnActive || null
-  return next
-}
-
 // Backups and server/mobile restores predate these compatibility preferences. Only an explicit
 // false disables them; malformed or absent values retain the historical enabled behavior.
 const normalizeState = state => {
@@ -69,7 +61,7 @@ function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      const state = stateForStorage(normalizeState(JSON.parse(raw)))
+      const state = normalizeState(JSON.parse(raw))
       state.lang = getExplicitLang() || normalizeLang(state.lang) || getInitialLang()
       // No write-back here: loading must not churn localStorage. Normalization
       // is in-memory only; the next real change persists via persist().
@@ -79,7 +71,7 @@ function loadState() {
     // A partial/quota-corrupted primary must not erase the last known valid session.
     try {
       const fallback = localStorage.getItem(LAST_VALID_KEY)
-      if (fallback) return stateForStorage(normalizeState(JSON.parse(fallback)))
+      if (fallback) return normalizeState(JSON.parse(fallback))
     } catch { /* ignore malformed fallback too */ }
   }
   return normalizeState({ lang: getInitialLang() })
@@ -109,7 +101,7 @@ export const useStore = create((set, get) => {
   // storage eviction) and keep the native reminder schedule in step with the weekly plan.
   const nativePersist = () => {
     clearTimeout(saveTm)
-    saveTm = setTimeout(() => { saveTm = null; nativeSave(stateForStorage(get().S)); syncReminder(get().S) }, 800)
+    saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
   }
 
   const persist = (S, push = true, transaction = null, { rebuild = true } = {}) => {
@@ -120,7 +112,7 @@ export const useStore = create((set, get) => {
       if (rebuild) S = rebuildHistory(S)
       S._ts = Date.now()
       registerCustom(S.customEx)
-      const serialized = JSON.stringify(stateForStorage(S))
+      const serialized = JSON.stringify(S)
       localStorage.setItem(KEY, serialized)
       localStorage.setItem(LAST_VALID_KEY, serialized)
       lastTransaction = { previous: structuredClone(previous), draft: structuredClone(S), previousStorage: previousKeys }
@@ -130,7 +122,8 @@ export const useStore = create((set, get) => {
         try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) } catch { /* best effort rollback */ }
       }
       // Keep the draft visible and actionable. The two persisted keys are restored together.
-      set({ S, persistence: { status: 'failed', error, draft: structuredClone(S), previous, previousStorage: previousKeys } })
+      // scope 'local' marks a real on-device write failure: the blocking recovery card owns it.
+      set({ S, persistence: { status: 'failed', scope: 'local', error, draft: structuredClone(S), previous, previousStorage: previousKeys } })
       return false
     }
     if (MOBILE) nativePersist()
@@ -224,7 +217,7 @@ export const useStore = create((set, get) => {
     },
 
     // Push an optional snapshot without replacing the locally visible state. The active session is
-    // browser-local, so never include it in a server payload (historical edits may nest it).
+    // browser-local, so never include it in a server payload.
     async pushState(snapshot = null) {
       if (!get().user) return
       clearTimeout(pushTm)
@@ -236,8 +229,18 @@ export const useStore = create((set, get) => {
         return true
       } catch (e) {
         localStorage.setItem('gym_dirty', '1')
+        // A remote push that rejects while the live session is intact in localStorage must never
+        // raise the blocking recovery card (leave/re-enter with an active workout, backend down,
+        // 502, offline). Stay silent, keep the draft exactly as it is, and retry in the background
+        // once the session ends. Only a remote failure with NO active session escalates — and a
+        // real local write failure (persist() catch above) always keeps its blocking dialog.
+        // The early return also preserves any pre-existing local-failure recovery untouched.
+        if (get().S.active) {
+          schedulePush()
+          return false
+        }
         const current = get().S
-        set({ persistence: { status: 'failed', error: e, draft: structuredClone(current), previous: lastTransaction?.previous || current, previousStorage: lastTransaction?.previousStorage } })
+        set({ persistence: { status: 'failed', scope: 'remote', error: e, draft: structuredClone(current), previous: lastTransaction?.previous || current, previousStorage: lastTransaction?.previousStorage } })
         return false
       }
     },
@@ -249,7 +252,7 @@ export const useStore = create((set, get) => {
         // A live session is browser-local. Boot refresh may update the local copy, but must not
         // turn that refresh (or legacy-ID repair) into an implicit remote save. Explicit completed
         // workout, history, and settings saves still call pushState directly.
-        const liveActive = !!active && !active.historicalEdit
+        const liveActive = !!active
         const dirty = localStorage.getItem('gym_dirty') === '1'
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const migrated = hasLegacyExerciseIds(state)

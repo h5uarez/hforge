@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
-import { moveSessionUnit, remapCur, removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
+import { removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
@@ -11,8 +11,7 @@ import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
 import Media, { prefetchWorkoutMedia } from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, rebuildActiveEntry, buildWorkoutEntry, buildImportedWorkoutEntries } from '../sheets.jsx'
-import { cloneHistoryValue, historyWorkoutFromActive, markHistoricalAddition } from '../lib/history-edit.js'
+import { startFlow, exercisePicker, exConfigSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, rebuildActiveEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -62,7 +61,7 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onEdit, onRemoveExercise, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -179,14 +178,11 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onEdi
   </span>
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />
-    <div className="row between" style={{ marginBottom: 6 }}>
-      {heading === 'h3' ? <h3 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h3> : <h2 style={{ fontSize: compact ? 17 : 20, margin: 0, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h2>}
-      <div className="row" style={{ gap: 4 }}>
-        <button className="iconbtn" aria-label={t('Edit')} onClick={onEdit}><Icon name="pencil" /></button>
-        <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
-        <button type="button" className="iconbtn session-remove" aria-label={t('Remove exercise')} title={t('Remove exercise')} onClick={onRemoveExercise}><Icon name="trash" /></button>
-      </div>
-    </div>
+    {/* The title owns the full row: per-exercise edit/info/remove moved into the
+        card's options menu, so a long name ellipsizes instead of squeezing. */}
+    {heading === 'h3'
+      ? <h3 className="session-ex-title" style={{ fontSize: compact ? 17 : 20, margin: '0 0 6px', letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h3>
+      : <h2 className="session-ex-title" style={{ fontSize: compact ? 17 : 20, margin: '0 0 6px', letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h2>}
     {entry.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{entry.target.planNote}</div>}
     <div style={{ marginBottom: 10 }}>
       <div className="row between" style={{ margin: '0 2px 6px' }}>
@@ -209,8 +205,6 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onEdi
       {/* You log the total; this is the split, so the set in front of you is unambiguous
           without the rep count having to mean two different things (issue #31). */}
       {!cardio && !timed && perSide && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !projectSideSet(s).done)?.r ?? entry.sets[0]?.r)))}</span>}
-      {(ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
-      {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
     </div>
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
@@ -284,7 +278,7 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onEdi
       })()}
       </div>
       <div style={{ height: 8 }} />
-      <div className="row">
+      <div className="row set-actions">
         <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>{t('Remove set')}</Button>
         <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
       </div>
@@ -303,7 +297,6 @@ function ActiveWorkout() {
   const undoPersistence = useStore(s => s.undoPersistence)
   const cancelPersistence = useStore(s => s.cancelPersistence)
   const A = S.active
-  const isHistorical = !!A.historicalEdit
   const units = supersetUnits(A.entries)
   const cur = Math.min(A.cur, Math.max(0, A.entries.length - 1))
   const unit = A.entries.length ? unitOf(units, cur) : []
@@ -312,7 +305,6 @@ function ActiveWorkout() {
   const cardRefs = useRef(new Map())
   const resumed = useRef(false)
   const [pendingFocus, setPendingFocus] = useState(null)
-  const [moveStatus, setMoveStatus] = useState('')
   const focusEntry = (sid, scroll = true) => setPendingFocus({ sid, scroll })
   useLayoutEffect(() => {
     if (!pendingFocus) return
@@ -356,12 +348,8 @@ function ActiveWorkout() {
     focusEntry(A.entries[cur].sid)
   }, [A.entries, cur])
   useEffect(() => {
-    if (isHistorical) {
-      stopRest()
-      return
-    }
     useUI.getState().resumeRest()
-  }, [isHistorical, stopRest])
+  }, [stopRest])
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
@@ -389,23 +377,9 @@ function ActiveWorkout() {
     if (v == null) delete e.sets[i][field]; else e.sets[i][field] = v
   })
   const modeAt = idx => modeOf({ ...(A.entries[idx].target || {}), id: A.entries[idx].id })
-  const moveUnit = (index, delta) => {
-    const before = A.entries
-    const result = moveSessionUnit(before, index, delta)
-    if (!result.changed) return
-    update(s => {
-      const moved = moveSessionUnit(s.active.entries, index, delta)
-      s.active.entries = moved.entries
-      s.active.cur = remapCur(before, s.active.cur, moved.entries)
-      touchActiveRecord(s.active)
-    }, false)
-    const position = result.position + 1
-    const moved = A.entries.find(e => e.sid === result.movedSid)
-    if (moved) {
-      focusEntry(moved.sid)
-      setMoveStatus(t('Exercise {0} / {1}', exerciseName(exOr(moved.id)), units.length) + ' — ' + position)
-    }
-  }
+  // Editing an active entry reopens its config (exercise RPE/note, routine RPE targets)
+  // and rebuilds only the unfinished portion, exactly like the old pencil button did —
+  // now reached through the unit options menu instead of the card header.
   const editExercise = idx => {
     const st = useStore.getState().S
     const entry = st.active?.entries?.[idx]
@@ -436,8 +410,8 @@ function ActiveWorkout() {
     const name = exerciseName(exOr(entry.id))
     confirmSheet({
       title: t('Remove exercise?'),
-      message: t('Remove “{0}” from this active workout? The saved routine will not change.', name),
-      confirmText: t('Remove exercise'), danger: true,
+      message: t('“{0}” will be removed from this active workout. The saved routine will not change.', name),
+      confirmText: t('Remove'), danger: true,
       onConfirm: () => {
         const timer = useUI.getState().timer
         const hasRemovedRest = timer?.sid === sid || useStore.getState().S.active?.restResume?.sid === sid
@@ -499,7 +473,6 @@ function ActiveWorkout() {
       if (!active || !source?.ex?.length) return
       imported = buildImportedWorkoutEntries(s, source, active.entries)
       if (!imported.length) return
-      if (isHistorical) imported = imported.map(markHistoricalAddition)
       const firstIndex = active.entries.length
       active.entries.push(...imported)
       active.cur = firstIndex
@@ -512,49 +485,6 @@ function ActiveWorkout() {
     closePicker()
     focusEntry(imported[0].sid)
     useUI.getState().toast(t('{0} exercises added to this workout', imported.length), { kind: 'success' })
-  }
-
-  const cancelHistorical = () => {
-    const context = A.historicalEdit
-    update(s => {
-      const found = s.workouts.find(item => item.id === context.workoutId)
-      if (found && context.originalWorkout) Object.assign(found, cloneHistoryValue(context.originalWorkout))
-      s.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null
-    }, false)
-    stopRest()
-    useUI.getState().stopWork()
-    nav(context.returnPath || '/history')
-  }
-  const saveHistorical = async () => {
-    const active = useStore.getState().S.active
-    const context = active?.historicalEdit
-    const result = historyWorkoutFromActive(active)
-    if (!result.ok || !context) {
-      useUI.getState().toast(t('Could not save your workout'))
-      return
-    }
-    stopRest()
-    useUI.getState().stopWork()
-    const saved = update(s => {
-      const found = s.workouts.find(item => item.id === context.workoutId)
-      if (found) Object.assign(found, result.workout)
-    }, false)
-    if (!saved) {
-      useUI.getState().toast(t('Could not save your workout'))
-      return
-    }
-    if (useStore.getState().user) {
-      const remote = cloneHistoryValue(useStore.getState().S)
-      remote.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null
-      if (!(await useStore.getState().pushState(remote))) return
-    }
-    const restored = update(s => { s.active = context.returnActive ? cloneHistoryValue(context.returnActive) : null }, false)
-    if (!restored) {
-      useUI.getState().toast(t('Could not save your workout'))
-      return
-    }
-    useUI.getState().toast(t('Saved'))
-    nav(context.returnPath || '/history')
   }
 
   const toggle = (idx, i, side) => {
@@ -571,9 +501,9 @@ function ActiveWorkout() {
         beep(S.sound, 1040, 0.12); vibrate(30)
         const isLastExInUnit = idx === unit[unit.length - 1]
           const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => projectSideSet(x).done))
-        if (!isHistorical && isLastExInUnit && !unitDone) startRest(S.restSec, A.entries[idx].sid)
-        else if (!isHistorical && unitDone) stopRest()
-        if (!isHistorical && unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
+        if (isLastExInUnit && !unitDone) startRest(S.restSec, A.entries[idx].sid)
+        else if (unitDone) stopRest()
+        if (unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
         // Only loaded reps training has a "working weight" worth confirming — a bodyweight
         // plank has nothing to put in that slider, and neither does a set of push-ups
         // (issue #32: the fewest taps that still record what happened).
@@ -581,7 +511,7 @@ function ActiveWorkout() {
           const p = projectSideSet(x)
           return p.w > 0 || x.left?.w > 0 || x.right?.w > 0
         }))
-        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (!isHistorical && loaded && !e.asked) { e.asked = true; askTop = true } }
+        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (loaded && !e.asked) { e.asked = true; askTop = true } }
       }
     })
     // reps: topWeight first (it chains into the finish/continue prompt on the last unit).
@@ -595,7 +525,7 @@ function ActiveWorkout() {
   // Live-presence heartbeat so the admin dashboard can show who's training now. Signed-in only —
   // guests have no server session. Reads fresh state each tick so progress stays current.
   useEffect(() => {
-    if (isHistorical || !useStore.getState().user) return
+    if (!useStore.getState().user) return
     let stopped = false
     const ping = active => {
       const A2 = useStore.getState().S.active
@@ -617,7 +547,7 @@ function ActiveWorkout() {
       try { navigator.sendBeacon?.('/api/activity', new Blob([JSON.stringify({ active: false })], { type: 'application/json' })) } catch { /* */ }
       api('/api/activity', { method: 'POST', body: JSON.stringify({ active: false }) }).catch(() => {})
     }
-  }, [isHistorical])
+  }, [])
 
   const renderCard = (entryIdx, unitIndex, members) => {
     const entry = A.entries[entryIdx]
@@ -627,17 +557,19 @@ function ActiveWorkout() {
       aria-labelledby={'session-heading-' + entry.sid}>
       <div className="row between session-card-head">
         <h2 id={'session-heading-' + entry.sid}>{superset ? t('Superset {0} / {1}', unitIndex + 1, units.length) : t('Exercise {0} / {1}', unitIndex + 1, units.length)}</h2>
-        <div className="row" role="group" aria-label={t('Exercises')}>
-          <button type="button" className="iconbtn" aria-label={t('Move up')} disabled={unitIndex <= 0} onClick={() => moveUnit(unitIndex, -1)}><Icon name="chevronUp" /></button>
-          <button type="button" className="iconbtn" aria-label={t('Move down')} disabled={unitIndex >= units.length - 1} onClick={() => moveUnit(unitIndex, 1)}><Icon name="chevronDown" /></button>
-        </div>
+        <button type="button" className="iconbtn" aria-label={t('Exercise options')} onClick={() => exerciseMenuSheet({
+          unitIndex, unitTotal: units.length,
+          members: members.map(idx => ({ entryIdx: idx, sid: A.entries[idx].sid, id: A.entries[idx].id })),
+          onEdit: editExercise,
+          onRemove: removeExercise,
+        })}><Icon name="dots" /></button>
       </div>
       {superset && <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>}
       {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
         {superset && k > 0 && <div className="ss-amp">+</div>}
         <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
           priority={unitIndex === 0 && k === 0}
-          onEdit={() => editExercise(idx)} onRemoveExercise={() => removeExercise(idx)} onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+          onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
       </div>)}
     </article>
   }
@@ -648,9 +580,7 @@ function ActiveWorkout() {
     let addedSid
     commitPickerSelection(() => update(s => {
       const routine = s.routines.find(r => r.id === s.active.routineId)
-      const added = isHistorical
-        ? markHistoricalAddition(buildWorkoutEntry(s, cfg, routine, { id: ex.id }))
-        : buildWorkoutEntry(s, cfg, routine, { id: ex.id })
+      const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
       addedSid = added.sid
       s.active.entries.push(added)
       s.active.cur = s.active.entries.length - 1
@@ -663,25 +593,21 @@ function ActiveWorkout() {
   })
 
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
+    <div className="workout-sticky-head">
     <div className="hdr">
-      <button className="iconbtn" aria-label={t(isHistorical ? 'Cancel' : 'Discard')} onClick={isHistorical ? cancelHistorical : () => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }, false); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
-      <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1>{isHistorical ? <div className="sub">{t('Edit workout')}</div> : <div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div>}</div>
-      <button className="iconbtn acc-ink" aria-label={t(isHistorical ? 'Save changes' : 'Finish')} onClick={isHistorical ? saveHistorical : finishWorkout}><Icon name={isHistorical ? 'check' : 'check'} /></button>
+      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }, false); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
+      <div style={{ textAlign: 'center' }}><h1 id="workout-session-title" style={{ fontSize: 17, fontWeight: 600 }}>{A.name}</h1><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
+      <button className="iconbtn acc-ink" aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
     </div>
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
-    {persistence?.status === 'failed' && <div className="card persistence-recovery" role="alert" aria-live="assertive">
+    </div>
+    {persistence?.status === 'failed' && (!A || persistence?.scope === 'local') && <div className="card persistence-recovery" role="alert" aria-live="assertive">
        <strong>{t('Could not save your workout')}</strong>
       <div>{t('Your changes are still visible. Choose an action to recover.')}</div>
       <div className="row" role="group" aria-label={t('Recovery')}>
-         {isHistorical ? <>
-           <Button size="sm" onClick={saveHistorical}>{t('Retry')}</Button>
-           <Button size="sm" onClick={cancelHistorical}>{t('Undo')}</Button>
-           <Button size="sm" onClick={cancelHistorical}>{t('Cancel')}</Button>
-         </> : <>
            <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
            <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
            <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
-         </>}
       </div>
     </div>}
 
@@ -689,7 +615,6 @@ function ActiveWorkout() {
       <div className="session-cards" aria-label={t('Exercises')}>
         {units.map((members, index) => renderCard(members[0], index, members))}
       </div>
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{moveStatus}</div>
     </> : <div className="empty empty-center"><div className="ico"><Icon name="shuffle" /></div><div>{t('Freestyle workout — add your first exercise.')}</div><Button variant="primary" icon="play" onClick={pickExercise}>{t('Start your first workout')}</Button></div>}
 
     <div style={{ height: 12 }} />
@@ -699,8 +624,8 @@ function ActiveWorkout() {
     {(() => {
        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
       const allDone = A.entries.length > 0 && exDone === A.entries.length
-       return <button className={isHistorical ? 'btn primary' : allDone ? 'btn primary' : 'btn tinted'} onClick={isHistorical ? saveHistorical : finishWorkout}>
-         {isHistorical ? t('Save changes') : allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
+       return <button className={allDone ? 'btn primary' : 'btn tinted'} onClick={finishWorkout}>
+         {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
       </button>
     })()}
     <div style={{ height: 40 }} />

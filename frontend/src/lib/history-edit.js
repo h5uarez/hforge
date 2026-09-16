@@ -88,69 +88,6 @@ function completeHistoricalTarget(entry) {
 
 const historicalSid = (workoutId, index) => `history-${String(workoutId ?? 'workout').replace(/[^a-zA-Z0-9_-]/g, '_')}-${index}`
 
-// Turn one completed record into the active-session shape consumed by ExerciseBlock. This is a
-// view-model conversion only: every nested value is cloned, and originalWorkout/returnActive are
-// transient context used to replace the same record or restore an already-running session.
-export function historicalWorkoutToActive(workout, returnActive = null) {
-  const source = cloneHistoryValue(workout || {})
-  const entries = (source.entries || []).map((entry, index) => ({
-    id: entry.id,
-    sid: historicalSid(source.id, index),
-    ...(entry.n ? { n: entry.n } : {}),
-    ...(entry.sg ? { sg: entry.sg } : {}),
-    target: completeHistoricalTarget(entry),
-    sets: cloneHistoryValue(Array.isArray(entry.sets) ? entry.sets : []),
-    ...(Object.prototype.hasOwnProperty.call(entry, 'topW') ? { topW: entry.topW } : {}),
-    ...(Object.prototype.hasOwnProperty.call(entry, 'note') ? { note: entry.note } : {}),
-  }))
-  return {
-    id: source.id,
-    d: source.d,
-    start: source.start,
-    end: source.end,
-    routineId: source.routineId ?? null,
-    name: source.name || 'Workout',
-    bw: source.bw ?? null,
-    cur: 0,
-    entries,
-    historicalEdit: {
-      workoutId: source.id,
-      originalWorkout: source,
-      returnActive: cloneHistoryValue(returnActive),
-    },
-  }
-}
-
-// Convert the edited active snapshot back to a history record. Selecting fields here is
-// intentional: sid, plan, asked, rest/activity and other session-only metadata never cross the
-// history boundary. Derived volume/PR/exWeights are rebuilt by the normal store persistence flow.
-export function historyWorkoutFromActive(active) {
-  const context = active?.historicalEdit
-  if (!context || !Array.isArray(active.entries)) return { ok: false, reason: 'historical context missing' }
-  const original = cloneHistoryValue(context.originalWorkout || {})
-  const entries = active.entries.map(entry => {
-    const clean = {
-      id: entry.id,
-      ...(entry.n ? { n: entry.n } : {}),
-      ...(entry.sg ? { sg: entry.sg } : {}),
-      sets: cloneHistoryValue(Array.isArray(entry.sets) ? entry.sets : []),
-      topW: entry.topW ?? null,
-      target: cloneHistoryValue(entry.target || {}),
-      ...(Object.prototype.hasOwnProperty.call(entry, 'note') ? { note: entry.note } : {}),
-    }
-    const historyEntry = copyHistoryEntry(clean)
-    return keepHistoryEntry(historyEntry) || entry[HISTORICAL_ADDITION_MARKER] === true ? historyEntry : null
-  }).filter(entry => entry !== null)
-  return {
-    ok: true,
-    workout: {
-      ...original,
-      id: context.workoutId,
-      entries,
-    },
-  }
-}
-
 export function removeOccurrence(entries, key) { return (entries || []).filter(entry => entry._draftKey !== key) }
 export function reorderOccurrences(entries, orderedKeys) {
   const byKey = new Map((entries || []).map(entry => [entry._draftKey, entry]))
@@ -206,19 +143,6 @@ export function normalizeHistoryEntry(entry, removal = false) {
   if (!keepHistoryEntry(copy)) return { ok: true, removed: true }
   delete copy._draftKey
   return { ok: true, entry: copy }
-}
-
-export function normalizeHistoryWorkout(workout, date, removals = new Set()) {
-  const edited = date ? normalizeWorkoutDateEdit(workout, date) : { ...workout }
-  if (edited.kind === 'invalid') return edited
-  const entries = []
-  for (const entry of workout.entries || []) {
-    const key = entry._draftKey
-    const normalized = normalizeHistoryEntry(entry, removals.has(key))
-    if (!normalized.ok) return normalized
-    if (!normalized.removed) entries.push(normalized.entry)
-  }
-  return { ...edited, entries }
 }
 
 export function sortHistory(workouts) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName, exOr } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
@@ -21,9 +21,9 @@ import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight as formatWeight } from './lib/weight-controls.js'
 import { MOBILE } from './lib/mobile.js'
-import { newSessionSid } from './lib/session.js'
+import { newSessionSid, moveSessionUnit, remapCur } from './lib/session.js'
 import { touchActiveRecord } from './lib/inactivity.js'
-import { historicalWorkoutToActive } from './lib/history-edit.js'
+import { formatWorkoutDateTime, parseWorkoutDateTime, localDateKey, validateWorkoutTimestamps } from './lib/workout-time.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 
 const S = () => useStore.getState().S
@@ -396,7 +396,7 @@ function OneRM({ ex }) {
   </>
 }
 
-function ExerciseDetail({ ex, close }) {
+function ExerciseDetail({ ex, close, hideAddToPlan }) {
   const st = useStore(s => s.S)
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
@@ -428,7 +428,9 @@ function ExerciseDetail({ ex, close }) {
         </span>
       </div>}
     </div>}
-    <Button variant="primary" icon="plus" style={{ margin: '10px 0 4px' }} onClick={() => addToRoutineSheet(ex)}>{t('Add to my plan')}</Button>
+    {/* The exercise is already in the plan when the detail opens from the active
+        workout menu, so the add button is hidden there and kept everywhere else. */}
+    {!hideAddToPlan && <Button variant="primary" icon="plus" style={{ margin: '10px 0 4px' }} onClick={() => addToRoutineSheet(ex)}>{t('Add to my plan')}</Button>}
     {ex.custom && <div className="row" style={{ gap: 8, marginTop: 8 }}>
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); customExSheet(ex) }}>{t('Edit')}</Button>
       <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => deleteCustomEx(ex, close)}>{t('Delete')}</Button>
@@ -437,7 +439,264 @@ function ExerciseDetail({ ex, close }) {
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
   </>
 }
-export const exerciseDetailSheet = ex => ui().openSheet(close => <ExerciseDetail ex={ex} close={close} />)
+export const exerciseDetailSheet = (ex, { hideAddToPlan } = {}) => ui().openSheet(close => <ExerciseDetail ex={ex} close={close} hideAddToPlan={hideAddToPlan} />)
+
+/* ============================ exercise options menu ============================ */
+// Per-unit overflow menu for the active workout. Single-exercise units show the
+// canonical edit/info rows; a superset unit repeats the per-exercise rows (edit,
+// info and delete) around the shared reorder row. Every row closes this menu before
+// opening the next sheet, so sheets never stack on top of each other.
+function ExerciseMenu({ unitIndex, unitTotal, members, onEdit, onRemove, close }) {
+  const single = members.length === 1
+  const title = single
+    ? exerciseName(exOr(members[0].id))
+    : t('Superset {0} / {1}', unitIndex + 1, unitTotal)
+  const openEdit = entryIdx => { close(); onEdit(entryIdx) }
+  const openInfo = id => { close(); exerciseDetailSheet(exOr(id), { hideAddToPlan: true }) }
+  const openReorder = () => { close(); reorderExercisesSheet() }
+  const askRemove = entryIdx => { close(); onRemove(entryIdx) }
+  return <>
+    <h3 className="capitalize">{title}</h3>
+    <div className="list">
+      {members.map(m => <button key={'edit-' + m.sid} type="button" className="item" onClick={() => openEdit(m.entryIdx)}>
+        <span className="lrow-i"><Icon name="pencil" /></span>
+        <div className="grow">
+          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Edit exercise') : exerciseName(exOr(m.id))}</div>
+          {!single && <div className="ss">{t('Edit exercise')}</div>}
+        </div>
+        <Icon name="chevronRight" className="chev" aria-hidden="true" />
+      </button>)}
+      {members.map(m => <button key={'info-' + m.sid} type="button" className="item" onClick={() => openInfo(m.id)}>
+        <span className="lrow-i"><Icon name="info" /></span>
+        <div className="grow">
+          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Exercise information') : exerciseName(exOr(m.id))}</div>
+          {!single && <div className="ss">{t('Exercise information')}</div>}
+        </div>
+        <Icon name="chevronRight" className="chev" aria-hidden="true" />
+      </button>)}
+      <button type="button" className="item" onClick={openReorder}>
+        <span className="lrow-i"><Icon name="list" /></span>
+        <div className="grow"><div className="tt">{t('Reorder exercises')}</div></div>
+        <Icon name="chevronRight" className="chev" aria-hidden="true" />
+      </button>
+      {members.map(m => <button key={'del-' + m.sid} type="button" className="item danger" onClick={() => askRemove(m.entryIdx)}>
+        <span className="lrow-i"><Icon name="trash" /></span>
+        <div className="grow">
+          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Delete exercise') : exerciseName(exOr(m.id))}</div>
+          {!single && <div className="ss">{t('Delete exercise')}</div>}
+        </div>
+      </button>)}
+    </div>
+  </>
+}
+export const exerciseMenuSheet = opts => ui().openSheet(close => <ExerciseMenu {...opts} close={close} />)
+
+/* ============================ reorder exercises ============================ */
+// Commit one unit move to the active-session snapshot — the same commit the old
+// card chevrons ran (block reorder via moveSessionUnit, cur remapped by sid,
+// local-only persist). Exported so the reorder contract is testable.
+export function commitUnitMove(fromUnit, toUnit) {
+  const st = useStore.getState().S
+  const before = st.active?.entries
+  if (!before?.length) return { changed: false }
+  const result = moveSessionUnit(before, fromUnit, toUnit - fromUnit)
+  if (!result.changed) return result
+  update(s => {
+    if (!s.active) return
+    const moved = moveSessionUnit(s.active.entries, fromUnit, toUnit - fromUnit)
+    s.active.entries = moved.entries
+    s.active.cur = remapCur(before, s.active.cur, moved.entries)
+    touchActiveRecord(s.active)
+  }, false)
+  return result
+}
+
+// Live destination slot for a pointer drag across reorder rows. Pure (no DOM)
+// so the continuous-drag contract is unit-testable: given the current row
+// geometry and the pointer Y, return the slot the dragged row belongs in.
+// The dragged row keeps chasing the pointer across any number of rows —
+// callers commit one block move per slot change via commitUnitMove.
+export function reorderTargetIndex(rowRects, clientY, current) {
+  if (!rowRects.length) return Number.isInteger(current) ? Math.max(0, current) : 0
+  let target = 0
+  rowRects.forEach((rect, i) => {
+    if (!rect) return
+    if (clientY >= rect.top + rect.height / 2) target = i
+  })
+  return Math.max(0, Math.min(rowRects.length - 1, target))
+}
+
+// Auto-scroll feel while dragging near the scroll-container edges: start
+// scrolling this close to the edge, this many pixels per animation frame.
+// Small enough to stay controllable on a phone, large enough to reach the
+// end of a long list without parking the finger on the edge.
+const REORDER_EDGE_PX = 56
+const REORDER_SCROLL_PX = 12
+
+function ReorderRow({ rowKey, title, sub, ex, index, total, onMove, dragging, setDragging }) {
+  const grip = useRef(null)
+  const drag = useRef(null)
+  const indexRef = useRef(index)
+  indexRef.current = index
+  // Latest commit callback: window-level move listeners are subscribed once per
+  // drag, so they must read the current closure through a ref instead of the
+  // stale one captured at pointerdown.
+  const moveRef = useRef(onMove)
+  moveRef.current = onMove
+  const autoRef = useRef(null)   // { raf, y } while a drag is active
+  const subsRef = useRef(null)   // window listeners subscribed for this drag
+
+  const stopAutoScroll = () => {
+    if (autoRef.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(autoRef.current.raf)
+    autoRef.current = null
+  }
+  const listOf = () => grip.current?.closest('.reorder-list') || null
+  const rowRects = () => {
+    const list = listOf()
+    return list ? [...list.querySelectorAll(':scope > .reorder-row')].map(row => row.getBoundingClientRect()) : []
+  }
+  // The sheet itself scrolls (overflow-y:auto on .sheet); the list is static
+  // content inside it. Scroll the nearest scrollable ancestor so a long list
+  // can be dragged past the visible fold.
+  const scrollBox = () => {
+    if (typeof getComputedStyle !== 'function') return null
+    let node = listOf()?.parentElement || null
+    while (node) {
+      const oy = getComputedStyle(node).overflowY
+      if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight + 1) return node
+      node = node.parentElement
+    }
+    return null
+  }
+  const autoScroll = () => {
+    const auto = autoRef.current
+    const d = drag.current
+    if (!auto || !d) return
+    const box = scrollBox()
+    if (box) {
+      const r = box.getBoundingClientRect()
+      if (auto.y < r.top + REORDER_EDGE_PX) box.scrollTop -= REORDER_SCROLL_PX
+      else if (auto.y > r.bottom - REORDER_EDGE_PX) box.scrollTop += REORDER_SCROLL_PX
+    }
+    auto.raf = requestAnimationFrame(autoScroll)
+  }
+  const unsubscribe = () => {
+    const subs = subsRef.current
+    subsRef.current = null
+    if (subs && typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', subs.travel)
+      window.removeEventListener('pointerup', subs.end)
+      window.removeEventListener('pointercancel', subs.end)
+    }
+  }
+  const end = e => {
+    const d = drag.current
+    if (!d || (e && e.pointerId !== undefined && e.pointerId !== d.id)) return
+    drag.current = null
+    stopAutoScroll()
+    unsubscribe()
+    setDragging(null)
+  }
+  const travelTo = clientY => {
+    const d = drag.current
+    if (!d) return
+    if (autoRef.current) autoRef.current.y = clientY
+    const rects = rowRects()
+    if (!rects.length) return
+    const target = reorderTargetIndex(rects, clientY, d.cur)
+    if (target !== d.cur) {
+      const from = d.cur
+      d.cur = target
+      moveRef.current(from, target)
+    }
+  }
+  const travel = e => {
+    const d = drag.current
+    if (!d || (e.pointerId !== undefined && e.pointerId !== d.id)) return
+    travelTo(e.clientY)
+  }
+  const begin = e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    try { grip.current?.setPointerCapture?.(e.pointerId) } catch { /* older webviews */ }
+    drag.current = { id: e.pointerId, cur: indexRef.current }
+    setDragging(rowKey)
+    // Track on the window as well as the grip: a commit re-renders and moves
+    // row nodes mid-gesture, which can retarget or cut capture delivery on some
+    // browsers — the window listener keeps the finger tracked until pointerup
+    // no matter where the events land.
+    if (typeof window !== 'undefined') {
+      unsubscribe()
+      subsRef.current = { travel, end }
+      window.addEventListener('pointermove', travel)
+      window.addEventListener('pointerup', end)
+      window.addEventListener('pointercancel', end)
+    }
+    if (typeof requestAnimationFrame === 'function') {
+      stopAutoScroll()
+      autoRef.current = { raf: 0, y: e.clientY }
+      autoRef.current.raf = requestAnimationFrame(autoScroll)
+    }
+  }
+  // A drag outlives nothing: release window listeners and the scroll loop if
+  // the row unmounts mid-gesture (e.g. the sheet closes under the finger).
+  useEffect(() => () => {
+    drag.current = null
+    stopAutoScroll()
+    unsubscribe()
+  }, [])
+  const keys = e => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); onMove(index, index - 1) }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); onMove(index, index + 1) }
+    else if (e.key === 'Home') { e.preventDefault(); onMove(index, 0) }
+    else if (e.key === 'End') { e.preventDefault(); onMove(index, total - 1) }
+  }
+  return <div role="listitem" className={'item reorder-row' + (dragging ? ' dragging' : '')}>
+    <button ref={grip} type="button" data-nodrag className="iconbtn regrip"
+      aria-label={title + ', ' + (index + 1) + ' / ' + total} aria-describedby="reorder-hint"
+      onPointerDown={begin} onPointerMove={travel} onPointerUp={end} onPointerCancel={end} onKeyDown={keys}>
+      <Icon name="grip" />
+    </button>
+    <Thumb ex={ex} />
+    <div className="grow"><div className="tt capitalize">{title}</div><div className="ss">{sub}</div></div>
+  </div>
+}
+
+function ReorderExercises({ close }) {
+  const entries = useStore(s => s.S.active?.entries)
+  const [status, setStatus] = useState('')
+  const [dragging, setDragging] = useState(null)
+  const list = entries || []
+  const units = supersetUnits(list)
+  const unitName = members => members.map(i => exerciseName(exOr(list[i].id))).join(' + ')
+  const move = (from, to) => {
+    const clamped = Math.max(0, Math.min(units.length - 1, to))
+    if (clamped === from) return
+    const result = commitUnitMove(from, clamped)
+    if (!result.changed) return
+    setStatus(t('Exercise {0} / {1}', unitName(units[from]), units.length) + ' — ' + (clamped + 1))
+  }
+  return <>
+    <h3>{t('Reorder')}</h3>
+    <div className="small dim reorder-hint" id="reorder-hint">{t('Drag with the handle, or focus it and use the arrow keys to reorder.')}</div>
+    <div className="list reorder-list" role="list" aria-label={t('Reorder exercises')}>
+      {units.map((members, index) => {
+        const first = list[members[0]]
+        const sets = members.reduce((n, i) => n + (list[i].sets?.length || 0), 0)
+        return <ReorderRow key={first.sid} rowKey={first.sid}
+          title={unitName(members)} sub={t('{0} sets', sets)}
+          ex={exOr(first.id)} index={index} total={units.length}
+          onMove={move} dragging={dragging === first.sid} setDragging={setDragging} />
+      })}
+    </div>
+    <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{status}</div>
+    <div style={{ height: 12 }} />
+    <Button variant="primary" onClick={close}>{t('Done')}</Button>
+  </>
+}
+// A short list must not stretch a tall sheet into a white void: the default
+// sheet sizes to its content and caps at the system max-height with internal
+// scroll (see .sheet), so this sheet intentionally opens without tall.
+export const reorderExercisesSheet = () => ui().openSheet(close => <ReorderExercises close={close} />)
 
 /* ============================ add to routine ============================ */
 function AddToRoutine({ ex, close }) {
@@ -1070,24 +1329,6 @@ export const dayAssignSheet = day => ui().openSheet(close => <DayAssign day={day
 
 /* ============================ workout detail ============================ */
 
-export function startHistoricalWorkoutEdit(workout) {
-  const current = S().workouts.find(item => item.id === workout?.id)
-  if (!current) return false
-  let started = false
-  const saved = update(state => {
-    const found = state.workouts.find(item => item.id === current.id)
-    if (!found) return
-    state.active = historicalWorkoutToActive(found, state.active)
-    started = true
-  }, false)
-  if (!saved || !started) return false
-  // A historical edit is not a live workout: never carry a normal session's rest timer into it.
-  ui().stopRest()
-  ui().stopWork()
-  nav('/workout')
-  return true
-}
-
 // History shows only the note written during a workout, never the exercise's planned note.
 // Resolve the visible note once so whitespace-only values never create an empty note box.
 export function historicalEntryNote(entry) {
@@ -1107,9 +1348,76 @@ export function historicalCompletedSets(entry) {
 function WorkoutDetail({ w, close }) {
   const st = useStore(s => s.S)
   const current = st.workouts.find(item => item.id === w.id) || w
+  // Timestamp-only editing: two time fields (HH:MM). The date is locked and never
+  // changes — only the time of day is edited. Overnight workouts roll the end
+  // to the next day while the calendar day still follows the start time.
+  const [editing, setEditing] = useState(false)
+  const [startRaw, setStartRaw] = useState('')
+  const [endRaw, setEndRaw] = useState('')
+  const [timeError, setTimeError] = useState('')
+  const toTimeValue = ts => {
+    const formatted = formatWorkoutDateTime(ts)
+    return formatted ? formatted.slice(11, 16) : ''
+  }
+  const openTimeEditor = () => {
+    setStartRaw(toTimeValue(current.start))
+    setEndRaw(toTimeValue(current.end))
+    setTimeError('')
+    setEditing(true)
+  }
+  const saveTimestamps = () => {
+    const dateKey = localDateKey(current.start) || current.d
+    let end = null
+    const start = dateKey ? parseWorkoutDateTime(`${dateKey}T${String(startRaw ?? '').trim()}`) : null
+    if (start !== null) {
+      end = parseWorkoutDateTime(`${dateKey}T${String(endRaw ?? '').trim()}`)
+      // Time-only editing locks the date: an end time earlier than the start
+      // means the workout ran past midnight, not a date change.
+      if (end !== null && end < start) end += 86400000
+    }
+    const result = start !== null && end !== null ? validateWorkoutTimestamps(start, end) : { ok: false }
+    if (!result.ok) {
+      const message = t(result.reason === 'order' ? 'End time must be on or after start time' : 'Enter valid start and end times')
+      setTimeError(message)
+      toast(message)
+      return
+    }
+    const saved = update(s => {
+      const found = s.workouts.find(item => item.id === current.id)
+      if (!found) return
+      found.start = result.start
+      found.end = result.end
+      found.d = result.d
+    })
+    if (!saved) {
+      const message = t('Could not save your workout')
+      setTimeError(message)
+      toast(message)
+      return
+    }
+    setEditing(false)
+    setTimeError('')
+    toast(t('Workout timestamps updated'))
+  }
   return <>
-    <div className="historical-workout-head"><h3 className="historical-workout-name">{current.name}</h3><Button size="sm" icon="pencil" onClick={() => { close(); startHistoricalWorkoutEdit(current) }} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>
+    <div className="historical-workout-head"><h3 className="historical-workout-name">{current.name}</h3>{!editing && <Button size="sm" icon="pencil" onClick={openTimeEditor} aria-label={t('Edit workout')}>{t('Edit')}</Button>}</div>
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+    {editing && <div className="card" style={{ marginBottom: 12 }}>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <label className="small dim" style={{ display: 'grid', gap: 6, minWidth: 0 }}>{t('Start time')}
+          <TextField type="time" value={startRaw} onChange={e => setStartRaw(e.target.value)} aria-label={t('Start time')} style={{ width: '100%', minHeight: 44 }} />
+        </label>
+        <label className="small dim" style={{ display: 'grid', gap: 6, minWidth: 0 }}>{t('End time')}
+          <TextField type="time" value={endRaw} onChange={e => setEndRaw(e.target.value)} aria-label={t('End time')} style={{ width: '100%', minHeight: 44 }} />
+        </label>
+      </div>
+      <div className="small dim" style={{ marginTop: 8, lineHeight: 1.4 }}>{t('Only the time changes. The date stays the same.')}</div>
+      {timeError && <div className="small" role="alert" style={{ color: 'var(--red)', marginTop: 8 }}>{timeError}</div>}
+      <div className="row" style={{ marginTop: 10 }}>
+        <Button variant="primary" size="sm" onClick={saveTimestamps}>{t('Save changes')}</Button>
+        <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setTimeError('') }}>{t('Cancel')}</Button>
+      </div>
+    </div>}
     {current.entries.map((e, i) => {
       const ex = EXIDX[e.id]
       const completedSets = historicalCompletedSets(e)

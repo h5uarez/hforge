@@ -37,7 +37,7 @@ function fakeBrowser() {
 // the module sees the stub globals.
 const KEY = 'gym_state_v1'
 
-let storage, useStore, stateForStorage, DEF
+let storage, useStore, DEF
 
 beforeEach(async () => {
   storage = fakeBrowser()
@@ -45,7 +45,6 @@ beforeEach(async () => {
   vi.doUnmock('../lib/mobile.js')
   const storeMod = await import('./useStore.js')
   useStore = storeMod.useStore
-  stateForStorage = storeMod.stateForStorage
   DEF = storeMod.DEF
   // Reset S to a known generic overlay. replaceState persists immediately, so each scenario
   // starts from a clean slate regardless of what prior tests left behind.
@@ -129,57 +128,6 @@ describe('legacy state normalization', () => {
   })
 })
 
-describe('historical editor persistence boundary', () => {
-  const live = { id: 'live-session', entries: [entry('squat')] }
-  const historical = returnActive => ({
-    id: 'history-session',
-    entries: [entry('squat')],
-    historicalEdit: { workoutId: 'history-session', originalWorkout: { id: 'history-session', entries: [] }, returnActive },
-  })
-
-  it('keeps a normal active session unchanged in durable state', () => {
-    const active = { id: 'live-only', entries: [entry('bench')] }
-    const durable = stateForStorage({ active })
-
-    expect(durable.active).toEqual(active)
-    expect(durable.active).not.toBe(active)
-  })
-
-  it('stores the return session while keeping the historical draft in memory', () => {
-    const draft = historical(live)
-    const durable = stateForStorage({ active: draft })
-
-    expect(durable.active).toEqual(live)
-    expect(draft).toHaveProperty('historicalEdit')
-    expect(draft).not.toBe(durable.active)
-
-    useStore.getState().replaceState({ routines: [], workouts: [], active: draft })
-    expect(useStore.getState().S.active).toHaveProperty('historicalEdit')
-    expect(JSON.parse(storage.get(KEY)).active).toMatchObject(live)
-
-    useStore.getState().update(state => { state.active.entries[0].sets[0].r = 9 }, false)
-    expect(useStore.getState().S.active.entries[0].sets[0].r).toBe(9)
-    expect(JSON.parse(storage.get(KEY)).active).toMatchObject(live)
-  })
-
-  it('does not reload a stale historical editor snapshot', async () => {
-    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], active: historical(live) }))
-    vi.resetModules()
-    const { useStore: restored } = await import('./useStore.js')
-
-    expect(restored.getState().S.active).toMatchObject(live)
-    expect(restored.getState().S.active).not.toHaveProperty('historicalEdit')
-  })
-
-  it('persists no active session when a historical edit had nothing to restore', () => {
-    const draft = historical(null)
-    useStore.getState().replaceState({ routines: [], workouts: [], active: draft })
-
-    expect(useStore.getState().S.active).toHaveProperty('historicalEdit')
-    expect(JSON.parse(storage.get(KEY)).active).toBeNull()
-  })
-})
-
 const entry = id => ({ id, sets: [{ done: true, w: 40, r: 8 }] })
 
 describe('restTimerEnabled compatibility', () => {
@@ -247,6 +195,19 @@ describe('active-session persistence recovery', () => {
     localStorage.setItem = originalSetItem
   })
 
+  it('marks real local write failures as blocking even with an active session', () => {
+    // Pins the render-guard distinction in Workout.jsx: scope 'local' keeps the recovery card
+    // (retry/undo/cancel) while scope 'remote' with an active session stays silent.
+    useStore.getState().replaceState({ routines: [], workouts: [], active: { entries: [entry('squat')] } })
+    const originalSetItem = localStorage.setItem
+    localStorage.setItem = (key, value) => { if (key === KEY) throw new Error('quota'); return originalSetItem(key, value) }
+    useStore.getState().update(s => { s.active.entries[0].sets[0].r = 12 })
+    localStorage.setItem = originalSetItem
+    expect(useStore.getState().persistence).toMatchObject({ status: 'failed', scope: 'local' })
+    expect(useStore.getState().cancelPersistence()).toBe(true)
+    expect(useStore.getState().persistence).toBeNull()
+  })
+
   it('supports undo and cancel without changing saved plans after a failed edit', () => {
     const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]
     const dayPlan = { tue: 'r1' }
@@ -300,7 +261,7 @@ describe('remote persistence snapshots', () => {
     expect(useStore.getState().S.active).toEqual(local)
   })
 
-  it('keeps the local draft available when an explicit snapshot cannot be pushed', async () => {
+  it('stays silent when a remote push fails while the live session is intact locally', async () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('offline') })
     useStore.getState().replaceState({ routines: [], workouts: [], active: { id: 'historical-view', entries: [entry('squat')] } })
     useStore.getState().setUser({ id: 'server-user' })
@@ -308,10 +269,26 @@ describe('remote persistence snapshots', () => {
     const local = structuredClone(useStore.getState().S)
     const snapshot = structuredClone(local)
     snapshot.active = null
+    // A rejected remote push with an intact local draft is NOT a blocking failure: no recovery
+    // card, draft untouched, dirty flag set for a silent background retry once the session ends.
     expect(await useStore.getState().pushState(snapshot)).toBe(false)
 
     expect(useStore.getState().S).toEqual(local)
-    expect(useStore.getState().persistence.status).toBe('failed')
+    expect(useStore.getState().persistence).toBeNull()
+    expect(localStorage.getItem('gym_dirty')).toBe('1')
+  })
+
+  it('still escalates a remote push failure when no session is active', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('offline') })
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+    useStore.getState().setUser({ id: 'server-user' })
+
+    const local = structuredClone(useStore.getState().S)
+    expect(await useStore.getState().pushState(structuredClone(local))).toBe(false)
+
+    expect(useStore.getState().S).toEqual(local)
+    expect(useStore.getState().persistence).toMatchObject({ status: 'failed', scope: 'remote' })
+    expect(localStorage.getItem('gym_dirty')).toBe('1')
   })
 })
 

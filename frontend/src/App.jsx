@@ -119,9 +119,8 @@ function Shell() {
       removeListener(listener)
     }
   }, [])
-  // Bound to a live workout, not to the route. Historical editing reuses the active screen as a
-  // view-model, but must not keep the device awake as if a session were running.
-  useWakeLock(!!S.active && !S.active.historicalEdit && S.keepAwake !== false)
+  // Bound to a live workout, not to the route.
+  useWakeLock(!!S.active && S.keepAwake !== false)
 
   const authed = user || isGuest
   // P0 boot skeleton: same heights as the real home (title band, week strip,
