@@ -40,19 +40,23 @@ test('plan assignment overlay canonical viewport', async ({ page, openApp }) => 
   await expect(page).toHaveScreenshot('plan-assignment-overlay.png', { fullPage: false })
 })
 
-test('historical workout editor remains readable at phone widths', async ({ page, openApp }) => {
+test('historical time editor remains readable at phone widths', async ({ page, openApp }) => {
   for (const width of [320, 375, 414]) {
     await page.setViewportSize({ width, height: 760 })
     await openApp({ route: '/history', state: 'rich' })
     await page.getByRole('button', { name: /Push Day/ }).first().click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Edit workout', exact: true }).click()
-    const editor = page.locator('main.workout-session')
-    await expect(page).toHaveURL(/#\/workout$/)
-    await expect(editor.getByText('Edit workout', { exact: true })).toBeVisible()
-    await expect(editor.getByRole('button', { name: 'Save changes', exact: true }).first()).toBeVisible()
-    await assertCriticalVisible(editor)
+    const detail = page.getByRole('dialog')
+    await detail.getByRole('button', { name: 'Edit workout', exact: true }).click()
+    await expect(page).toHaveURL(/#\/history$/)
+    await expect(detail.locator('input[type="time"]')).toHaveCount(2)
+    await expect(detail.locator('input[type="datetime-local"]')).toHaveCount(0)
+    await expect(detail.getByText('Only the time changes. The date stays the same.', { exact: true })).toBeVisible()
+    await expect(detail.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible()
+    await assertCriticalVisible(detail)
     await assertNoHorizontalOverflow(page)
-    await editor.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await detail.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(detail.getByRole('button', { name: 'Edit workout', exact: true })).toBeVisible()
+    await detail.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
 })
