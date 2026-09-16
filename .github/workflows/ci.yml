@@ -10,6 +10,46 @@ permissions:
   contents: read
 
 jobs:
+  version:
+    name: Version metadata and release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test version release gate
+        run: node --test scripts/check-version.test.mjs
+
+      - name: Validate version metadata and release bump
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          base_ref=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_ref="$PR_BASE_SHA"
+          elif [[ "${BEFORE_SHA:-}" =~ ^[0-9a-fA-F]{40}$ ]] && [[ ! "${BEFORE_SHA}" =~ ^0+$ ]]; then
+            base_ref="$BEFORE_SHA"
+          fi
+
+          if [[ -n "$base_ref" ]]; then
+            echo "Comparing release metadata with Git base $base_ref."
+            node scripts/check-version.mjs --base-ref "$base_ref"
+          else
+            echo "No usable previous commit was supplied; running consistency validation only."
+            node scripts/check-version.mjs
+          fi
+
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest

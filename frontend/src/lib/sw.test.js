@@ -3,6 +3,7 @@ import { runInNewContext } from 'node:vm'
 import { describe, expect, it, vi } from 'vitest'
 
 const source = readFileSync(new URL('../../public/sw.js', import.meta.url), 'utf8')
+const appVersion = JSON.parse(readFileSync(new URL('../../public/version.json', import.meta.url), 'utf8')).version
 
 function loadWorker(windows, cacheMocks = {}) {
   const listeners = {}
@@ -81,7 +82,8 @@ describe('service worker active inactivity ownership', () => {
 
   it('clears unknown caches on activate but keeps the versioned set', async () => {
     const worker = loadWorker([])
-    worker.caches.keys.mockResolvedValue(['hforge-pwa-v1-shell', 'hforge-pwa-v1-rt', 'hforge-pwa-v1-media', 'random-old'])
+    const cacheNamespace = `hforge-pwa-v${appVersion}`
+    worker.caches.keys.mockResolvedValue([`${cacheNamespace}-shell`, `${cacheNamespace}-rt`, `${cacheNamespace}-media`, 'random-old'])
     let promise
     worker.listeners.activate({ waitUntil: value => { promise = value } })
     await promise
