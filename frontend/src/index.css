@@ -398,6 +398,7 @@ h4.sec{
   --tabbar-x-inset:6px;
   position:fixed;left:12px;right:12px;bottom:calc(10px + var(--sab));z-index:50;
   display:flex;justify-content:space-around;align-items:flex-end;
+  transform-origin:center bottom;scale:1;
   padding:7px 6px 8px;
   /* Opaque base so page text never reads through the bar (inactive ink was
      measured ≥4.5:1 on these solids: dark 6.31, light 5.97). Blur is only a
@@ -463,8 +464,15 @@ h4.sec{
     over the content. `translate` composes with the desktop `transform`
     centering instead of overriding it; visibility drops it from the
     accessibility tree while hidden. Keyboard movement remains translate/opacity only. */
-#tabbar{transition:translate var(--fast) var(--ease),opacity var(--fast) var(--ease),visibility var(--fast)}
+#tabbar{transition:scale var(--motion-tab) var(--ease),translate var(--fast) var(--ease),opacity var(--fast) var(--ease),visibility var(--fast)}
 body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;pointer-events:none}
+/* The individual `scale` property composes with both the keyboard `translate`
+   above and the desktop transform below; compacting never replaces either one.
+   Scaling from the bottom centre keeps the safe-area anchor fixed while the
+   complete shell retreats modestly toward the page centre. Logical button boxes
+   grow to 46px so their 0.96 visual scale remains a real 44px hit target. */
+#tabbar.is-compact{scale:.96}
+#tabbar.is-compact button{min-width:46px;min-height:46px}
 
 /* ------------------------------------------------------------ week strip -- */
 .week{display:flex;justify-content:space-between;gap:4px}
@@ -1543,7 +1551,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 }
 .workout-session .iconbtn,.workout-session .setgo{min-width:44px;min-height:44px}
 /* Sticky session header (title + timer + progress) so it stays visible while scrolling */
-.workout-session .workout-sticky-head{position:sticky;top:var(--sat);z-index:20;background:var(--bg);padding-top:8px}
+.workout-session .workout-sticky-head{position:sticky;top:0;z-index:20;background:var(--bg);margin-top:calc(-1 * var(--sat));padding-top:calc(var(--sat) + 8px)}
 /* Centered set actions */
 .workout-session .set-actions{justify-content:center;gap:8px;flex-wrap:wrap}
 .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}

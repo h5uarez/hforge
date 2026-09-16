@@ -303,6 +303,62 @@ export function useScrolled(threshold = 0) {
   return scrolled
 }
 
+/* ======================= directional document scroll ====================== */
+
+export const SCROLL_COMPACT_THRESHOLD = 24
+export const SCROLL_DIRECTION_DELTA = 4
+
+// Keep a small directional hysteresis so a slow finger movement does not make
+// the navbar flicker. The baseline advances only after a meaningful movement;
+// that also lets several small frames accumulate into one meaningful direction.
+export function nextScrollState(previousY, currentY, direction = 'up', threshold = SCROLL_COMPACT_THRESHOLD, minDelta = SCROLL_DIRECTION_DELTA) {
+  const baselineY = Math.max(0, Number(previousY) || 0)
+  const y = Math.max(0, Number(currentY) || 0)
+  if (y === 0) return { baselineY: 0, direction: 'up', compact: false }
+
+  const delta = y - baselineY
+  if (Math.abs(delta) < minDelta) {
+    return { baselineY, direction, compact: y > threshold && direction === 'down' }
+  }
+
+  const nextDirection = delta > 0 ? 'down' : 'up'
+  return { baselineY: y, direction: nextDirection, compact: y > threshold && nextDirection === 'down' }
+}
+
+// Unlike useScrolled(), this state tracks direction as well as position. It
+// listens to the document itself: scrolling a nested .sheet is an element
+// scroll and does not bubble into this document-scroll signal.
+export function useScrollDirection(threshold = SCROLL_COMPACT_THRESHOLD, minDelta = SCROLL_DIRECTION_DELTA) {
+  const initialY = typeof window === 'undefined' ? 0 : Math.max(0, Number(window.scrollY) || 0)
+  const initialState = {
+    direction: initialY > threshold ? 'down' : 'up',
+    compact: initialY > threshold,
+  }
+  const [state, setState] = useState(initialState)
+  const baselineY = useRef(initialY)
+  const stateRef = useRef(initialState)
+
+  useEffect(() => {
+    let ticking = false
+    const read = () => {
+      ticking = false
+      const next = nextScrollState(baselineY.current, window.scrollY, stateRef.current.direction, threshold, minDelta)
+      baselineY.current = next.baselineY
+      if (next.direction === stateRef.current.direction && next.compact === stateRef.current.compact) return
+      stateRef.current = { direction: next.direction, compact: next.compact }
+      setState(stateRef.current)
+    }
+    const onScroll = () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(read) }
+    }
+    read()
+    document.addEventListener('scroll', onScroll, { passive: true })
+    return () => document.removeEventListener('scroll', onScroll)
+  }, [threshold, minDelta])
+
+  return state
+}
+
 /* ============================ grouped list ============================ */
 
 // The inset-grouped list is the app's main structural primitive: a titled
