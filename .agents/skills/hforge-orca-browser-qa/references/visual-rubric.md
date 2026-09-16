@@ -37,7 +37,7 @@ Record a known snapshot or browser-screenshot timeout once in the run capability
 
 ## Human-observable tabs and immutable identity
 
-After target readiness, create exactly two fresh visible tabs in the active Hforge worktree. Never reuse default/pre-existing tabs. Use isolated profiles when available and label each page by setting and verifying its document title:
+After target readiness, inventory open tabs with `tab list` and reuse two usable prior-run `HFORGE QA` tabs for the same worktree/purpose when present (adopt as M/L, reapply M = 390x844 and L = 430x932 viewports/profiles, relabel with the current `runId`, re-verify, reseed); create with `tab create` only the missing lanes. Never reuse default/unrelated tabs and never leave more than two QA tabs per run — explicitly adopt or close orphans with receipts. Use isolated profiles when available and label each page by setting and verifying its document title:
 
 ```text
 HFORGE QA M · run=<runId>

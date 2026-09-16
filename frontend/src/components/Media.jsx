@@ -174,13 +174,13 @@ export default function Media({ ex, id, compact, minimizable, priority }) {
           : <div className="exmedia-x" role="img" aria-label={exerciseName(ex)}><Icon name="dumbbell" /></div>}
       {minimizable && (
         <button type="button" className="giftoggle" aria-label={mini ? t('Expand') : t('Minimize')} aria-pressed={mini} onClick={toggleSize}>
-          <Icon name={mini ? 'expand' : 'minimize'} />{mini ? t('Expand') : t('Minimize')}
+          <Icon name={mini ? 'expand' : 'minimize'} />
         </button>
       )}
       {(hasVideo || ex.gif) && (
         <button type="button" className="gifhint" aria-label={mediaPlaying ? t('tap to pause') : t('tap to play')}
           aria-pressed={mediaPlaying} onClick={e => { e.stopPropagation(); togglePlaying() }}>
-          <Icon name={mediaPlaying ? 'pause' : 'play'} />{mediaPlaying ? t('tap to pause') : t('tap to play')}
+          <Icon name={mediaPlaying ? 'pause' : 'play'} />
         </button>
       )}
     </div>

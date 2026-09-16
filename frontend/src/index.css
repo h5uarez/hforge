@@ -826,10 +826,8 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 @media (prefers-reduced-motion:reduce){.exmedia.is-loading::before{animation:none}}
 @keyframes exmedia-shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 .exmedia .gifhint,.exmedia .giftoggle{
-  position:absolute;bottom:9px;display:inline-flex;align-items:center;gap:4px;
-  min-height:44px;background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:0 11px;
-  font-size:12px;font-weight:500;
-  white-space:nowrap;
+  position:absolute;bottom:9px;display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;background:rgba(0,0,0,.45);color:#fff;border-radius:50%;padding:0;
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
 .exmedia .gifhint{right:9px}
@@ -1544,6 +1542,10 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   font-variant-numeric:tabular-nums;line-height:1;
 }
 .workout-session .iconbtn,.workout-session .setgo{min-width:44px;min-height:44px}
+/* Sticky session header (title + timer + progress) so it stays visible while scrolling */
+.workout-session .workout-sticky-head{position:sticky;top:var(--sat);z-index:20;background:var(--bg);padding-top:8px}
+/* Centered set actions */
+.workout-session .set-actions{justify-content:center;gap:8px;flex-wrap:wrap}
 .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}
 /* A card is already inside an overflow-x clip boundary. Keep its one focus ring inside the
    card so the global outline and an outer shadow cannot double up or lose their top/corner paint. */
@@ -1552,12 +1554,29 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .workout-session .session-card{min-width:0}
 .workout-session .session-card .card{padding:12px}
 .workout-session .session-card .card{min-width:0}
-/* Exercise x/y head: the title ellipsises, the move group never shrinks, so the
-   chevrons stay fully visible at 320–393px with zero x-scroll. */
+/* Exercise x/y head: the title ellipsises, the options button never shrinks, so the
+   control stays fully visible at 320–393px with zero x-scroll. */
 .workout-session .session-card-head{gap:8px}
 .workout-session .session-card-head > h2{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.workout-session .session-card-head > .row{flex:none}
-.workout-session .session-remove{color:var(--red)}
+.workout-session .session-card-head > .iconbtn{flex:none}
+/* Per-exercise title owns the full row (edit/info/remove live in the options
+   menu now): ellipsis, never overflow, at the 320px stress width. */
+.session-ex-title{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Danger rows inside sheet lists (the delete option): red ink, same as .lrow. */
+.item.danger{color:var(--red)}
+/* Reorder sheet: rows scroll vertically with the sheet, the grip owns its own
+   gesture (touch-action:none) so a touch drag reorders instead of scrolling.
+   While a row is dragged it opts out of panning too, so the browser never
+   hijacks the gesture into a scroll mid-drag. data-nodrag on the grip keeps
+   the sheet swipe-to-dismiss out of the gesture. */
+.reorder-hint{margin:-6px 2px 12px}
+.reorder-list{margin-bottom:4px}
+.reorder-row{touch-action:pan-y}
+.reorder-row.dragging{background:var(--surface-2);touch-action:none}
+.regrip{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.regrip:active{cursor:grabbing}
+/* Visually-hidden live regions: announced, never painted. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* The TabBar floats over content: #app already reserves 100px + safe-area, and
    the workout keeps its own 40px spacer above it — nothing actionable hides. */
 .workout-session{min-width:0;overflow-x:clip}

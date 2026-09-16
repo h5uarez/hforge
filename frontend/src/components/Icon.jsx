@@ -84,6 +84,12 @@ const P = {
   chevronLeft: <path d="m14.4 5.6-6.6 6.4 6.6 6.4" />,
   chevronDown: <path d="m5.6 9.4 6.4 6.2 6.4-6.2" />,
   chevronUp: <path d="m5.6 14.6 6.4-6.2 6.4 6.2" />,
+  // Overflow menu: three solid dots on the vertical axis. Solid like `dot`
+  // (a stroked ring would vanish at tab-bar size), same 24×24 grid.
+  dots: <><circle cx="12" cy="5.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none" /></>,
+  // Drag handle: six solid dots in two columns. Solid for the same reason as
+  // `dots` — thin stroked lines blur together at 16px.
+  grip: <><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none" /></>,
   arrowUp: <path d="M12 19.6V4.4M6.2 10.6 12 4.4l5.8 6.2" />,
   arrowDown: <path d="M12 4.4v15.2M6.2 13.4 12 19.6l5.8-6.2" />,
   expand: <path d="M14.4 4.4h5.2v5.2M9.6 19.6H4.4v-5.2M19.6 4.4 13.8 10.2M4.4 19.6l5.8-5.8" />,

@@ -22,7 +22,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
+const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
@@ -390,6 +390,124 @@ describe('active exercise configuration', () => {
 
     expect(result).toEqual({ ok: false, reason: ACTIVE_ENTRY_EDIT_REJECTED })
     expect(entry).toEqual(before)
+  })
+})
+
+describe('reorder live destination index', () => {
+  // Five rows, 64px each: tops 0/64/128/192/256, midpoints 32/96/160/224/288.
+  const ROW_H = 64
+  const rectsOf = n => Array.from({ length: n }, (_, i) => ({ top: i * ROW_H, height: ROW_H }))
+
+  it('maps the pointer Y to the row whose midpoint it crossed', () => {
+    const rects = rectsOf(5)
+    expect(reorderTargetIndex(rects, 10, 2)).toBe(0)
+    expect(reorderTargetIndex(rects, 40, 0)).toBe(0)
+    expect(reorderTargetIndex(rects, 100, 0)).toBe(1)
+    expect(reorderTargetIndex(rects, 170, 1)).toBe(2)
+    expect(reorderTargetIndex(rects, 300, 3)).toBe(4)
+  })
+
+  it('jumps across 2+ rows in a single move instead of stepping once', () => {
+    expect(reorderTargetIndex(rectsOf(5), 250, 0)).toBe(3)
+    expect(reorderTargetIndex(rectsOf(5), 20, 4)).toBe(0)
+  })
+
+  it('clamps outside pointers and falls back safely with no rows', () => {
+    expect(reorderTargetIndex(rectsOf(5), -500, 2)).toBe(0)
+    expect(reorderTargetIndex(rectsOf(5), 5000, 2)).toBe(4)
+    expect(reorderTargetIndex([], 100, 2)).toBe(2)
+    expect(reorderTargetIndex([], 100)).toBe(0)
+  })
+})
+
+describe('reorder continuous drag commits', () => {
+  // Mirrors the mocked store shape commitUnitMove expects: S with the active
+  // snapshot, plus an update(mut) that applies the mutator like the real store.
+  const entriesFor = () => ([
+    { id: 'sq', sid: 's-sq', sets: [] },
+    { id: 'bp', sid: 's-bp', sets: [] },
+    { id: 'dl', sid: 's-dl', sets: [] },
+    { id: 'ohp', sid: 's-ohp', sets: [] },
+    { id: 'rw', sid: 's-rw', sets: [] },
+  ])
+  const installStore = ids => {
+    const S = { active: { entries: entriesFor(), cur: ids?.cur ?? 0 } }
+    mocks.getState.mockReset()
+    mocks.getState.mockReturnValue({ S, update: mut => { mut(S) } })
+    return S
+  }
+  const orderOf = S => S.active.entries.map(e => e.id)
+  // Same loop the row runs per pointermove: measure live rects, resolve the
+  // destination slot, commit one block move per slot change.
+  const dragAcross = (S, ys, start = 0) => {
+    let cur = start
+    for (const y of ys) {
+      const rects = S.active.entries.map((_, i) => ({ top: i * 64, height: 64 }))
+      const target = reorderTargetIndex(rects, y, cur)
+      if (target !== cur) {
+        const result = commitUnitMove(cur, target)
+        expect(result.changed).toBe(true)
+        cur = target
+      }
+    }
+    return cur
+  }
+
+  it('follows the finger down across 2+ rows with one commit per crossing', () => {
+    const S = installStore()
+    const end = dragAcross(S, [100, 170, 240], 0)
+    expect(end).toBe(3)
+    expect(orderOf(S)).toEqual(['bp', 'dl', 'ohp', 'sq', 'rw'])
+    // cur tracks the dragged entry by stable sid, not by stale position
+    expect(S.active.cur).toBe(3)
+    expect(typeof S.active.lastRecordEditAt).toBe('number')
+  })
+
+  it('follows the finger up across 2+ rows with one commit per crossing', () => {
+    const S = installStore()
+    S.active.cur = 4
+    const end = dragAcross(S, [200, 130, 60], 4)
+    expect(end).toBe(0)
+    expect(orderOf(S)).toEqual(['rw', 'sq', 'bp', 'dl', 'ohp'])
+    expect(S.active.cur).toBe(0)
+  })
+
+  it('lands a single far jump as one block move', () => {
+    const S = installStore()
+    const end = dragAcross(S, [300], 0)
+    expect(end).toBe(4)
+    expect(orderOf(S)).toEqual(['bp', 'dl', 'ohp', 'rw', 'sq'])
+  })
+
+  it('leaves the order untouched when the pointer never crosses a midpoint', () => {
+    const S = installStore()
+    const before = orderOf(S)
+    const end = dragAcross(S, [10, 20, 30], 0)
+    expect(end).toBe(0)
+    expect(orderOf(S)).toEqual(before)
+  })
+})
+
+describe('reorder sheet layout and drag wiring', () => {
+  it('opens the reorder sheet at content height instead of forcing the tall variant', () => {
+    const line = sheetsSource.split('\n').find(l => l.includes('reorderExercisesSheet = '))
+    expect(line).toBeDefined()
+    expect(line).not.toContain('tall')
+  })
+
+  it('tracks the pointer on the window so mid-gesture commits cannot cut the drag short', () => {
+    expect(sheetsSource).toContain("window.addEventListener('pointermove'")
+    expect(sheetsSource).toContain("window.removeEventListener('pointermove'")
+    expect(sheetsSource).toContain('setPointerCapture')
+    expect(sheetsSource).toContain('data-nodrag')
+  })
+
+  it('auto-scrolls near the sheet edges and keeps keyboard + live region support', () => {
+    expect(sheetsSource).toContain('requestAnimationFrame')
+    expect(sheetsSource).toContain('REORDER_EDGE_PX')
+    expect(sheetsSource).toContain("e.key === 'ArrowUp'")
+    expect(sheetsSource).toContain("e.key === 'ArrowDown'")
+    expect(sheetsSource).toContain('aria-live="polite"')
   })
 })
 

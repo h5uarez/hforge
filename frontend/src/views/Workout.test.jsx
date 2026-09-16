@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
+import { FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry, moveSessionUnit } from '../lib/session.js'
 
 const srcPath = relative => fileURLToPath(new URL('../' + relative, import.meta.url))
 const source = readFileSync(srcPath('views/Workout.jsx'), 'utf8')
@@ -225,9 +225,14 @@ describe('scrollable workout composition contracts', () => {
   it('keeps active-session-only workout edits out of the remote save queue', () => {
     // Set logging mutates only the browser-local active session. The remote snapshot strips active,
     // so scheduling /api/data for each set can report a false save failure while localStorage is safe.
-    const activeMutationBlock = source.match(/const mutEntry[\s\S]*?const cancelHistorical/)
+    // The /workout screen is active-session only: no historical-edit branches may reappear here.
+    const activeMutationBlock = source.match(/const mutEntry[\s\S]*?const toggle/)
     expect(activeMutationBlock?.[0]).toContain('const mutEntry')
-    expect(activeMutationBlock?.[0]).not.toContain('}, !isHistorical)')
+    expect(activeMutationBlock?.[0]).toContain('}, false)')
+    expect(source).not.toContain('isHistorical')
+    expect(source).not.toContain('historicalEdit')
+    expect(source).not.toContain('cancelHistorical')
+    expect(source).not.toContain('saveHistorical')
     const pickerMutationBlock = source.match(/const pickExercise[\s\S]*?return <main/)
     expect(pickerMutationBlock?.[0]).toContain('}, false), closePicker)')
     const topWeightBlock = sheets.match(/function TopWeight[\s\S]*?export const workoutCompleteSheet/)
@@ -259,7 +264,7 @@ describe('scrollable workout composition contracts', () => {
     expect(readFileSync(srcPath('store/useUI.js'), 'utf8')).toContain('work: null')
   })
 
-  it('provides index jumps, deterministic restoration, and accessible unit reorder', () => {
+  it('provides index jumps, deterministic restoration, and an options menu per unit', () => {
     expect(source).toContain('focusEntry')
     expect(source).toContain('useLayoutEffect')
     expect(source).toContain('requestAnimationFrame(restore)')
@@ -278,12 +283,20 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('window.setTimeout')
     expect(source).toContain('window.clearTimeout')
     expect(source).toContain('embedded runtimes')
-    expect(source).toContain('moveSessionUnit')
-    expect(source).toContain("t('Move up')")
-    expect(source).toContain("t('Move down')")
-    expect(source).toContain('aria-live="polite"')
-    expect(source).toContain('disabled={unitIndex <= 0}')
-    expect(source).toContain('disabled={unitIndex >= units.length - 1}')
+    // reorder moved off the card: one dots button per unit opens the menu,
+    // the counter stays, and the commit lives in the reorder sheet
+    expect(source).toContain("t('Exercise options')")
+    expect(source).toContain('exerciseMenuSheet')
+    expect(source).toContain('name="dots"')
+    expect(source).not.toContain("t('Move up')")
+    expect(source).not.toContain("t('Move down')")
+    expect(source).not.toContain('moveSessionUnit')
+    expect(source).not.toContain('aria-live="polite"')
+    expect(sheets).toContain('moveSessionUnit')
+    expect(sheets).toContain('remapCur')
+    expect(sheets).toContain('touchActiveRecord')
+    expect(sheets).toContain('reorderExercisesSheet')
+    expect(sheets).toContain('aria-live="polite"')
   })
 
   it('restores focus when moving through the session with Back or Next', () => {
@@ -314,8 +327,13 @@ describe('scrollable workout composition contracts', () => {
     expect(calls.map(([kind]) => kind)).toEqual(['focus', 'focus'])
     expect(source).toContain('focusEntry(A.entries[cur].sid)')
     expect(source).not.toContain('focusEntry(A.entries[cur].sid, false)')
-    expect(source).toContain('focusEntry(moved.sid)')
     expect(source).toContain('if (focusSid) focusEntry(focusSid)')
+    // reorder keeps focus on the dragged handle: rows are keyed by sid so the
+    // grip node (and its pointer capture) survives the live commit, and the
+    // sheet never steals focus through the card restore path
+    expect(sheets).toContain('key={first.sid}')
+    expect(sheets).toContain('setPointerCapture')
+    expect(sheets).not.toContain('focusEntry(')
   })
 
   it('stacks unilateral sides with fluid sub-rows at every width', () => {
@@ -369,6 +387,12 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('className="wprog"')
     expect(source).not.toContain('position: sticky')
     expect(source).not.toContain('draggable=')
+    // pointer-based DnD owns reorder: no draggable attribute anywhere, the
+    // grip captures the pointer and commits through moveSessionUnit
+    expect(sheets).not.toContain('draggable=')
+    expect(sheets).toContain('onPointerDown')
+    expect(sheets).toContain('setPointerCapture')
+    expect(sheets).toContain('moveSessionUnit')
   })
 
   it('keeps mode-specific inputs, timers, notes, completion, and lifecycle actions wired', () => {
@@ -389,6 +413,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toContain("from '../lib/mobile.js'")
     expect(source).not.toContain('Capacitor')
     expect(source).not.toContain('draggable=')
+    expect(sheets).not.toContain('draggable=')
     expect(source).not.toMatch(/s\.routines\s*=/)
     expect(source).not.toMatch(/s\.dayPlan\s*=/)
     expect(source).not.toContain('delete s.dayPlan')
@@ -427,5 +452,116 @@ describe('scrollable workout composition contracts', () => {
     expect(css).toContain('repeat(3,minmax(0,1fr))')
     expect(css).not.toContain('@media (max-width:340px)')
     expect(css).not.toContain('inset:-2px -14px')
+  })
+})
+
+describe('exercise options menu and reorder screen', () => {
+  it('gives every unit a dots button that opens the menu with its members', () => {
+    expect(source).toContain("aria-label={t('Exercise options')}")
+    expect(source).toContain('exerciseMenuSheet({')
+    expect(source).toContain('members: members.map(idx =>')
+    expect(source).toContain('onEdit: editExercise')
+    expect(source).toContain('onRemove: removeExercise')
+    expect(source).toContain('unitTotal: units.length')
+    // the counter stays next to the menu button
+    expect(source).toContain("t('Exercise {0} / {1}', unitIndex + 1, units.length)")
+    expect(source).toContain("t('Superset {0} / {1}', unitIndex + 1, units.length)")
+  })
+
+  it('lets the exercise title own the full row with ellipsis at 320px', () => {
+    expect(source).toContain('session-ex-title')
+    // edit travels through the unit menu now: no card-header buttons, the menu
+    // owns the edit row and Workout wires it to the rebuilt config flow
+    expect(source).toContain('onEdit: editExercise')
+    expect(source).toContain('const editExercise = idx =>')
+    expect(source).toContain('rebuildActiveEntry(current, live, cfg')
+    expect(source).toContain('exConfigSheet(ex, entry.target, cfg =>')
+    expect(source).not.toContain("t('Details')")
+    expect(source).not.toContain('session-remove')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
+    expect(css).toContain('.session-ex-title{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}')
+  })
+
+  it('opens each menu action after closing the menu first', () => {
+    // edit → config sheet, info → detail sheet, reorder → reorder screen, delete → existing remove flow
+    expect(sheets).toContain('exerciseMenuSheet')
+    expect(sheets).toContain("t('Edit exercise')")
+    expect(sheets).toContain("t('Exercise information')")
+    expect(sheets).toContain("t('Reorder exercises')")
+    expect(sheets).toContain("t('Delete exercise')")
+    expect(sheets).toContain('const openEdit = entryIdx => { close(); onEdit(entryIdx) }')
+    expect(sheets).toContain("const openInfo = id => { close(); exerciseDetailSheet(exOr(id), { hideAddToPlan: true }) }")
+    expect(sheets).toContain('const openReorder = () => { close(); reorderExercisesSheet() }')
+    expect(sheets).toContain('const askRemove = entryIdx => { close(); onRemove(entryIdx) }')
+    expect(sheets).toContain('className="item danger"')
+    // superset units repeat the per-exercise rows around the shared reorder row
+    expect(sheets).toContain("t('Superset {0} / {1}', unitIndex + 1, unitTotal)")
+  })
+
+  it('hides the plan button when the detail opens from the active workout', () => {
+    // the exercise is already in the plan there; library and other callers keep the button
+    expect(sheets).toContain('hideAddToPlan')
+    expect(sheets).toContain('{!hideAddToPlan && <Button variant="primary" icon="plus"')
+    expect(sheets).toContain("t('Add to my plan')")
+  })
+
+  it('renders the reorder screen tall with handles, live position, and Done', () => {
+    expect(sheets).toContain('reorderExercisesSheet')
+    expect(sheets).toContain("{ tall: true }")
+    expect(sheets).toContain("t('Reorder')")
+    expect(sheets).toContain("t('Done')")
+    expect(sheets).toContain('<Thumb ex={ex} />')
+    expect(sheets).toContain('name="grip"')
+    expect(sheets).toContain('data-nodrag')
+    expect(sheets).toContain("onKeyDown={keys}")
+    expect(sheets).toContain("e.key === 'ArrowUp'")
+    expect(sheets).toContain("e.key === 'ArrowDown'")
+    expect(sheets).toContain("e.key === 'Home'")
+    expect(sheets).toContain("e.key === 'End'")
+    expect(sheets).toContain('role="status"')
+    expect(sheets).toContain('className="sr-only"')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
+    expect(css).toContain('.regrip{touch-action:none')
+    expect(css).toContain('.sr-only{position:absolute')
+    expect(css).toContain('.item.danger{color:var(--red)}')
+  })
+
+  it('commits reorder moves to the persisted session snapshot only', () => {
+    // local-only persist (same boundary the old chevrons used): never the routines
+    expect(sheets).toContain('s.active.entries = moved.entries')
+    expect(sheets).toContain('s.active.cur = remapCur(before, s.active.cur, moved.entries)')
+    expect(sheets).toContain('touchActiveRecord(s.active)')
+    const commit = sheets.match(/export function commitUnitMove[\s\S]*?\n\}/)?.[0] || ''
+    expect(commit).toContain('}, false)')
+    expect(commit).not.toContain('s.routines')
+    expect(commit).not.toContain('s.dayPlan')
+  })
+
+  it('moves whole units through moveSessionUnit, the path the sheet commits', () => {
+    const entries = [
+      { sid: 'a', id: 'bench' }, { sid: 'b', id: 'row' }, { sid: 'c', id: 'squat' },
+    ]
+    const first = moveSessionUnit(entries, 0, 1)
+    expect(first.changed).toBe(true)
+    expect(first.entries.map(e => e.sid)).toEqual(['b', 'a', 'c'])
+    expect(first.position).toBe(1)
+    // a superset block travels together
+    const sg = [
+      { sid: 'a', id: 'bench', sg: 'g1' }, { sid: 'b', id: 'row', sg: 'g1' }, { sid: 'c', id: 'squat' },
+    ]
+    const block = moveSessionUnit(sg, 0, 1)
+    expect(block.changed).toBe(true)
+    expect(block.entries.map(e => e.sid)).toEqual(['c', 'a', 'b'])
+    // out-of-range moves change nothing, so no phantom persist happens
+    expect(moveSessionUnit(entries, 0, -1).changed).toBe(false)
+    expect(moveSessionUnit(entries, 2, 1).changed).toBe(false)
+  })
+
+  it('translates every new user-facing string to Spanish', () => {
+    const spanish = readFileSync(srcPath('locales/es.js'), 'utf8')
+    for (const key of ['Exercise options', 'Edit exercise', 'Exercise information', 'Reorder exercises', 'Reorder',
+      'Drag with the handle, or focus it and use the arrow keys to reorder.', 'Done', 'Delete exercise']) {
+      expect(spanish).toContain("'" + key + "'")
+    }
   })
 })
