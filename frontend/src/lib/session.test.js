@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur, removeSessionEntry, nextSet } from './session.js'
+import { normalizeActiveSession, sessionUnits, moveSessionUnit, remapCur, removeSessionEntry, nextSet, restoreFocusedEntry } from './session.js'
 import { copyHistoryEntry } from './history.js'
 import { isBw, isTimed, modeOf } from './history.js'
 
@@ -133,5 +133,53 @@ describe('next active-session set', () => {
       expect(nextSet(source)).toEqual(expected)
       expect(source).toEqual(before)
     }
+  })
+})
+
+describe('focused entry restoration visibility', () => {
+  const withViewportHeight = (height, fn) => {
+    const hadViewportHeight = Object.prototype.hasOwnProperty.call(globalThis, 'innerHeight')
+    const previousHeight = globalThis.innerHeight
+    globalThis.innerHeight = height
+    try {
+      fn()
+    } finally {
+      if (hadViewportHeight) globalThis.innerHeight = previousHeight
+      else delete globalThis.innerHeight
+    }
+  }
+
+  const targetWith = (top, calls) => ({
+    getBoundingClientRect: () => ({ top }),
+    focus: options => calls.push(['focus', options]),
+    scrollIntoView: options => calls.push(['scroll', options]),
+  })
+
+  it('does not scroll a visible target when scroll is requested', () => {
+    withViewportHeight(800, () => {
+      const calls = []
+      expect(restoreFocusedEntry(targetWith(120, calls))).toBe(true)
+      expect(calls.map(([kind]) => kind)).toEqual(['focus', 'focus'])
+    })
+  })
+
+  it('scrolls a target whose header is above or below the viewport', () => {
+    withViewportHeight(800, () => {
+      for (const top of [-1, 801]) {
+        const calls = []
+        expect(restoreFocusedEntry(targetWith(top, calls))).toBe(true)
+        expect(calls.map(([kind]) => kind)).toEqual(['focus', 'scroll', 'focus'])
+      }
+    })
+  })
+
+  it('keeps scrolling when target geometry is unavailable', () => {
+    const calls = []
+    const target = {
+      focus: options => calls.push(['focus', options]),
+      scrollIntoView: options => calls.push(['scroll', options]),
+    }
+    expect(restoreFocusedEntry(target)).toBe(true)
+    expect(calls.map(([kind]) => kind)).toEqual(['focus', 'scroll', 'focus'])
   })
 })

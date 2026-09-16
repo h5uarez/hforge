@@ -357,6 +357,43 @@ describe('bodyweightCheckEnabled compatibility', () => {
 })
 
 describe('server boot and synchronization boundaries', () => {
+  it('does not implicitly push local data while a live workout is active', async () => {
+    useStore.getState().replaceState({
+      _ts: 200,
+      routines: [{ id: 'local', ex: [] }],
+      workouts: [],
+      active: { id: 'live', entries: [entry('squat')] },
+    })
+    useStore.getState().setUser({ id: 'u1' })
+    localStorage.setItem('gym_dirty', '1')
+    const remote = { _ts: 100, routines: [{ id: 'remote', ex: [] }], workouts: [] }
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ state: remote }) }))
+
+    await useStore.getState().pullState()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    expect(useStore.getState().persistence).toBeNull()
+    expect(useStore.getState().S.active).toMatchObject({ id: 'live' })
+  })
+
+  it('defers legacy-ID repair while a live workout is active', async () => {
+    useStore.getState().replaceState({ routines: [], workouts: [], active: { id: 'live', entries: [entry('squat')] } })
+    useStore.getState().setUser({ id: 'u1' })
+    const remote = {
+      _ts: Date.now() + 10_000,
+      routines: [{ id: 'routine-legacy', ex: [{ id: '0025', sets: 3, reps: 8 }] }],
+      workouts: [],
+    }
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ state: remote }) }))
+
+    await useStore.getState().pullState()
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    expect(useStore.getState().persistence).toBeNull()
+    expect(useStore.getState().S.routines[0].ex[0].id).toBe('79D0BB3A')
+    expect(useStore.getState().S.active).toMatchObject({ id: 'live' })
+  })
+
   it('persists a remote legacy-ID migration locally before repairing the server', async () => {
     const remote = {
       _ts: Date.now() + 10_000,

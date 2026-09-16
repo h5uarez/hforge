@@ -134,6 +134,18 @@ export function focusRefRetryDecision(attempts, fallbackUsed, hasTarget) {
   return { action: 'stop' }
 }
 
+const targetHeaderVisible = target => {
+  if (typeof target.getBoundingClientRect !== 'function') return false
+  try {
+    const rect = target.getBoundingClientRect()
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : globalThis.innerHeight
+    return Number.isFinite(rect?.top) && Number.isFinite(viewportHeight)
+      && rect.top >= 0 && rect.top < viewportHeight
+  } catch {
+    return false
+  }
+}
+
 // Embedded browsers can move focus back to the document while applying a scroll.
 // Reassert focus after the one-shot visibility request without passive scrolling.
 // `nearest` keeps the move minimal: with the software keyboard open the browser
@@ -142,7 +154,7 @@ export function focusRefRetryDecision(attempts, fallbackUsed, hasTarget) {
 export function restoreFocusedEntry(target, scroll = true) {
   if (!target) return false
   target.focus?.({ preventScroll: true })
-  if (scroll) target.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
+  if (scroll && !targetHeaderVisible(target)) target.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
   target.focus?.({ preventScroll: true })
   return true
 }
