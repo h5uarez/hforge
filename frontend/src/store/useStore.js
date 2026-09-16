@@ -243,10 +243,14 @@ export const useStore = create((set, get) => {
       try {
         const { state } = await api('/api/data')
         const S = get().S
+        const active = S.active
+        // A live session is browser-local. Boot refresh may update the local copy, but must not
+        // turn that refresh (or legacy-ID repair) into an implicit remote save. Explicit completed
+        // workout, history, and settings saves still call pushState directly.
+        const liveActive = !!active && !active.historicalEdit
         const dirty = localStorage.getItem('gym_dirty') === '1'
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const migrated = hasLegacyExerciseIds(state)
-          const active = S.active
           const next = normalizeState(state)
           const explicitLang = getExplicitLang()
           next.lang = explicitLang || normalizeLang(next.lang) || getInitialLang()
@@ -254,8 +258,8 @@ export const useStore = create((set, get) => {
           // Persist the normalized remote copy locally first. Only a successful local write may
           // trigger the repair PUT; an offline/failed local write must never overwrite the server
           // with a partially persisted migration.
-          if (persist(next, false, null, { rebuild: !migrated }) && migrated) await get().pushState(get().S)
-        } else if (hasData(S)) { await get().pushState() }
+          if (persist(next, false, null, { rebuild: !migrated }) && migrated && !liveActive) await get().pushState(get().S)
+        } else if (hasData(S) && !liveActive) { await get().pushState() }
       } catch (e) { /* offline — keep local */ }
     },
 

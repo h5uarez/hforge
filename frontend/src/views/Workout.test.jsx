@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
 
-const source = readFileSync(resolve(process.cwd(), 'src/views/Workout.jsx'), 'utf8')
-const session = readFileSync(resolve(process.cwd(), 'src/lib/session.js'), 'utf8')
-const media = readFileSync(resolve(process.cwd(), 'src/components/Media.jsx'), 'utf8')
-const sheets = readFileSync(resolve(process.cwd(), 'src/sheets.jsx'), 'utf8')
+const srcPath = relative => fileURLToPath(new URL('../' + relative, import.meta.url))
+const source = readFileSync(srcPath('views/Workout.jsx'), 'utf8')
+const session = readFileSync(srcPath('lib/session.js'), 'utf8')
+const media = readFileSync(srcPath('components/Media.jsx'), 'utf8')
+const sheets = readFileSync(srcPath('sheets.jsx'), 'utf8')
 
 describe('scrollable workout composition contracts', () => {
   it('renders every ordered unit and treats cur as a focus hint', () => {
@@ -34,7 +35,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('uses intrinsic media ratios and exposes a reliable size-toggle state', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(media).toContain('const [mediaRatio, setMediaRatio] = useState(null)')
     expect(media).toContain('const gifSize = useStore(s => s.S.gifSize)')
     expect(media).not.toContain('const gifSize = useStore(s => s.gifSize)')
@@ -83,7 +84,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('renders all exercises without bottom navigation', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(source).not.toContain('workout-session-nav')
     expect(source).not.toContain('<select')
     expect(source).not.toContain('session-selector')
@@ -105,7 +106,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('keeps every set grid inside narrow scrollports with zero x-scroll', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(source).toContain('const gridClass =')
     expect(source).toContain("' no-col2'")
     expect(source).toContain("' timed'")
@@ -238,7 +239,7 @@ describe('scrollable workout composition contracts', () => {
 
   it('keeps set completion anchored and lets sheets own completion focus', () => {
     const toggleBlock = source.match(/const toggle = [\s\S]*?\/\/ Live-presence/)
-    const ui = readFileSync(resolve(process.cwd(), 'src/components/ui.jsx'), 'utf8')
+    const ui = readFileSync(srcPath('components/ui.jsx'), 'utf8')
     const flashBlock = ui.match(/export function scheduleSetRowFlash[\s\S]*?export function Check/)
     // Checking a set must not run the exercise-card focus/scroll path; only the expected
     // top-weight or whole-workout sheet may take focus after the state update.
@@ -254,8 +255,8 @@ describe('scrollable workout composition contracts', () => {
   it('restores only sid-keyed rest metadata and keeps work timer separate', () => {
     expect(source).toContain('useUI.getState().resumeRest()')
     expect(source).toContain('startRest(S.restSec, A.entries[idx].sid)')
-    expect(readFileSync(resolve(process.cwd(), 'src/store/useUI.js'), 'utf8')).toContain('state.active.restResume')
-    expect(readFileSync(resolve(process.cwd(), 'src/store/useUI.js'), 'utf8')).toContain('work: null')
+    expect(readFileSync(srcPath('store/useUI.js'), 'utf8')).toContain('state.active.restResume')
+    expect(readFileSync(srcPath('store/useUI.js'), 'utf8')).toContain('work: null')
   })
 
   it('provides index jumps, deterministic restoration, and accessible unit reorder', () => {
@@ -303,7 +304,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('restoreFocusedEntry(target, pendingFocus.scroll)')
   })
 
-  it('restores resume focus without requesting a viewport scroll', () => {
+  it('scrolls the resumed card while retaining the explicit no-scroll focus mode', () => {
     const calls = []
     const target = {
       focus: options => calls.push(['focus', options]),
@@ -311,13 +312,14 @@ describe('scrollable workout composition contracts', () => {
     }
     expect(restoreFocusedEntry(target, false)).toBe(true)
     expect(calls.map(([kind]) => kind)).toEqual(['focus', 'focus'])
-    expect(source).toContain('focusEntry(A.entries[cur].sid, false)')
+    expect(source).toContain('focusEntry(A.entries[cur].sid)')
+    expect(source).not.toContain('focusEntry(A.entries[cur].sid, false)')
     expect(source).toContain('focusEntry(moved.sid)')
     expect(source).toContain('if (focusSid) focusEntry(focusSid)')
   })
 
   it('stacks unilateral sides with fluid sub-rows at every width', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(css).not.toContain('min-width:560px')
     expect(css).toContain('.setrow.per-side > .side-checks{display:contents}')
     expect(css).toContain('.setrow.per-side .side-input{width:100%;min-width:0}')
@@ -380,7 +382,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('touchActiveRecord')
     expect(source).toContain('s.active = null')
     expect(source).toContain('Discard workout?')
-    expect(readFileSync(resolve(process.cwd(), 'src/components/InactivityReminder.jsx'), 'utf8')).toContain('visibilitychange')
+    expect(readFileSync(srcPath('components/InactivityReminder.jsx'), 'utf8')).toContain('visibilitychange')
   })
 
   it('keeps approved exclusions out of the active-session renderer', () => {
@@ -393,7 +395,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('fuses consecutive done sets into one card while loners stay bare', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     // JSX groups runs of 2+ done rows; isolated/current rows render unwrapped.
     expect(source).toContain('setgroup-done')
     expect(source).toContain("entry.sets.map(s => projectSideSet(s).done)")
@@ -407,7 +409,7 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('keeps series steppers fluid single-row with real touch targets', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     // fluid painted keys (bilateral + compact), fluid inner/column gaps, fluid numbers
     expect(css).toContain('.setrow:not(.per-side) .stp button{width:clamp(16px,4vw + 4px,28px)}')
     expect(css).toContain('.setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:clamp(14px,3.6vw + 4px,24px)}')

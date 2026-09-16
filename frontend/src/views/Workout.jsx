@@ -351,9 +351,9 @@ function ActiveWorkout() {
   useEffect(() => {
     if (resumed.current || !A.entries[cur]) return
     resumed.current = true
-    // Reopening a saved session should restore focus for keyboard and screen-reader users without
-    // moving the viewport. Explicit reorder/remove/add actions still request the visible scroll.
-    focusEntry(A.entries[cur].sid, false)
+    // Reopening a saved session should restore focus and bring the current card into view.
+    // Explicit reorder/remove/add actions still request the visible scroll in the same way.
+    focusEntry(A.entries[cur].sid)
   }, [A.entries, cur])
   useEffect(() => {
     if (isHistorical) {
