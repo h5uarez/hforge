@@ -588,6 +588,13 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
    so dark mode never gets a white system sheet */
 .login-lang select option{background:var(--surface);color:var(--label)}
 
+/* --- brand mark: the approved black wordmark in light mode, inverted to white in dark mode.
+   It deliberately does not use --acc: branding follows only data-theme, never the account accent. */
+.login-brand{width:min(260px,100%);margin:0 auto clamp(20px,3vh,28px)}
+.login-brand img{display:block;width:100%;height:auto}
+:root[data-theme="dark"] .login-brand img{filter:invert(1)}
+.login-title{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
 /* --- search field --- */
 .searchf{position:relative;display:flex;align-items:center}
 .searchf .lead{

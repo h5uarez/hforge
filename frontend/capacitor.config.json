@@ -2,7 +2,7 @@
   "appId": "com.hforge.app",
   "appName": "Hforge",
   "webDir": "dist",
-  "backgroundColor": "#0a84ff",
+  "backgroundColor": "#ffffff",
   "android": {
     "allowMixedContent": false
   }

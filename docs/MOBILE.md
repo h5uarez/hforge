@@ -48,16 +48,12 @@ On macOS, run `npx cap sync ios` after the mobile build and before opening Xcode
 
 ## App icons & splash screens
 
-`frontend/resources/icon.svg` is the 1024×1024 source (the app's dumbbell glyph on the
-app background). Generate all platform assets from it on a machine with the tooling:
-
-```sh
-cd frontend
-npx @capacitor/assets generate --iconBackgroundColor '#0c0e12' --splashBackgroundColor '#0c0e12'
-```
-
-(If the generator won't take the SVG directly, export it to `resources/icon.png` at
-1024×1024 first — any image tool can do it.)
+The checked-in platform branding assets are the approved monochrome package: black on
+light surfaces, white on dark surfaces, and transparency only where the format requires it.
+Use the supplied SVG/PNG assets directly when refreshing them. When a native platform
+cannot consume an SVG directly, convert the matching supplied asset to its native format
+while preserving `#000000` and `#FFFFFF`; never use the old colored generator or introduce
+a palette color, gradient, shadow, or generated wordmark.
 
 ## Distribution — deliberately no app stores
 

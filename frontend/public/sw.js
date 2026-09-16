@@ -1,7 +1,7 @@
 /* Hforge service worker — versioned caching with a user-approved update handshake.
    Cache layout (all namespaced by SW_VERSION, so a new deploy never shares
    entries with the previous one):
-     <v>-shell   — precached app shell: index.html, manifest, version, icons.
+     <v>-shell   — precached app shell: index.html, manifest, version, icons, brand assets.
      <v>-rt      — runtime: hashed js/css/fonts, stale-while-revalidate.
      <v>-media   — exercise img/gif, cache-first with a bounded entry count. MP4 video is
                   intentionally network-only: large video files must never fill the PWA cache.
@@ -22,10 +22,21 @@ const SHELL = [
   'index.html',
   'manifest.json',
   'version.json',
+  'favicon.svg',
+  'favicon-dark.svg',
+  'favicon.ico',
+  'favicon-16x16.png',
+  'favicon-32x32.png',
+  'favicon-48x48.png',
+  'apple-touch-icon-180x180.png',
+  'wordmark.svg',
+  'splash-light.svg',
+  'splash-dark.svg',
   'icon-180.png',
   'icon-192.png',
   'icon-512.png',
   'icon-maskable-512.png',
+  'notification-monochrome-512.png',
 ]
 
 self.addEventListener('install', e => {
@@ -60,7 +71,7 @@ self.addEventListener('push', e => {
   e.waitUntil(broadcastDisplayedPush().then(() => self.registration.showNotification(typeof data.title === 'string' ? data.title : 'Hforge', {
       body: typeof data.body === 'string' ? data.body : '',
       icon: 'icon-512.png',
-      badge: 'icon-180.png',
+      badge: 'notification-monochrome-512.png',
       // Notification grouping tag.
       tag: data.tag || 'hforge',
       renotify: activeInactivity ? false : true,

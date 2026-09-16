@@ -53,6 +53,7 @@ export async function syncReminder(S, interactive = false) {
         id: 100 + Number(day),
         title: t('Workout day'),
         body: t('{0} is on the plan today — let’s go!', S.routines.find(x => x.id === rid).name),
+        smallIcon: 'notification_monochrome',
         // Capacitor weekdays are 1 (Sunday) … 7 (Saturday); S.week uses getDay() 0…6.
         schedule: { on: { weekday: Number(day) + 1, hour, minute }, allowWhileIdle: true },
       }))
@@ -125,6 +126,7 @@ export async function syncActiveInactivity(S, now = Date.now(), options = {}) {
       id: ACTIVE_INACTIVITY_NOTIFICATION_ID,
       title: 'Hforge',
       body: t('Still there? Your workout awaits.'),
+      smallIcon: 'notification_monochrome',
       extra: { kind: 'active-inactivity', sessionId: A.id },
       schedule: { at: deliveryAt, allowWhileIdle: true, repeats: false },
     }] })
