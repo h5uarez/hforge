@@ -36,7 +36,6 @@
   },
   "devDependencies": {
     "@capacitor/android": "^7.6.8",
-    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.6.8",
     "@capacitor/ios": "^7.6.8",
     "@playwright/test": "^1.61.0",

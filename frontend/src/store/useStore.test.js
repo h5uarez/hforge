@@ -37,7 +37,7 @@ function fakeBrowser() {
 // the module sees the stub globals.
 const KEY = 'gym_state_v1'
 
-let storage, useStore, stateForStorage
+let storage, useStore, stateForStorage, DEF
 
 beforeEach(async () => {
   storage = fakeBrowser()
@@ -46,6 +46,7 @@ beforeEach(async () => {
   const storeMod = await import('./useStore.js')
   useStore = storeMod.useStore
   stateForStorage = storeMod.stateForStorage
+  DEF = storeMod.DEF
   // Reset S to a known generic overlay. replaceState persists immediately, so each scenario
   // starts from a clean slate regardless of what prior tests left behind.
   useStore.getState().replaceState({ routines: [], workouts: [] })
@@ -57,6 +58,24 @@ afterEach(() => {
   delete globalThis.document
   delete globalThis.window
   delete globalThis.navigator
+})
+
+describe('appearance defaults', () => {
+  it('starts fresh state in light/default while preserving explicit choices', () => {
+    expect(DEF).toMatchObject({ theme: 'light', accent: 'default' })
+    expect(useStore.getState().S).toMatchObject({ theme: 'light', accent: 'default' })
+
+    useStore.getState().replaceState({ theme: 'dark', accent: 'ember', routines: [], workouts: [] })
+    expect(useStore.getState().S).toMatchObject({ theme: 'dark', accent: 'ember' })
+  })
+
+  it('normalizes missing and invalid appearance values to light/default', async () => {
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], accent: 'magenta' }))
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+
+    expect(restored.getState().S).toMatchObject({ theme: 'light', accent: 'default' })
+  })
 })
 
 describe('legacy state normalization', () => {

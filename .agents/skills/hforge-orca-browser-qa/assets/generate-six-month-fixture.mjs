@@ -76,7 +76,7 @@ const exWeights = Object.fromEntries(routineSpecs.flatMap(spec => spec.exercises
 ])))
 
 const emptyState = {
-  lang: 'en', theme: 'dark', accent: 'lime', unit: 'kg', body: 'male',
+  lang: 'en', theme: 'light', accent: 'default', unit: 'kg', body: 'male',
   routines: [], week: {}, dayPlan: {}, workouts: [], bodyweight: [], exWeights: {},
   active: null, customEx: [], restSec: 90, restTimerEnabled: true, sound: false,
   keepAwake: false, targetW: null, effort: 'rir', home1rmCardEnabled: true, homeWarmupCardEnabled: true,
