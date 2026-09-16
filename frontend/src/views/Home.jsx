@@ -68,7 +68,7 @@ export default function Home() {
       <div className="week">{strip}</div>
       <button type="button" className="today-row" onClick={onToday}>
         <div className="row" style={{ gap: 9, minWidth: 0 }}>
-          <span className="lrow-i" style={{ background: S.active ? 'var(--orange)' : routine ? 'var(--acc)' : 'var(--surface-3)' }}>
+          <span className="lrow-i" style={{ background: S.active ? 'var(--acc)' : routine ? 'var(--acc)' : 'var(--surface-3)', color: S.active ? 'var(--on-acc)' : undefined }}>
             <Icon name={S.active ? 'timer' : routine ? glyphOf(routine.emoji) : 'moon'} />
           </span>
           <div style={{ minWidth: 0 }}>
@@ -76,7 +76,7 @@ export default function Home() {
             <div className="ttl">{S.active ? t('{0} — in progress', S.active.name) : routine ? routine.name : t('Rest day')}{todayOvr && routine ? ' · ' + t('rescheduled') : ''}</div>
           </div>
         </div>
-        {S.active ? <span className="tag" style={{ color: 'var(--orange)', background: 'color-mix(in srgb,var(--orange) 16%,transparent)' }}>{t('Resume')}</span>
+        {S.active ? <span className="tag acc">{t('Resume')}</span>
           : routine ? <span className="tag acc">{t('Start')}</span>
           : <Icon name="plus" className="chev" />}
       </button>
@@ -131,7 +131,7 @@ export default function Home() {
       <div className="row between">
         <div>
           <div className="row" style={{ gap: 7, fontSize: 22, fontWeight: 600, letterSpacing: '-.021em' }}>
-            <Icon name="flame" style={{ color: 'var(--orange)' }} />
+            <Icon name="flame" style={{ color: 'var(--acc)' }} />
             {t('{0} week streak', streakWeeks(S))}
           </div>
           <div className="muted small" style={{ marginTop: 2 }}>{wThisWeek}{plannedPerWeek ? ' / ' + plannedPerWeek : ''} {t('this week')} · {t(S.workouts.length === 1 ? '{0} workout total' : '{0} workouts total', S.workouts.length)}</div>

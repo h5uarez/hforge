@@ -5,7 +5,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
 import { Skeleton } from './components/ui.jsx'
-import { ACCENTS } from './lib/format.js'
+import { resolveAccent } from './lib/format.js'
 import { getLang, setLang, useLang } from './lib/i18n.js'
 import { setNav } from './lib/nav.js'
 import { useWakeLock } from './lib/wakelock.js'
@@ -40,9 +40,13 @@ bindUI(useUI)   // lets the shared controls open sheets without importing the st
 function applyPrefs(theme, accent) {
   const de = document.documentElement
   de.dataset.theme = theme === 'light' ? 'light' : 'dark'
-  de.dataset.accent = ACCENTS[accent] ? accent : 'lime'
+  de.dataset.accent = resolveAccent(accent)
+  // Duplicated per-pair×mode --bg mirror (see PALETTE_BG in index.html):
+  // theme-color follows the palette on every runtime switch.
+  const PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#220a4d","light":"#e7ddfa"},"dragonfruit":{"dark":"#3d0c1e","light":"#f6dbe7"},"ghost":{"dark":"#1a1f1b","light":"#e6f3ed"},"cobalt":{"dark":"#0a1745","light":"#d9e3fb"},"ember":{"dark":"#2a1408","light":"#f6e7d3"}}
+  const bg = (PALETTE_BG[de.dataset.accent] && PALETTE_BG[de.dataset.accent][de.dataset.theme]) || PALETTE_BG.ultraviolet.dark
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.content = de.dataset.theme === 'light' ? '#f2f2f7' : '#000000'
+  if (meta) meta.content = bg
 }
 
 function BootSkeleton() {

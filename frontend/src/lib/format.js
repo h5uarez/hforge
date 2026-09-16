@@ -44,7 +44,21 @@ export function weekKey(d) {
 export const localTZ = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' } }
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
-// Single source of truth for the 8 accent colours (dark iOS values): the swatch
-// picker and the accent validation in App.jsx read this — CSS only maps the keys
-// to variables ([data-accent] rules) and never duplicates these hexes.
-export const ACCENTS = { lime: '#30d158', sky: '#0a84ff', orange: '#ff9f0a', violet: '#bf5af2', pink: '#ff375f', red: '#ff453a', teal: '#40c8e0', gold: '#ffd60a' }
+// Single source of truth for the 6 canonical accent pairs (HEX-immutable): `a`
+// is the identity colour, `b` the companion shown on the picker's split swatch.
+// index.css maps each key to per-mode roles (--acc/--on-acc) and duplicates the
+// hexes on purpose — accessibility.test.js drift-guards registry ↔ CSS.
+export const ACCENTS = {
+  default: { a: '#007AFF', b: '#0A84FF' },
+  ultraviolet: { a: '#6A00F4', b: '#FFD6A5' },
+  dragonfruit: { a: '#FF4696', b: '#1E1033' },
+  ghost: { a: '#D7FFE0', b: '#050505' },
+  cobalt: { a: '#0038FF', b: '#D6E3FF' },
+  ember: { a: '#FF9030', b: '#111827' },
+}
+// Legacy 8-key accents → canonical pair. Applied on every boot path (App.jsx)
+// and duplicated by the pre-paint inline script in index.html (drift-guarded).
+export const ACCENT_MIGRATION = { lime: 'ultraviolet', sky: 'cobalt', orange: 'ember', violet: 'ultraviolet', pink: 'dragonfruit', red: 'dragonfruit', teal: 'cobalt', gold: 'ember' }
+// Stored accents resolve to a canonical pair; unknown values fall back to
+// ultraviolet. The old silent 'lime' fallback is gone.
+export const resolveAccent = a => (ACCENTS[a] ? a : ACCENT_MIGRATION[a] ?? 'ultraviolet')
