@@ -72,6 +72,28 @@ describe('install/update UI contracts (source)', () => {
     expect(banner).toContain('onClick={() => applyWaitingUpdate()}')
   })
 
+  it('ships the monochrome branding surfaces with theme-aware boot assets', () => {
+    const html = src('index.html')
+    const login = src('src/views/Login.jsx')
+    const css = src('src/index.css')
+    const manifest = JSON.parse(src('public/manifest.json'))
+    expect(html).toContain('href="favicon.svg"')
+    expect(html).toContain('href="favicon-dark.svg"')
+    expect(html).toContain('apple-touch-icon-180x180.png')
+    expect(html).toContain('splash-light.svg')
+    expect(html).toContain('splash-dark.svg')
+    expect(html).not.toContain('<svg xmlns=')
+    expect(login).toContain('src="wordmark.svg"')
+    expect(login).toContain('<h1 className="login-title">Hforge</h1>')
+    expect(css).toContain(':root[data-theme="dark"] .login-brand img{filter:invert(1)}')
+    expect(css).not.toMatch(/\.login-brand[^}]*var\(--acc\)/)
+    expect(manifest.icons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ src: 'icon-192.png', type: 'image/png', purpose: 'any' }),
+      expect.objectContaining({ src: 'icon-512.png', type: 'image/png', purpose: 'any' }),
+      expect.objectContaining({ src: 'icon-maskable-512.png', type: 'image/png', purpose: 'maskable' }),
+    ]))
+  })
+
   it('settings has no install UX (removed: no value for this owner)', () => {
     const settings = src('src/views/Settings.jsx')
     expect(settings).not.toContain('InstallTip')

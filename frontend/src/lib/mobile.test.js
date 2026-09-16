@@ -42,6 +42,7 @@ describe('native active inactivity notification lifecycle', () => {
       id: 200,
       title: 'Hforge',
       body: 'Still there? Your workout awaits.',
+      smallIcon: 'notification_monochrome',
       extra: { kind: 'active-inactivity', sessionId: 'w1' },
       schedule: { allowWhileIdle: true, repeats: false },
     })

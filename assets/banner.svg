@@ -1,26 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="660" height="190" viewBox="0 0 660 190" role="img" aria-label="Hforge — self-hosted gym &amp; body-weight tracker">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#12151b"/>
-      <stop offset="1" stop-color="#0c0e12"/>
-    </linearGradient>
-  </defs>
-  <rect width="660" height="190" rx="22" fill="url(#bg)"/>
-  <rect x="1.5" y="1.5" width="657" height="187" rx="20.5" fill="none" stroke="#2b3140" stroke-width="3"/>
-
-  <!-- dumbbell mark (centered to the text block) -->
-  <g transform="translate(122,96) scale(0.8)" fill="#a3e635">
-    <rect x="-72" y="-10" width="144" height="20" rx="7"/>
-    <rect x="-80" y="-36" width="20" height="72" rx="7"/>
-    <rect x="-104" y="-25" width="17" height="50" rx="7"/>
-    <rect x="60"  y="-36" width="20" height="72" rx="7"/>
-    <rect x="87"  y="-25" width="17" height="50" rx="7"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="190" viewBox="0 0 660 190" fill="none">
+  <title>Hforge banner</title>
+  <desc>Approved symbol plus outlined Hforge wordmark.</desc>
+  <rect width="660" height="190" fill="#FFFFFF"/>
+  <g transform="translate(66.328125000 20.000000000) scale(0.292968750000)">
+    <path d="M 70.000 76.000 L 141.146 154.261 L 236.482 182.008 L 236.482 353.470 L 341.067 436.000 L 341.067 76.000 Z" fill="#000000"/>
+    <path d="M 733.794 76.000 L 462.727 76.000 L 462.727 164.221 L 368.103 232.522 L 368.103 317.186 L 462.727 262.403 L 462.727 436.000 L 567.312 353.470 L 567.312 182.719 L 662.648 154.261 Z" fill="#000000"/>
+    <path d="M116 0H469V617H1064V0H1416V1490H1064V905H469V1490H116Z" fill="#000000" transform="translate(803.794 343.000) scale(0.11474609 -0.11474609)"/>
+    <path d="M779 1118H555V1181C555 1247 583 1287 666 1287C701 1287 741 1280 767 1273L823 1528C782 1540 687 1560 588 1560C364 1560 208 1434 208 1178V1118H20V859H208V0H555V859H779Z" fill="#000000" transform="translate(979.700 343.000) scale(0.11474609 -0.11474609)"/>
+    <path d="M634 -21C983 -21 1195 211 1195 555C1195 900 983 1132 634 1132C284 1132 72 900 72 555C72 211 284 -21 634 -21ZM634 246C500 246 428 371 428 557C428 744 500 865 634 865C768 865 840 744 840 557C840 371 768 246 634 246Z" fill="#000000" transform="translate(1075.972 343.000) scale(0.11474609 -0.11474609)"/>
+    <path d="M115 0H464V610C464 744 559 834 688 834C730 834 793 827 826 816V1120C797 1127 760 1132 727 1132C604 1132 506 1061 466 914H454V1118H115Z" fill="#000000" transform="translate(1221.470 343.000) scale(0.11474609 -0.11474609)"/>
+    <path d="M630 -442C964 -442 1194 -284 1194 25V1118H849V926H839C797 1027 696 1132 519 1132C284 1132 72 950 72 559C72 182 275 15 520 15C686 15 782 94 823 195H850V-3C850 -136 770 -199 628 -199C503 -199 434 -148 414 -87L111 -149C152 -324 338 -442 630 -442ZM639 271C505 271 431 380 431 560C431 740 505 859 639 859C773 859 850 743 850 560C850 379 773 271 639 271Z" fill="#000000" transform="translate(1320.152 343.000) scale(0.11474609 -0.11474609)"/>
+    <path d="M636 -21C907 -21 1090 102 1146 296L835 347C807 272 736 232 642 232C510 232 421 312 415 474H1162V562C1162 931 937 1132 623 1132C287 1132 72 900 72 555C72 197 285 -21 636 -21ZM417 677C430 800 503 879 626 879C748 879 817 804 831 677Z" fill="#000000" transform="translate(1470.355 343.000) scale(0.11474609 -0.11474609)"/>
   </g>
-
-  <!-- wordmark + tagline -->
-  <text x="224" y="86" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="62" font-weight="800" letter-spacing="-2">
-    <tspan fill="#a3e635">Hforge</tspan>
-  </text>
-  <text x="226" y="120" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="20.5" font-weight="600" fill="#8b94a7">Self-hosted gym &amp; body-weight tracker</text>
-  <text x="226" y="146" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="500" fill="#5c6475">passkey login  ·  own your data  ·  docker</text>
 </svg>

@@ -5,7 +5,6 @@ import { hasData } from '../store/useStore.js'
 import { getLang, LANGS, setLangPreference, t } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { useState, useRef, useEffect } from 'react'
-import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 
 function RegisterSheet({ close }) {
@@ -61,8 +60,10 @@ export default function Login() {
     catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(t(e.message || 'Sign-in failed')) }
   }
   const head = <>
-    <div className="acc-ink" style={{ fontSize: 54, display: 'flex', justifyContent: 'center' }}><Icon name="dumbbell" /></div>
-    <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>Hforge</h1>
+    <div className="login-brand">
+      <img src="wordmark.svg" width="1800" height="512" alt="" aria-hidden="true" />
+    </div>
+    <h1 className="login-title">Hforge</h1>
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78dvh', textAlign: 'center' }
 
