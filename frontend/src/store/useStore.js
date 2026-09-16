@@ -15,7 +15,7 @@ const KEY = 'gym_state_v1'
 const LAST_VALID_KEY = 'gym_state_last_valid_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'lime', body: 'male', targetW: null, bodyweightCheckEnabled: true,
+  theme: 'dark', accent: 'ultraviolet', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so

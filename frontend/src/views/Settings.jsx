@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
+import { ACCENTS, resolveAccent, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush, cancelInactivityPush } from '../lib/push.js'
@@ -120,12 +120,12 @@ export default function Settings() {
 
     {/* ---------- during a workout ---------- */}
     <Section title={t('During a workout')} footer={wakeOK ? t('The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.') : null}>
-      <Row icon="timer" iconTint="var(--orange)" title={t('Enable rest timer')}
+      <Row icon="timer" iconTint="var(--acc)" title={t('Enable rest timer')}
         subtitle={t('Automatically and manually timed rests between sets.') }>
         <Switch aria-label={t('Enable rest timer')} checked={S.restTimerEnabled !== false}
           onChange={v => { update(s => { s.restTimerEnabled = !!v }); if (!v) useUI.getState().stopRest() }} />
       </Row>
-      {S.restTimerEnabled !== false && <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
+      {S.restTimerEnabled !== false && <SelectRow icon="timer" iconTint="var(--acc)" title={t('Rest timer')}
         value={S.restSec} onChange={v => update(s => { s.restSec = v })}
         options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />}
       <Row icon="scale" iconTint="var(--teal)" title={t('Bodyweight check before workouts')}
@@ -138,7 +138,7 @@ export default function Settings() {
         <Switch aria-label={t('Show 1RM calculator')} checked={S.home1rmCardEnabled !== false}
           onChange={v => update(s => { s.home1rmCardEnabled = !!v })} />
       </Row>
-      <Row icon="dumbbell" iconTint="var(--orange)" title={t('Show warmup calculator')}
+      <Row icon="dumbbell" iconTint="var(--acc)" title={t('Show warmup calculator')}
         subtitle={t('Estimate warmup sets on the Home screen.')}>
         <Switch aria-label={t('Show warmup calculator')} checked={S.homeWarmupCardEnabled !== false}
           onChange={v => update(s => { s.homeWarmupCardEnabled = !!v })} />
@@ -177,7 +177,7 @@ export default function Settings() {
     {(user || MOBILE) && <NotificationsCard S={S} update={update} toast={toast} />}
 
     {/* ---------- appearance ---------- */}
-    <Section title={t('Appearance')} footer={DEMO || MOBILE ? undefined : t('synced with your profile')}>
+    <Section title={t('Appearance')} footer={(DEMO || MOBILE ? '' : t('synced with your profile') + ' · ') + t('Palettes now recolor the whole app, not just accents.')}>
       <Row icon="moon" iconTint="var(--indigo)" title={t('Theme')}>
         <Segmented
           className="seg-inline"
@@ -196,11 +196,21 @@ export default function Settings() {
         />
       </Row>
       <div className="lrow" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, paddingTop: 13, paddingBottom: 14 }}>
-        <span className="lrow-t">{t('Accent color')}</span>
+        <div className="lrow-m">
+          <span className="lrow-t">{t('Palette')}</span>
+          <span className="lrow-s">{t('Recolors backgrounds, surfaces and accents')}</span>
+        </div>
         <div className="swatches">
           {Object.entries(ACCENTS).map(([k, c]) => (
-            <button key={k} className={'swatch' + ((S.accent || 'lime') === k ? ' on' : '')}
-              style={{ background: c }} onClick={() => update(s => { s.accent = k })} aria-label={k} />
+            <div key={k} className="pal-opt">
+              <button className={'swatch' + (resolveAccent(S.accent) === k ? ' on' : '')}
+                style={{ background: `linear-gradient(135deg, ${c.a} 0 50%, ${c.b} 50% 100%)` }}
+                onClick={() => update(s => { s.accent = k })} aria-label={k} />
+              <span className="swatch-name" aria-hidden="true">{k}</span>
+              <span className="pal-prev" data-accent={k} data-theme={S.theme === 'light' ? 'light' : 'dark'} aria-hidden="true">
+                <i className="d-bg" /><i className="d-sf" /><i className="d-tx" /><i className="d-ac" />
+              </span>
+            </div>
           ))}
         </div>
       </div>
@@ -284,7 +294,7 @@ function MobileReminderCard({ S, update, toast }) {
   return (
     <Section title={t('Notifications')}
       footer={S.reminder?.on ? t('Reminds you at this time on days that have a routine planned.') : null}>
-      <Row icon="calendar" iconTint="var(--orange)" title={t('Workout day reminder')}>
+      <Row icon="calendar" iconTint="var(--acc)" title={t('Workout day reminder')}>
         <Switch checked={!!S.reminder?.on} onChange={toggle} />
       </Row>
       {S.reminder?.on && (
@@ -342,7 +352,7 @@ function PushCard({ S, update, toast }) {
         <Switch checked={on} disabled={busy} onChange={toggle} />
       </Row>
       {on && (
-        <Row icon="calendar" iconTint="var(--orange)" title={t('Workout day reminder')}>
+        <Row icon="calendar" iconTint="var(--acc)" title={t('Workout day reminder')}>
           <Switch checked={!!S.reminder?.on} onChange={() => update(s => { s.reminder = { ...(s.reminder || DEF.reminder), on: !s.reminder?.on, tz: localTZ() } })} />
         </Row>
       )}
