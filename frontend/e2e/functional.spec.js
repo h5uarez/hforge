@@ -55,6 +55,68 @@ test('active workout records a set without overflow', async ({ page, openApp }) 
   await assertNoHorizontalOverflow(page)
 })
 
+test('active workout sticky band covers the viewport edge after scrolling', async ({ page, openApp }) => {
+  await page.setViewportSize({ width: 375, height: 667 })
+  await openApp({ route: '/workout', state: 'active' })
+  await page.evaluate(() => {
+    // Exercise the same safe-area math on a deterministic non-zero inset; the
+    // production browser supplies --sat through env(safe-area-inset-top).
+    document.documentElement.style.setProperty('--sat', '24px')
+    window.scrollTo(0, 320)
+  })
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+
+  const band = page.locator('.workout-sticky-head')
+  const progress = page.locator('.wprog')
+  await expect(band).toBeVisible()
+  const metrics = await band.evaluate(el => {
+    const box = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    const app = getComputedStyle(document.querySelector('#app'))
+    const point = document.elementFromPoint(box.left + box.width / 2, 1)
+    return {
+      top: box.top,
+      background: style.backgroundColor,
+      bodyBackground: getComputedStyle(document.body).backgroundColor,
+      position: style.position,
+      zIndex: style.zIndex,
+      isolation: style.isolation,
+      appPaddingTop: app.paddingTop,
+      marginTop: style.marginTop,
+      paddingTop: style.paddingTop,
+      pointWithinBand: point === el || point?.closest('.workout-sticky-head') === el,
+    }
+  })
+  expect(metrics.top).toBeGreaterThanOrEqual(-1)
+  expect(metrics.top).toBeLessThanOrEqual(1)
+  expect(metrics.background).toBe(metrics.bodyBackground)
+  expect(metrics.position).toBe('sticky')
+  expect(metrics.zIndex).toBe('20')
+  expect(metrics.isolation).toBe('isolate')
+  expect(metrics.appPaddingTop).toBe('32px')
+  expect(metrics.marginTop).toBe('-32px')
+  expect(metrics.paddingTop).toBe('32px')
+  expect(metrics.pointWithinBand).toBe(true)
+
+  const progressStyles = await progress.evaluate(el => {
+    const style = getComputedStyle(el)
+    return {
+      position: style.position,
+      zIndex: style.zIndex,
+      transform: style.transform,
+      backfaceVisibility: style.backfaceVisibility,
+      willChange: style.willChange,
+      height: style.height,
+    }
+  })
+  expect(progressStyles.position).toBe('static')
+  expect(progressStyles.zIndex).toBe('auto')
+  expect(progressStyles.transform).toBe('none')
+  expect(progressStyles.backfaceVisibility).toBe('visible')
+  expect(progressStyles.willChange).toBe('auto')
+  expect(progressStyles.height).toBe('4px')
+})
+
 test('active workout routine picker excludes the current routine and cancels cleanly', async ({ page, openApp }) => {
   await openApp({ route: '/workout', state: 'active' })
   await page.getByRole('button', { name: 'Add exercise', exact: true }).click()
