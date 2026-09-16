@@ -1,11 +1,12 @@
 {
   "name": "hforge-frontend",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "check:version": "node ../scripts/check-version.mjs",
+    "build": "npm run check:version && vite build",
     "audit:exercise-names": "node scripts/audit-exercise-names.mjs",
     "audit:exercise-catalog": "node ../scripts/audit-hevy-import.mjs",
     "import:hevy": "node ../scripts/import-hevy-catalog.mjs",

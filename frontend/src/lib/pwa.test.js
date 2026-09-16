@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describeUpdateState, displayMode, isStandalone } from './pwa.js'
+import { appVersion, describeUpdateState, displayMode, isStandalone } from './pwa.js'
 
 const src = name => readFileSync(resolve(process.cwd(), name), 'utf8')
 
@@ -44,6 +44,19 @@ describe('describeUpdateState', () => {
 
   it('defers the reload while a workout is active — never force it', () => {
     expect(describeUpdateState({ hasUpdate: true, workoutActive: true })).toBe('deferred')
+  })
+})
+
+describe('appVersion', () => {
+  it('loads the deployed version without allowing a cached response', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ version: '1.3.0' }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await expect(appVersion()).resolves.toBe('1.3.0')
+      expect(fetchMock).toHaveBeenCalledWith('version.json', { cache: 'no-store' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 
