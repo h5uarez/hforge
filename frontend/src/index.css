@@ -807,7 +807,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 
 /* ------------------------------------------------------------- workout --- */
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
-.workout-session .wprog{position:sticky;top:var(--sat);z-index:20;padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat));transform:translateZ(0);backface-visibility:hidden;will-change:transform}
+.workout-session .wprog{padding-block:0;background:var(--bg);scroll-margin-top:calc(8px + var(--sat))}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{
   --media-ratio:1.333333;--media-max-height:clamp(200px,60vw,320px);
@@ -1550,8 +1550,10 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   font-variant-numeric:tabular-nums;line-height:1;
 }
 .workout-session .iconbtn,.workout-session .setgo{min-width:44px;min-height:44px}
-/* Sticky session header (title + timer + progress) so it stays visible while scrolling */
-.workout-session .workout-sticky-head{position:sticky;top:0;z-index:20;background:var(--bg);margin-top:calc(-1 * var(--sat));padding-top:calc(var(--sat) + 8px)}
+/* Sticky session header (title + timer + progress) so it stays visible while scrolling.
+   The negative margin cancels all of #app's top inset; padding keeps the controls in
+   their existing visual position while the opaque, isolated wrapper owns the band. */
+.workout-session .workout-sticky-head{position:sticky;top:0;z-index:20;isolation:isolate;background:var(--bg);margin-top:calc(-1 * var(--sat) - 8px);padding-top:calc(var(--sat) + 8px);transform:translateZ(0);backface-visibility:hidden;will-change:transform}
 /* Centered set actions */
 .workout-session .set-actions{justify-content:center;gap:8px;flex-wrap:wrap}
 .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}

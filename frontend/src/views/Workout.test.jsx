@@ -383,9 +383,24 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('setPendingFocus(null)')
   })
 
-  it('keeps progress as the only workout sticky contract', () => {
+  it('keeps the workout wrapper as the only sticky and composited surface', () => {
+    const css = readFileSync(srcPath('index.css'), 'utf8')
+    const stickyRule = css.match(/\.workout-session \.workout-sticky-head\{([^}]*)\}/)?.[1] || ''
+    const progressRule = css.match(/\.workout-session \.wprog\{([^}]*)\}/)?.[1] || ''
+    expect(source).toContain('className="workout-sticky-head"')
     expect(source).toContain('className="wprog"')
-    expect(source).not.toContain('position: sticky')
+    expect(stickyRule).toContain('position:sticky')
+    expect(stickyRule).toContain('isolation:isolate')
+    expect(stickyRule).toContain('transform:translateZ(0);backface-visibility:hidden;will-change:transform')
+    expect(progressRule).not.toContain('position:sticky')
+    expect(progressRule).not.toContain('top:var(--sat)')
+    expect(progressRule).not.toContain('z-index:20')
+    expect(progressRule).not.toContain('transform:translateZ(0)')
+    expect(progressRule).not.toContain('backface-visibility:hidden')
+    expect(progressRule).not.toContain('will-change:transform')
+    expect(progressRule).not.toMatch(/(?:^|;)(?:position|top|right|bottom|left|z-index|transform|backface-visibility|will-change):/)
+    expect(css).toContain('.wprog{height:4px;')
+    expect(css).toContain('.wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}')
     expect(source).not.toContain('draggable=')
     // pointer-based DnD owns reorder: no draggable attribute anywhere, the
     // grip captures the pointer and commits through moveSessionUnit
@@ -397,12 +412,15 @@ describe('scrollable workout composition contracts', () => {
 
   it('anchors the sticky workout band to the physical viewport edge', () => {
     const css = readFileSync(srcPath('index.css'), 'utf8')
+    const appRule = css.match(/#app\{([^}]*)\}/)?.[1] || ''
     const stickyRule = css.match(/\.workout-session \.workout-sticky-head\{([^}]*)\}/)?.[1] || ''
+    expect(appRule).toContain('padding:calc(var(--sat) + 8px)')
     expect(stickyRule).toContain('position:sticky')
     expect(stickyRule).toContain('top:0')
-    expect(stickyRule).toContain('margin-top:calc(-1 * var(--sat))')
+    expect(stickyRule).toContain('margin-top:calc(-1 * var(--sat) - 8px)')
     expect(stickyRule).toContain('padding-top:calc(var(--sat) + 8px)')
     expect(stickyRule).toContain('z-index:20')
+    expect(stickyRule).toContain('isolation:isolate')
     expect(stickyRule).toContain('background:var(--bg)')
     expect(stickyRule).not.toContain('top:var(--sat)')
   })
