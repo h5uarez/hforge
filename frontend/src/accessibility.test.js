@@ -55,13 +55,33 @@ describe('mobile accessibility and layout contracts', () => {
     expect(tabs).toContain('window.scrollTo(0, scrollMem.get(to) || 0)')
   })
 
-  it('keeps navbar sizing stable until scroll compaction is explicitly enabled', () => {
+  it('compacts the whole navbar directionally without changing indicator geometry', () => {
     const css = source('index.css')
     const tabs = source('components/TabBar.jsx')
-    expect(tabs).not.toContain('useScrolled')
-    expect(tabs).not.toContain('is-compact')
-    expect(css).not.toContain('#tabbar.is-compact')
+    const compactRule = css.match(/#tabbar\.is-compact\{([^}]*)\}/)?.[1] || ''
+    const compactButtonRule = css.match(/#tabbar\.is-compact button\{([^}]*)\}/)?.[1] || ''
+    expect(tabs).toContain('useScrollDirection')
+    expect(tabs).toContain("compact ? 'is-compact' : ''")
+    expect(css).toContain('transform-origin:center bottom;scale:1')
+    expect(compactRule).toContain('scale:.96')
+    expect(compactRule).not.toContain('transform')
+    expect(compactButtonRule).toContain('min-width:46px;min-height:46px')
+    expect(compactButtonRule).not.toMatch(/(?:^|;)width:/)
+    expect(compactButtonRule).not.toMatch(/(?:^|;)height:/)
+    expect(css).toContain('transition:scale var(--motion-tab) var(--ease)')
     expect(css).toContain('transition:color var(--fast)')
+  })
+
+  it('uses a passive rAF document signal and excludes nested sheet scrolling', () => {
+    const ui = source('components/ui.jsx')
+    const tabs = source('components/TabBar.jsx')
+    expect(ui).toContain('export function useScrollDirection')
+    expect(ui).toContain('nextScrollState')
+    expect(ui).toContain('requestAnimationFrame(read)')
+    expect(ui).toContain("document.addEventListener('scroll', onScroll, { passive: true })")
+    expect(ui).toContain("document.removeEventListener('scroll', onScroll)")
+    expect(ui).toContain('scrolling a nested .sheet')
+    expect(tabs).not.toContain('useScrolled')
   })
 
   it('keeps exercise and workout note boxes independently discoverable and collapsible', () => {
@@ -288,6 +308,7 @@ describe('mobile accessibility and layout contracts', () => {
     expect(css).toContain('calc(100px + var(--sab))')
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
     expect(css).toContain('min-width:44px;min-height:44px')
+    expect(css).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}')
   })
 
   it('keeps localized controls and non-runtime evidence contracts explicit', () => {

@@ -1,0 +1,4524 @@
+{
+  "lang": "en",
+  "theme": "light",
+  "accent": "default",
+  "unit": "kg",
+  "body": "male",
+  "routines": [
+    {
+      "id": "routine-push-fixed",
+      "name": "Push Day",
+      "emoji": "barbell",
+      "ex": [
+        {
+          "id": "0025",
+          "sets": 4,
+          "reps": 8,
+          "weight": 0
+        },
+        {
+          "id": "0047",
+          "sets": 3,
+          "reps": 10,
+          "weight": 0
+        },
+        {
+          "id": "0426",
+          "sets": 3,
+          "reps": 10,
+          "weight": 0
+        },
+        {
+          "id": "0334",
+          "sets": 3,
+          "reps": 12,
+          "weight": 0
+        }
+      ]
+    },
+    {
+      "id": "routine-pull-fixed",
+      "name": "Pull Day",
+      "emoji": "pullup",
+      "ex": [
+        {
+          "id": "2330",
+          "sets": 4,
+          "reps": 10,
+          "weight": 0
+        },
+        {
+          "id": "0027",
+          "sets": 4,
+          "reps": 8,
+          "weight": 0
+        },
+        {
+          "id": "1323",
+          "sets": 3,
+          "reps": 10,
+          "weight": 0
+        },
+        {
+          "id": "0031",
+          "sets": 3,
+          "reps": 10,
+          "weight": 0
+        }
+      ]
+    },
+    {
+      "id": "routine-legs-fixed",
+      "name": "Leg Day",
+      "emoji": "legs",
+      "ex": [
+        {
+          "id": "0043",
+          "sets": 4,
+          "reps": 8,
+          "weight": 0
+        },
+        {
+          "id": "0085",
+          "sets": 3,
+          "reps": 10,
+          "weight": 0
+        },
+        {
+          "id": "0739",
+          "sets": 3,
+          "reps": 12,
+          "weight": 0
+        },
+        {
+          "id": "0585",
+          "sets": 3,
+          "reps": 12,
+          "weight": 0
+        }
+      ]
+    }
+  ],
+  "week": {
+    "1": "routine-push-fixed",
+    "3": "routine-pull-fixed",
+    "5": "routine-legs-fixed"
+  },
+  "dayPlan": {},
+  "workouts": [
+    {
+      "id": "fixture-workout-01",
+      "d": "2026-03-16",
+      "start": 1773684900000,
+      "end": 1773688020000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 82,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 42.5,
+          "sets": [
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 30,
+          "sets": [
+            {
+              "w": 30,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 30,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 30,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 25,
+          "sets": [
+            {
+              "w": 25,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 25,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 25,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 5315
+    },
+    {
+      "id": "fixture-workout-02",
+      "d": "2026-03-23",
+      "start": 1774289700000,
+      "end": 1774292880000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 82,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 67.5,
+          "sets": [
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 57.5,
+          "sets": [
+            {
+              "w": 57.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 42.5,
+          "sets": [
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 37.5,
+          "sets": [
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 6940
+    },
+    {
+      "id": "fixture-workout-03",
+      "d": "2026-03-30",
+      "start": 1774894500000,
+      "end": 1774897740000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 82,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 90,
+          "sets": [
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 55,
+          "sets": [
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 45,
+          "sets": [
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 8580
+    },
+    {
+      "id": "fixture-workout-04",
+      "d": "2026-04-06",
+      "start": 1775499300000,
+      "end": 1775502600000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 81.5,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 77.5,
+          "sets": [
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 50,
+          "sets": [
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 37.5,
+          "sets": [
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 37.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 32.5,
+          "sets": [
+            {
+              "w": 32.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 32.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 32.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 6275
+    },
+    {
+      "id": "fixture-workout-05",
+      "d": "2026-04-13",
+      "start": 1776104100000,
+      "end": 1776107460000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 81.5,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 60,
+          "sets": [
+            {
+              "w": 60,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 45,
+          "sets": [
+            {
+              "w": 45,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 40,
+          "sets": [
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 7270
+    },
+    {
+      "id": "fixture-workout-06",
+      "d": "2026-04-20",
+      "start": 1776708900000,
+      "end": 1776712320000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 81.5,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 105,
+          "sets": [
+            {
+              "w": 105,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 105,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 105,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 105,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 85,
+          "sets": [
+            {
+              "w": 85,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 85,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 85,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 62.5,
+          "sets": [
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 52.5,
+          "sets": [
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 10050
+    },
+    {
+      "id": "fixture-workout-07",
+      "d": "2026-04-27",
+      "start": 1777313700000,
+      "end": 1777317180000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 81.5,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 80,
+          "sets": [
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 52.5,
+          "sets": [
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 40,
+          "sets": [
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 40,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 35,
+          "sets": [
+            {
+              "w": 35,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 35,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 35,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 6595
+    },
+    {
+      "id": "fixture-workout-08",
+      "d": "2026-05-04",
+      "start": 1777918500000,
+      "end": 1777922040000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 81,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 77.5,
+          "sets": [
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 67.5,
+          "sets": [
+            {
+              "w": 67.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 52.5,
+          "sets": [
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 47.5,
+          "sets": [
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 8260
+    },
+    {
+      "id": "fixture-workout-09",
+      "d": "2026-05-11",
+      "start": 1778523300000,
+      "end": 1778526900000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 81,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 110,
+          "sets": [
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 90,
+          "sets": [
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 65,
+          "sets": [
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 55,
+          "sets": [
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 10540
+    },
+    {
+      "id": "fixture-workout-10",
+      "d": "2026-05-18",
+      "start": 1779128100000,
+      "end": 1779131760000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 81,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 87.5,
+          "sets": [
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 60,
+          "sets": [
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 47.5,
+          "sets": [
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 47.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 42.5,
+          "sets": [
+            {
+              "w": 42.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 42.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 7555
+    },
+    {
+      "id": "fixture-workout-11",
+      "d": "2026-05-25",
+      "start": 1779732900000,
+      "end": 1779736620000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 81,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 80,
+          "sets": [
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 55,
+          "sets": [
+            {
+              "w": 55,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 50,
+          "sets": [
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 8590
+    },
+    {
+      "id": "fixture-workout-12",
+      "d": "2026-06-01",
+      "start": 1780337700000,
+      "end": 1780341480000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 80.5,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 125,
+          "sets": [
+            {
+              "w": 125,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 125,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 125,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 125,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 105,
+          "sets": [
+            {
+              "w": 105,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 105,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 105,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 72.5,
+          "sets": [
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 62.5,
+          "sets": [
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 12010
+    },
+    {
+      "id": "fixture-workout-13",
+      "d": "2026-06-08",
+      "start": 1780942500000,
+      "end": 1780946340000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 80.5,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 90,
+          "sets": [
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 62.5,
+          "sets": [
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 50,
+          "sets": [
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 50,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 45,
+          "sets": [
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 45,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 7875
+    },
+    {
+      "id": "fixture-workout-14",
+      "d": "2026-06-15",
+      "start": 1781547300000,
+      "end": 1781551200000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 80.5,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 87.5,
+          "sets": [
+            {
+              "w": 87.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 77.5,
+          "sets": [
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 62.5,
+          "sets": [
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 57.5,
+          "sets": [
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 9580
+    },
+    {
+      "id": "fixture-workout-15",
+      "d": "2026-06-22",
+      "start": 1782152100000,
+      "end": 1782156060000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 80.5,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 130,
+          "sets": [
+            {
+              "w": 130,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 130,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 130,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 130,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 110,
+          "sets": [
+            {
+              "w": 110,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 75,
+          "sets": [
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 65,
+          "sets": [
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 12500
+    },
+    {
+      "id": "fixture-workout-16",
+      "d": "2026-06-29",
+      "start": 1782756900000,
+      "end": 1782760920000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 80,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 97.5,
+          "sets": [
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 57.5,
+          "sets": [
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 57.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 52.5,
+          "sets": [
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 52.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 8835
+    },
+    {
+      "id": "fixture-workout-17",
+      "d": "2026-07-06",
+      "start": 1783361700000,
+      "end": 1783365780000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 80,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 90,
+          "sets": [
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 80,
+          "sets": [
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 65,
+          "sets": [
+            {
+              "w": 65,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 60,
+          "sets": [
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 9910
+    },
+    {
+      "id": "fixture-workout-18",
+      "d": "2026-07-13",
+      "start": 1783966500000,
+      "end": 1783970640000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 80,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 145,
+          "sets": [
+            {
+              "w": 145,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 145,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 145,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 145,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 125,
+          "sets": [
+            {
+              "w": 125,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 125,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 125,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 82.5,
+          "sets": [
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 72.5,
+          "sets": [
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 13970
+    },
+    {
+      "id": "fixture-workout-19",
+      "d": "2026-07-20",
+      "start": 1784571300000,
+      "end": 1784575500000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 80,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 100,
+          "sets": [
+            {
+              "w": 100,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 72.5,
+          "sets": [
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 60,
+          "sets": [
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 60,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 55,
+          "sets": [
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 55,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 9155
+    },
+    {
+      "id": "fixture-workout-20",
+      "d": "2026-07-27",
+      "start": 1785176100000,
+      "end": 1785180360000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 79.5,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 97.5,
+          "sets": [
+            {
+              "w": 97.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 87.5,
+          "sets": [
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 87.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 72.5,
+          "sets": [
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 72.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 67.5,
+          "sets": [
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 10900
+    },
+    {
+      "id": "fixture-workout-21",
+      "d": "2026-08-03",
+      "start": 1785780900000,
+      "end": 1785785220000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 79.5,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 150,
+          "sets": [
+            {
+              "w": 150,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 150,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 150,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 150,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 130,
+          "sets": [
+            {
+              "w": 130,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 130,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 130,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 85,
+          "sets": [
+            {
+              "w": 85,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 85,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 85,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 75,
+          "sets": [
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 14460
+    },
+    {
+      "id": "fixture-workout-22",
+      "d": "2026-08-10",
+      "start": 1786385700000,
+      "end": 1786390080000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 79.5,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 107.5,
+          "sets": [
+            {
+              "w": 107.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 80,
+          "sets": [
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 80,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 67.5,
+          "sets": [
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 67.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 62.5,
+          "sets": [
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 62.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 10115
+    },
+    {
+      "id": "fixture-workout-23",
+      "d": "2026-08-17",
+      "start": 1786990500000,
+      "end": 1786994940000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 79.5,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 100,
+          "sets": [
+            {
+              "w": 100,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 100,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 90,
+          "sets": [
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 90,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 75,
+          "sets": [
+            {
+              "w": 75,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 75,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 11230
+    },
+    {
+      "id": "fixture-workout-24",
+      "d": "2026-08-24",
+      "start": 1787595300000,
+      "end": 1787599800000,
+      "routineId": "routine-legs-fixed",
+      "name": "Leg Day",
+      "bw": 79,
+      "entries": [
+        {
+          "id": "0043",
+          "target": {
+            "id": "0043",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 165,
+          "sets": [
+            {
+              "w": 165,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 165,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 165,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 165,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0085",
+          "target": {
+            "id": "0085",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 145,
+          "sets": [
+            {
+              "w": 145,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 145,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 145,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0739",
+          "target": {
+            "id": "0739",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 92.5,
+          "sets": [
+            {
+              "w": 92.5,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 92.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 92.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0585",
+          "target": {
+            "id": "0585",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 82.5,
+          "sets": [
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 15930
+    },
+    {
+      "id": "fixture-workout-25",
+      "d": "2026-08-31",
+      "start": 1788200100000,
+      "end": 1788204660000,
+      "routineId": "routine-push-fixed",
+      "name": "Push Day",
+      "bw": 79,
+      "entries": [
+        {
+          "id": "0025",
+          "target": {
+            "id": "0025",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 110,
+          "sets": [
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 110,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0047",
+          "target": {
+            "id": "0047",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 82.5,
+          "sets": [
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0426",
+          "target": {
+            "id": "0426",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 70,
+          "sets": [
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 70,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0334",
+          "target": {
+            "id": "0334",
+            "sets": 3,
+            "reps": 12,
+            "weight": 0
+          },
+          "topW": 65,
+          "sets": [
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 65,
+              "r": 12,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [
+        "0025"
+      ],
+      "vol": 10435
+    },
+    {
+      "id": "fixture-workout-26",
+      "d": "2026-09-07",
+      "start": 1788804900000,
+      "end": 1788809520000,
+      "routineId": "routine-pull-fixed",
+      "name": "Pull Day",
+      "bw": 79,
+      "entries": [
+        {
+          "id": "2330",
+          "target": {
+            "id": "2330",
+            "sets": 4,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 107.5,
+          "sets": [
+            {
+              "w": 107.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 107.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0027",
+          "target": {
+            "id": "0027",
+            "sets": 4,
+            "reps": 8,
+            "weight": 0
+          },
+          "topW": 97.5,
+          "sets": [
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 97.5,
+              "r": 8,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "1323",
+          "target": {
+            "id": "1323",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 82.5,
+          "sets": [
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 0,
+              "rpe": 10,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 82.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            }
+          ]
+        },
+        {
+          "id": "0031",
+          "target": {
+            "id": "0031",
+            "sets": 3,
+            "reps": 10,
+            "weight": 0
+          },
+          "topW": 77.5,
+          "sets": [
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 3,
+              "rpe": 7,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 2,
+              "rpe": 8,
+              "done": true
+            },
+            {
+              "w": 77.5,
+              "r": 10,
+              "rir": 1,
+              "rpe": 9,
+              "done": true
+            }
+          ]
+        }
+      ],
+      "prs": [],
+      "vol": 12220
+    }
+  ],
+  "bodyweight": [
+    {
+      "id": "fixture-bodyweight-01",
+      "d": "2026-03-16",
+      "w": 82,
+      "t": 1773646200000
+    },
+    {
+      "id": "fixture-bodyweight-02",
+      "d": "2026-03-19",
+      "w": 82,
+      "t": 1773905400000
+    },
+    {
+      "id": "fixture-bodyweight-03",
+      "d": "2026-03-23",
+      "w": 82,
+      "t": 1774251000000
+    },
+    {
+      "id": "fixture-bodyweight-04",
+      "d": "2026-03-26",
+      "w": 81.5,
+      "t": 1774510200000
+    },
+    {
+      "id": "fixture-bodyweight-05",
+      "d": "2026-03-30",
+      "w": 82,
+      "t": 1774855800000
+    },
+    {
+      "id": "fixture-bodyweight-06",
+      "d": "2026-04-02",
+      "w": 81.5,
+      "t": 1775115000000
+    },
+    {
+      "id": "fixture-bodyweight-07",
+      "d": "2026-04-06",
+      "w": 81.5,
+      "t": 1775460600000
+    },
+    {
+      "id": "fixture-bodyweight-08",
+      "d": "2026-04-09",
+      "w": 81.5,
+      "t": 1775719800000
+    },
+    {
+      "id": "fixture-bodyweight-09",
+      "d": "2026-04-13",
+      "w": 81.5,
+      "t": 1776065400000
+    },
+    {
+      "id": "fixture-bodyweight-10",
+      "d": "2026-04-16",
+      "w": 81.5,
+      "t": 1776324600000
+    },
+    {
+      "id": "fixture-bodyweight-11",
+      "d": "2026-04-20",
+      "w": 81.5,
+      "t": 1776670200000
+    },
+    {
+      "id": "fixture-bodyweight-12",
+      "d": "2026-04-23",
+      "w": 81,
+      "t": 1776929400000
+    },
+    {
+      "id": "fixture-bodyweight-13",
+      "d": "2026-04-27",
+      "w": 81.5,
+      "t": 1777275000000
+    },
+    {
+      "id": "fixture-bodyweight-14",
+      "d": "2026-04-30",
+      "w": 81,
+      "t": 1777534200000
+    },
+    {
+      "id": "fixture-bodyweight-15",
+      "d": "2026-05-04",
+      "w": 81,
+      "t": 1777879800000
+    },
+    {
+      "id": "fixture-bodyweight-16",
+      "d": "2026-05-07",
+      "w": 81,
+      "t": 1778139000000
+    },
+    {
+      "id": "fixture-bodyweight-17",
+      "d": "2026-05-11",
+      "w": 81,
+      "t": 1778484600000
+    },
+    {
+      "id": "fixture-bodyweight-18",
+      "d": "2026-05-14",
+      "w": 81,
+      "t": 1778743800000
+    },
+    {
+      "id": "fixture-bodyweight-19",
+      "d": "2026-05-18",
+      "w": 81,
+      "t": 1779089400000
+    },
+    {
+      "id": "fixture-bodyweight-20",
+      "d": "2026-05-21",
+      "w": 80.5,
+      "t": 1779348600000
+    },
+    {
+      "id": "fixture-bodyweight-21",
+      "d": "2026-05-25",
+      "w": 81,
+      "t": 1779694200000
+    },
+    {
+      "id": "fixture-bodyweight-22",
+      "d": "2026-05-28",
+      "w": 80.5,
+      "t": 1779953400000
+    },
+    {
+      "id": "fixture-bodyweight-23",
+      "d": "2026-06-01",
+      "w": 80.5,
+      "t": 1780299000000
+    },
+    {
+      "id": "fixture-bodyweight-24",
+      "d": "2026-06-04",
+      "w": 80.5,
+      "t": 1780558200000
+    },
+    {
+      "id": "fixture-bodyweight-25",
+      "d": "2026-06-08",
+      "w": 80.5,
+      "t": 1780903800000
+    },
+    {
+      "id": "fixture-bodyweight-26",
+      "d": "2026-06-11",
+      "w": 80.5,
+      "t": 1781163000000
+    },
+    {
+      "id": "fixture-bodyweight-27",
+      "d": "2026-06-15",
+      "w": 80.5,
+      "t": 1781508600000
+    },
+    {
+      "id": "fixture-bodyweight-28",
+      "d": "2026-06-18",
+      "w": 80,
+      "t": 1781767800000
+    },
+    {
+      "id": "fixture-bodyweight-29",
+      "d": "2026-06-22",
+      "w": 80.5,
+      "t": 1782113400000
+    },
+    {
+      "id": "fixture-bodyweight-30",
+      "d": "2026-06-25",
+      "w": 80,
+      "t": 1782372600000
+    },
+    {
+      "id": "fixture-bodyweight-31",
+      "d": "2026-06-29",
+      "w": 80,
+      "t": 1782718200000
+    },
+    {
+      "id": "fixture-bodyweight-32",
+      "d": "2026-07-02",
+      "w": 80,
+      "t": 1782977400000
+    },
+    {
+      "id": "fixture-bodyweight-33",
+      "d": "2026-07-06",
+      "w": 80,
+      "t": 1783323000000
+    },
+    {
+      "id": "fixture-bodyweight-34",
+      "d": "2026-07-09",
+      "w": 80,
+      "t": 1783582200000
+    },
+    {
+      "id": "fixture-bodyweight-35",
+      "d": "2026-07-13",
+      "w": 80,
+      "t": 1783927800000
+    },
+    {
+      "id": "fixture-bodyweight-36",
+      "d": "2026-07-16",
+      "w": 80,
+      "t": 1784187000000
+    },
+    {
+      "id": "fixture-bodyweight-37",
+      "d": "2026-07-20",
+      "w": 80,
+      "t": 1784532600000
+    },
+    {
+      "id": "fixture-bodyweight-38",
+      "d": "2026-07-23",
+      "w": 79.5,
+      "t": 1784791800000
+    },
+    {
+      "id": "fixture-bodyweight-39",
+      "d": "2026-07-27",
+      "w": 79.5,
+      "t": 1785137400000
+    },
+    {
+      "id": "fixture-bodyweight-40",
+      "d": "2026-07-30",
+      "w": 79.5,
+      "t": 1785396600000
+    },
+    {
+      "id": "fixture-bodyweight-41",
+      "d": "2026-08-03",
+      "w": 79.5,
+      "t": 1785742200000
+    },
+    {
+      "id": "fixture-bodyweight-42",
+      "d": "2026-08-06",
+      "w": 79.5,
+      "t": 1786001400000
+    },
+    {
+      "id": "fixture-bodyweight-43",
+      "d": "2026-08-10",
+      "w": 79.5,
+      "t": 1786347000000
+    },
+    {
+      "id": "fixture-bodyweight-44",
+      "d": "2026-08-13",
+      "w": 79.5,
+      "t": 1786606200000
+    },
+    {
+      "id": "fixture-bodyweight-45",
+      "d": "2026-08-17",
+      "w": 79.5,
+      "t": 1786951800000
+    },
+    {
+      "id": "fixture-bodyweight-46",
+      "d": "2026-08-20",
+      "w": 79,
+      "t": 1787211000000
+    },
+    {
+      "id": "fixture-bodyweight-47",
+      "d": "2026-08-24",
+      "w": 79,
+      "t": 1787556600000
+    },
+    {
+      "id": "fixture-bodyweight-48",
+      "d": "2026-08-27",
+      "w": 79,
+      "t": 1787815800000
+    },
+    {
+      "id": "fixture-bodyweight-49",
+      "d": "2026-08-31",
+      "w": 79,
+      "t": 1788161400000
+    },
+    {
+      "id": "fixture-bodyweight-50",
+      "d": "2026-09-03",
+      "w": 79,
+      "t": 1788420600000
+    },
+    {
+      "id": "fixture-bodyweight-51",
+      "d": "2026-09-07",
+      "w": 79,
+      "t": 1788766200000
+    },
+    {
+      "id": "fixture-bodyweight-52",
+      "d": "2026-09-10",
+      "w": 79,
+      "t": 1789025400000
+    }
+  ],
+  "exWeights": {
+    "1323": {
+      "w": 80,
+      "d": "2026-09-07"
+    },
+    "2330": {
+      "w": 105,
+      "d": "2026-09-07"
+    },
+    "0025": {
+      "w": 110,
+      "d": "2026-09-07"
+    },
+    "0047": {
+      "w": 82.5,
+      "d": "2026-09-07"
+    },
+    "0426": {
+      "w": 70,
+      "d": "2026-09-07"
+    },
+    "0334": {
+      "w": 65,
+      "d": "2026-09-07"
+    },
+    "0027": {
+      "w": 95,
+      "d": "2026-09-07"
+    },
+    "0031": {
+      "w": 75,
+      "d": "2026-09-07"
+    },
+    "0043": {
+      "w": 170,
+      "d": "2026-09-07"
+    },
+    "0085": {
+      "w": 150,
+      "d": "2026-09-07"
+    },
+    "0739": {
+      "w": 95,
+      "d": "2026-09-07"
+    },
+    "0585": {
+      "w": 85,
+      "d": "2026-09-07"
+    }
+  },
+  "active": null,
+  "customEx": [],
+  "restSec": 90,
+  "restTimerEnabled": true,
+  "sound": false,
+  "keepAwake": false,
+  "targetW": null,
+  "effort": "rir",
+  "home1rmCardEnabled": true,
+  "homeWarmupCardEnabled": true,
+  "fixtureMeta": {
+    "id": "hforge-six-month-2026-09-07-v1",
+    "schemaVersion": 1,
+    "weeks": 26,
+    "workoutCount": 26,
+    "weekStart": "2026-03-16",
+    "weekEnd": "2026-09-07",
+    "deterministic": true
+  }
+}

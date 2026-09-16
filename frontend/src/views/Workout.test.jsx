@@ -395,6 +395,18 @@ describe('scrollable workout composition contracts', () => {
     expect(sheets).toContain('moveSessionUnit')
   })
 
+  it('anchors the sticky workout band to the physical viewport edge', () => {
+    const css = readFileSync(srcPath('index.css'), 'utf8')
+    const stickyRule = css.match(/\.workout-session \.workout-sticky-head\{([^}]*)\}/)?.[1] || ''
+    expect(stickyRule).toContain('position:sticky')
+    expect(stickyRule).toContain('top:0')
+    expect(stickyRule).toContain('margin-top:calc(-1 * var(--sat))')
+    expect(stickyRule).toContain('padding-top:calc(var(--sat) + 8px)')
+    expect(stickyRule).toContain('z-index:20')
+    expect(stickyRule).toContain('background:var(--bg)')
+    expect(stickyRule).not.toContain('top:var(--sat)')
+  })
+
   it('keeps mode-specific inputs, timers, notes, completion, and lifecycle actions wired', () => {
     for (const token of ["mode === 'cardio'", "mode === 'time'", 'isBw(cfg)', 'startRest', 'onStartTimed',
       'Workout note', 'projectSideSet(s).done', 'finishWorkout', "t('Discard')", 'confirmSheet']) {

@@ -81,7 +81,7 @@ Allow one guide-documented same-page viewport reapply. On a second mismatch retu
 
 ## Fixture and Home sequence
 
-Use identical bytes from `assets/generate-six-month-fixture.mjs` in exactly two isolated profiles. Record a fixture hash and verify `gym_state_v1`, fixture ID, 26 weeks, counts, and byte equality in both lanes.
+Read `assets/gym-state-v1-six-month-2026-09-07.json` as raw bytes and use those identical bytes in exactly two isolated profiles. Decode the bytes once as UTF-8 and seed that exact string into each profile's raw `gym_state_v1` localStorage key. Record the expected fixture hash and verify `gym_state_v1`, fixture ID, 26 weeks, counts, date range, `active:null`, and byte/string equality in both lanes before and after the one consuming reload. Do not invoke `assets/generate-six-month-fixture.mjs` or parse, serialize, or normalize JSON during a QA run; the generator is provenance/maintenance-only. The maintenance/CI command `node .agents/skills/hforge-orca-browser-qa/scripts/verify-six-month-fixture.mjs` checks the committed bytes and fresh generator stdout, but is not a per-lane QA step.
 
 For each lane:
 

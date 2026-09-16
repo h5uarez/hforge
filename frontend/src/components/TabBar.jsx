@@ -5,6 +5,7 @@ import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
+import { useScrollDirection } from './ui.jsx'
 
 // Per-tab scroll memory: leaving a tab stores window.scrollY under its route key,
 // entering a tab restores it on the next frame. Same app, same flow — just no more
@@ -19,6 +20,7 @@ const TAB_INDEX = { home: 0, plan: 1, stats: 3, library: 4 }
 export default function TabBar({ onStart }) {
   const nav = useNavigate()
   const loc = useLocation()
+  const { compact } = useScrollDirection()
   // While the software keyboard is open the visual viewport shrinks above it
   // and a fixed bottom bar would float mid-screen over the content, so park
   // the bar off-screen until the keyboard closes. Navigation is unreachable
@@ -70,8 +72,9 @@ export default function TabBar({ onStart }) {
   )
 
   const ind = TAB_INDEX[cur]
+  const classes = [ind !== undefined ? 'has-ind' : '', compact ? 'is-compact' : ''].filter(Boolean).join(' ')
   return (
-    <nav id="tabbar" aria-label={t('Home')} className={ind !== undefined ? 'has-ind' : ''} style={ind !== undefined ? { '--tab-i': ind } : null}>
+    <nav id="tabbar" aria-label={t('Home')} className={classes} style={ind !== undefined ? { '--tab-i': ind } : null}>
       <span className="tab-ind" aria-hidden="true"><i /></span>
       <Tab k="home" icon="house" to="/home" label={t('Home')} />
       <Tab k="plan" icon="calendar" to="/plan" label={t('Plan')} />
