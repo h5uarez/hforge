@@ -68,6 +68,28 @@ settings and their defaults are documented in [`.env.example`](.env.example) and
   rules are easy to get subtly wrong and nearly impossible to verify by clicking — the
   progression engine grew two real bugs that only a test pinned down.
 
+## Versioning and release checks
+
+`frontend/package.json` is the canonical Hforge app version. Keep its SemVer value synchronized
+with `frontend/package-lock.json`, `frontend/public/version.json`, and the service-worker cache
+namespace. To make an explicit version update, change the canonical package version (or run
+`cd frontend && npm version <x.y.z> --no-git-tag-version --ignore-scripts`), then run:
+
+```bash
+node scripts/sync-version.mjs
+node scripts/check-version.mjs
+```
+
+The checker is dependency-free. With `--base-ref <git-sha>` it compares the canonical version
+against the base commit and applies this policy: breaking conventional commits (`!` or
+`BREAKING CHANGE`) require a major bump; `feat` requires minor; `fix`, `perf`, runtime refactors,
+configuration, and dependency changes require patch. Release-relevant changes without a
+conventional type require patch. Documentation-only, test-only, CI-only, and version-checker-only
+changes do not require a bump. A prerelease-only increase (for example, `1.2.3-alpha.1` to
+`1.2.3-alpha.2`) does not satisfy a required stable patch, minor, or major bump. CI supplies the
+pull-request base or previous push commit, while a manual deployment validates synchronized metadata
+and reports the version being deployed.
+
 ## Good first issues
 
 - Additional starter plans (upper/lower, full-body, 5×5…)
