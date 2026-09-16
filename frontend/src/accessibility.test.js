@@ -30,6 +30,40 @@ describe('mobile accessibility and layout contracts', () => {
     expect(home).toContain('style={{ width: 44, height: 44, fontSize: 15 }}')
   })
 
+  it('aligns the active indicator to the padded five-button track on mobile and desktop', () => {
+    const css = source('index.css')
+    const tabs = source('components/TabBar.jsx')
+    expect(css).toMatch(/#tabbar\{[^}]*--tabbar-x-inset:6px/)
+    expect(css).toContain('left:var(--tabbar-x-inset)')
+    expect(css).toContain('width:calc((100% - var(--tabbar-x-inset) - var(--tabbar-x-inset))/5)')
+    expect(css).toMatch(/@media \(min-width:1000px\)[\s\S]*?#tabbar\{[^}]*--tabbar-x-inset:10px/)
+    expect(tabs).toContain('const TAB_INDEX = { home: 0, plan: 1, stats: 3, library: 4 }')
+  })
+
+  it('preserves fixed anchoring, desktop centering, route restoration, and keyboard handling', () => {
+    const css = source('index.css')
+    const tabs = source('components/TabBar.jsx')
+    expect(css).toMatch(/#tabbar\{[^}]*position:fixed/)
+    expect(css).toContain('bottom:calc(10px + var(--sab))')
+    expect(css).toContain('z-index:50')
+    expect(css).toContain('transform:translateX(-50%)')
+    expect(css).toContain('calc(100px + var(--sab))')
+    expect(css).toContain('body.kb-open #tabbar')
+    expect(tabs).toContain('window.visualViewport')
+    expect(tabs).toContain("document.body.classList.toggle('kb-open'")
+    expect(tabs).toContain('scrollMem.set(from, window.scrollY || 0)')
+    expect(tabs).toContain('window.scrollTo(0, scrollMem.get(to) || 0)')
+  })
+
+  it('keeps navbar sizing stable until scroll compaction is explicitly enabled', () => {
+    const css = source('index.css')
+    const tabs = source('components/TabBar.jsx')
+    expect(tabs).not.toContain('useScrolled')
+    expect(tabs).not.toContain('is-compact')
+    expect(css).not.toContain('#tabbar.is-compact')
+    expect(css).toContain('transition:color var(--fast)')
+  })
+
   it('keeps exercise and workout note boxes independently discoverable and collapsible', () => {
     const sheets = source('sheets.jsx')
     const workout = source('views/Workout.jsx')

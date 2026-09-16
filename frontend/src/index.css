@@ -395,6 +395,7 @@ h4.sec{
 
 /* ----------------------------------------------------------- tab bar ----- */
 #tabbar{
+  --tabbar-x-inset:6px;
   position:fixed;left:12px;right:12px;bottom:calc(10px + var(--sab));z-index:50;
   display:flex;justify-content:space-around;align-items:flex-end;
   padding:7px 6px 8px;
@@ -446,11 +447,10 @@ h4.sec{
 /* P0 sliding indicator: one dot that glides between the four route tabs on
    transform only (left/width never animate). --tab-i is set from React (0 home,
    1 plan, 3 stats, 4 library — the center Start button owns slot 2 but is not a
-   tab). The track is the full bar width; each slot owns exactly 1/5, so the dot
-   centers at (i + .5) / 5 with a per-index translate. opacity carries the fade,
-   transform the slide — both inside --motion-tab. */
+   tab). The track matches the five button slots inside the bar's horizontal inset;
+   opacity carries the fade, transform the slide — both inside --motion-tab. */
 #tabbar .tab-ind{
-  position:absolute;bottom:4px;left:0;width:20%;display:flex;justify-content:center;
+  position:absolute;bottom:4px;left:var(--tabbar-x-inset);width:calc((100% - var(--tabbar-x-inset) - var(--tabbar-x-inset))/5);display:flex;justify-content:center;
   pointer-events:none;opacity:0;
   transform:translateX(calc(var(--tab-i,0) * 100%));
   transition:transform var(--motion-tab) var(--ease),opacity var(--motion-tab) var(--ease);
@@ -459,10 +459,10 @@ h4.sec{
 #tabbar.has-ind .tab-ind{opacity:1}
 #tabbar button.on{font-weight:600}
 /* Software keyboard open (body.kb-open is set from the visualViewport in
-   TabBar.jsx): park the bar below the fold instead of floating it mid-screen
-   over the content. `translate` composes with the desktop `transform`
-   centering instead of overriding it; visibility drops it from the
-   accessibility tree while hidden. Transform/opacity only. */
+    TabBar.jsx): park the bar below the fold instead of floating it mid-screen
+    over the content. `translate` composes with the desktop `transform`
+    centering instead of overriding it; visibility drops it from the
+    accessibility tree while hidden. Keyboard movement remains translate/opacity only. */
 #tabbar{transition:translate var(--fast) var(--ease),opacity var(--fast) var(--ease),visibility var(--fast)}
 body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;pointer-events:none}
 
@@ -1917,6 +1917,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   .tiles{grid-template-columns:repeat(4,1fr)}
   .cols .tiles{grid-template-columns:1fr 1fr}
   #tabbar{
+    --tabbar-x-inset:10px;
     left:50%;right:auto;bottom:16px;transform:translateX(-50%);width:520px;
     border:var(--hair) solid var(--sep-op);border-radius:var(--r-xl);
     padding:7px 10px 9px;box-shadow:0 12px 40px -10px rgba(0,0,0,.5);
