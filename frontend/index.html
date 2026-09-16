@@ -14,7 +14,40 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-180.png">
-<style>html,body{background:#0a84ff}#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a84ff;min-height:100vh;min-height:100dvh}#splash svg{width:clamp(96px,28vw,144px);height:auto;display:block}</style>
+<style>html,body{background:#220a4d}#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#220a4d;min-height:100vh;min-height:100dvh}#splash svg{width:clamp(96px,28vw,144px);height:auto;display:block}</style>
+<script>
+/* Pre-paint appearance: set data-theme/data-accent before React boots so frame 1
+   paints with the persisted theme + palette (no light flash). Mirror of the
+   ACCENT_MIGRATION map in frontend/src/lib/format.js — kept in sync by the drift
+   guard in accessibility.test.js. PALETTE_BG mirrors the per-pair×mode --bg tokens
+   in index.css (same drift guard covers html↔CSS↔App.jsx): theme-color and the
+   splash paint from it, and the splash glyph flips to #050505 on light bgs.
+   Missing/corrupt storage falls back to dark + ultraviolet. */
+(function () {
+  try {
+    var st = JSON.parse(localStorage.getItem('gym_state_v1') || 'null')
+    var theme = st && st.theme === 'light' ? 'light' : 'dark'
+    var MIGRATE = {"lime":'ultraviolet',"sky":'cobalt',"orange":'ember',"violet":'ultraviolet',"pink":'dragonfruit',"red":'dragonfruit',"teal":'cobalt',"gold":'ember'}
+    var KNOWN = ['default','ultraviolet','dragonfruit','ghost','cobalt','ember']
+    var accent = st && st.accent && KNOWN.indexOf(st.accent) >= 0 ? st.accent : (MIGRATE[st && st.accent] || 'ultraviolet')
+    var PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#220a4d","light":"#e7ddfa"},"dragonfruit":{"dark":"#3d0c1e","light":"#f6dbe7"},"ghost":{"dark":"#1a1f1b","light":"#e6f3ed"},"cobalt":{"dark":"#0a1745","light":"#d9e3fb"},"ember":{"dark":"#2a1408","light":"#f6e7d3"}}
+    document.documentElement.dataset.theme = theme
+    document.documentElement.dataset.accent = accent
+    var bg = (PALETTE_BG[accent] && PALETTE_BG[accent][theme]) || PALETTE_BG.ultraviolet.dark
+    var meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.content = bg
+    var splash = document.getElementById('splash')
+    if (splash) {
+      splash.style.background = bg
+      var glyph = splash.querySelector('g')
+      if (glyph) glyph.setAttribute('fill', theme === 'light' ? '#050505' : '#ffffff')
+    }
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark'
+    document.documentElement.dataset.accent = 'ultraviolet'
+  }
+})()
+</script>
 </head>
 <body>
 <div id="splash" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img"><g fill="#ffffff"><rect x="80" y="242" width="352" height="28"/><rect x="80" y="199" width="36" height="114"/><rect x="131" y="169" width="47" height="174"/><rect x="334" y="169" width="47" height="174"/><rect x="396" y="199" width="36" height="114"/></g></svg></div>
