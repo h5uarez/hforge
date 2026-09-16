@@ -65,7 +65,7 @@ describe('service worker active inactivity ownership', () => {
     worker.listeners.install({ waitUntil: value => { promise = value } })
     await promise
     const added = worker.cache.addAll.mock.calls[0][0].map(String)
-    for (const entry of ['index.html', 'manifest.json', 'version.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png']) {
+    for (const entry of ['index.html', 'manifest.json', 'version.json', 'favicon.svg', 'favicon-dark.svg', 'wordmark.svg', 'splash-light.svg', 'splash-dark.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'notification-monochrome-512.png']) {
       expect(added).toContain(entry)
     }
     // Waiting is the default: activation needs explicit user approval.
@@ -124,6 +124,7 @@ describe('service worker active inactivity ownership', () => {
     await event.promise
     expect(worker.showNotification).toHaveBeenCalledWith('Hforge', expect.objectContaining({
       body: 'Still there? Your workout awaits.', renotify: false,
+      icon: 'icon-512.png', badge: 'notification-monochrome-512.png',
     }))
   })
 })
