@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { api, updateProfile } from '../lib/api.js'
-import { localTZ } from '../lib/format.js'
+import { localTZ, resolveAccent } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
@@ -15,7 +15,7 @@ const KEY = 'gym_state_v1'
 const LAST_VALID_KEY = 'gym_state_last_valid_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'ultraviolet', body: 'male', targetW: null, bodyweightCheckEnabled: true,
+  theme: 'light', accent: 'default', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
@@ -41,6 +41,8 @@ export const stateForStorage = state => {
 // false disables them; malformed or absent values retain the historical enabled behavior.
 const normalizeState = state => {
   const next = normalizeExerciseIds(Object.assign(clone(DEF), state || {}))
+  next.theme = next.theme === 'dark' || next.theme === 'light' ? next.theme : DEF.theme
+  next.accent = resolveAccent(next.accent)
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false

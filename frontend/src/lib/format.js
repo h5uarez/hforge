@@ -56,9 +56,10 @@ export const ACCENTS = {
   cobalt: { a: '#0038FF', b: '#D6E3FF' },
   ember: { a: '#FF9030', b: '#111827' },
 }
-// Legacy 8-key accents → canonical pair. Applied on every boot path (App.jsx)
-// and duplicated by the pre-paint inline script in index.html (drift-guarded).
+// Legacy 8-key accents → canonical pair. Applied wherever stored appearance is
+// resolved and duplicated by the pre-paint inline script in index.html (drift-guarded).
 export const ACCENT_MIGRATION = { lime: 'ultraviolet', sky: 'cobalt', orange: 'ember', violet: 'ultraviolet', pink: 'dragonfruit', red: 'dragonfruit', teal: 'cobalt', gold: 'ember' }
 // Stored accents resolve to a canonical pair; unknown values fall back to
-// ultraviolet. The old silent 'lime' fallback is gone.
-export const resolveAccent = a => (ACCENTS[a] ? a : ACCENT_MIGRATION[a] ?? 'ultraviolet')
+// default. Legacy values keep their explicit migration targets.
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key)
+export const resolveAccent = a => hasOwn(ACCENTS, a) ? a : (hasOwn(ACCENT_MIGRATION, a) ? ACCENT_MIGRATION[a] : 'default')

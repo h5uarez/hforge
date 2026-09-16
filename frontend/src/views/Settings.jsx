@@ -182,7 +182,7 @@ export default function Settings() {
         <Segmented
           className="seg-inline"
           options={[{ value: 'dark', icon: 'moon', label: t('Dark') }, { value: 'light', icon: 'sun', label: t('Light') }]}
-          value={S.theme === 'light' ? 'light' : 'dark'}
+          value={S.theme === 'dark' ? 'dark' : 'light'}
           onChange={v => update(s => { s.theme = v })}
         />
       </Row>
@@ -207,7 +207,7 @@ export default function Settings() {
                 style={{ background: `linear-gradient(135deg, ${c.a} 0 50%, ${c.b} 50% 100%)` }}
                 onClick={() => update(s => { s.accent = k })} aria-label={k} />
               <span className="swatch-name" aria-hidden="true">{k}</span>
-              <span className="pal-prev" data-accent={k} data-theme={S.theme === 'light' ? 'light' : 'dark'} aria-hidden="true">
+              <span className="pal-prev" data-accent={k} data-theme={S.theme === 'dark' ? 'dark' : 'light'} aria-hidden="true">
                 <i className="d-bg" /><i className="d-sf" /><i className="d-tx" /><i className="d-ac" />
               </span>
             </div>

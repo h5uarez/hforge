@@ -300,6 +300,7 @@ describe('mobile accessibility and layout contracts', () => {
 describe('accent palette system (theme-palette-redesign)', () => {
   const css = source('index.css')
   const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
+  const manifest = readFileSync(resolve(process.cwd(), 'public/manifest.json'), 'utf8')
 
   // WCAG 2.x relative luminance (sRGB linearization) + contrast ratio.
   const srgb = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
@@ -459,13 +460,28 @@ describe('accent palette system (theme-palette-redesign)', () => {
     expect(map).toBeTruthy()
     expect(JSON.parse(map[1].replace(/'/g, '"'))).toEqual(ACCENT_MIGRATION)
     expect(html).toContain("localStorage.getItem('gym_state_v1')")
-    expect(html).toContain("dataset.accent = 'ultraviolet'")
+    expect(html).toContain("st.theme === 'light' || st.theme === 'dark'")
+    expect(html).toContain("Object.prototype.hasOwnProperty.call(MIGRATE, rawAccent)")
+    expect(html).toContain("document.documentElement.dataset.theme = 'light'")
+    expect(html).toContain("document.documentElement.dataset.accent = 'default'")
+    expect(html).toContain("? MIGRATE[rawAccent] : 'default'")
+    expect(html).toContain("|| PALETTE_BG.default.light")
+    expect(html).toContain('<meta name="theme-color" content="#ffffff">')
+    expect(html).toContain('<g fill="#050505">')
+    expect(manifest).toContain('"background_color": "#ffffff"')
+    expect(manifest).toContain('"theme_color": "#ffffff"')
   })
 
   it('resolves legacy and unknown stored accents', () => {
+    expect(ACCENT_MIGRATION).toEqual({ lime: 'ultraviolet', sky: 'cobalt', orange: 'ember', violet: 'ultraviolet', pink: 'dragonfruit', red: 'dragonfruit', teal: 'cobalt', gold: 'ember' })
     expect(resolveAccent('pink')).toBe('dragonfruit')
     expect(resolveAccent('lime')).toBe('ultraviolet')
-    expect(resolveAccent('magenta')).toBe('ultraviolet')
+    expect(resolveAccent('magenta')).toBe('default')
     expect(resolveAccent('ember')).toBe('ember')
+  })
+
+  it('keeps the store defaults light and on the default palette', () => {
+    const store = source('store/useStore.js')
+    expect(store).toContain("theme: 'light', accent: 'default'")
   })
 })
