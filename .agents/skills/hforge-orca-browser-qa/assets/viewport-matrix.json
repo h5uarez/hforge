@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "viewports": [
+    { "id": "hforge-mobile-m", "label": "M", "width": 390, "height": 844 },
+    { "id": "hforge-mobile-l", "label": "L", "width": 430, "height": 932 }
+  ]
+}
