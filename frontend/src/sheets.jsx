@@ -3,7 +3,7 @@ import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName, exOr } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, topWeightInitialValue, currentSessionHeaviestWeight, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, dateLocale, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -19,7 +19,7 @@ import { parseImport, mergeImport, classifyImportWorkouts } from './lib/import-c
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
-import { weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight as formatWeight } from './lib/weight-controls.js'
+import { weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight as formatWeight } from './lib/weight-controls.js'
 import { MOBILE } from './lib/mobile.js'
 import { newSessionSid, moveSessionUnit, remapCur } from './lib/session.js'
 import { touchActiveRecord } from './lib/inactivity.js'
@@ -164,15 +164,18 @@ export function loadStarterPlan() {
   toast(t('Starter plan loaded — Mon Push · Wed Pull · Fri Legs'))
 }
 
-/* ============================ weight picker (body weight + goal; top weight can be decimal) ============================ */
-export { weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight }
+/* ============================ weight picker (ordinary controls + exceptional TopWeight) ============================ */
+export { weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight }
 export const fmtWeight = (value, allowDecimals = false) => formatWeight(value, allowDecimals, dateLocale())
-function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight = false }) {
-  const { min, max, step } = weightBounds(unit)
+function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight = false, topWeight = false }) {
+  const bounds = topWeight ? topWeightBounds(unit) : weightBounds(unit)
+  const normalize = topWeight ? clampTopWeight : clampWeight
+  const adjust = topWeight ? adjustTopWeight : adjustWeight
+  const { min, max, step } = bounds
   const { primary, chips } = weightControlSteps(allowDecimals, bodyweight)
-  const sv = clampWeight(value, unit, allowDecimals)
-  const onSlide = v => setValue(clampWeight(v, unit, allowDecimals))
-  const onAdjust = delta => setValue(adjustWeight(sv, delta, unit, allowDecimals))
+  const sv = normalize(value, unit, allowDecimals)
+  const onSlide = v => setValue(normalize(v, unit, allowDecimals))
+  const onAdjust = delta => setValue(adjust(sv, delta, unit, allowDecimals))
   const quickAmount = fmtWeight(primary, allowDecimals)
   return <>
     <div className="bwstep">
@@ -184,7 +187,7 @@ function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight 
           ? <NumberField value={sv} displayValue={fmtWeight(sv, true)} decimal={true}
               size={Math.max(2, String(fmtWeight(sv, true)).length)}
               aria-label={t('Confirm the weight you worked with — your highest becomes the default next time.')}
-              className="bw-read-input" onChange={v => setValue(clampWeight(v, unit, true))} />
+              className="bw-read-input" onChange={v => setValue(normalize(v, unit, true))} />
           : fmtWeight(sv)}
         <span className="u">{unit}</span>
       </div>
@@ -1054,13 +1057,13 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel 
     const flags = {}
     if (bw !== isBodyweightEq(ex.id)) flags.bodyweight = bw
     if (cardio) onSave({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8), ...planNoteField })
-    else if (mode === 'time') onSave({ sets, mode: 'time', sec: timedSeconds, weight: Math.max(0, c.weight || 0), ...flags, ...prog, ...planNoteField })
+    else if (mode === 'time') onSave({ sets, mode: 'time', sec: timedSeconds, weight: clampConfiguredWeight(c.weight, st.unit), ...flags, ...prog, ...planNoteField })
     else {
       // A unilateral target is stored even: the split has to divide, and a typed 15 would
       // otherwise plan seven reps on one side and eight on the other, every session.
       const typed = Math.max(1, Math.round(c.reps) || 10)
       const reps = perSide ? Math.ceil(typed / 2) * 2 : typed
-      const out = { sets, mode: 'reps', reps, weight: Math.max(0, c.weight || 0), ...flags, ...(perSide ? { side: true } : {}), ...prog }
+      const out = { sets, mode: 'reps', reps, weight: clampConfiguredWeight(c.weight, st.unit), ...flags, ...(perSide ? { side: true } : {}), ...prog }
       if (policyFor({ ...c, id: ex.id }, routine, 'reps') === 'double') out.repsMin = Math.min(reps, Math.max(1, Math.round(c.repsMin) || Math.max(1, reps - 2)))
       // A ceiling below the working reps would tell you to add a set on day one.
       if (bw && !(out.weight > 0) && c.repsMax > 0) out.repsMax = Math.max(reps, Math.round(c.repsMax))
@@ -1104,13 +1107,13 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel 
         <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onRawChange={raw => { setTimedSecondsRaw(raw); if (validTimedSeconds(raw)) setC(x => ({ ...x, sec: Number(String(raw).trim()) })) }}
           onStep={v => setTimedSecondsRaw(String(clampTimedSeconds(v)))}
           onChange={v => setC(x => ({ ...x, sec: clampTimedSeconds(v) }))} />
-        <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
+        <Stepper label={t('Weight ({0})', st.unit)} value={clampConfiguredWeight(c.weight, st.unit)} step={2.5} onChange={v => setC(x => ({ ...x, weight: clampConfiguredWeight(v, st.unit) }))} />
       </> : <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={setCountChange} />
         <Stepper label={t('Reps')} value={c.reps} step={perSide ? 2 : 1} decimal={false} onChange={v => setC(x => ({ ...x, reps: v }))} />
         {/* On bodyweight work the weight stepper is the click #32 is about, so it is not here
             until there is a belt to describe — see the added-weight row below. */}
-        {!bw && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />}
+        {!bw && <Stepper label={t('Weight ({0})', st.unit)} value={clampConfiguredWeight(c.weight, st.unit)} step={2.5} onChange={v => setC(x => ({ ...x, weight: clampConfiguredWeight(v, st.unit) }))} />}
       </>}
     </div>
     {mode === 'time' && !bw && <div className="small dim" style={{ marginBottom: 18 }}>
@@ -1627,9 +1630,9 @@ function TopWeight({ entryIdx, close }) {
   // to sit after every one of them.
   const entry = A ? A.entries[entryIdx] : null
   const ex = entry && EXIDX[entry.id]
-  const maxSet = entry ? Math.max(0, ...entry.sets.filter(s => projectSideSet(s).done).map(weightOfSet)) : 0
+  const maxSet = entry ? (currentSessionHeaviestWeight(entry) ?? 0) : 0
   const prevBest = entry ? Math.max((st.exWeights[entry.id] || {}).w || 0, bestWeightFor(st, entry.id)) : 0
-  const [v, setV] = useState(entry ? (Math.max(maxSet, prevBest) || entry.target.weight || 0) : 0)
+  const [v, setV] = useState(entry ? topWeightInitialValue(entry) : 0)
   useEffect(() => { if (!entry) close() }, [!entry])
 
   const units = supersetUnits(A ? A.entries : [])
@@ -1640,7 +1643,7 @@ function TopWeight({ entryIdx, close }) {
   if (!entry || !ex) return null
 
   const commit = advance => {
-    const n = savedWeight(v, st.unit, true)
+    const n = savedTopWeight(v, st.unit, true)
     if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
       s.active.entries[entryIdx].topW = n
@@ -1660,7 +1663,7 @@ function TopWeight({ entryIdx, close }) {
         "Elevación de gemelos…" stay readable at 320px. */}
     <h3 className="capitalize row sheet-done-title"><span className="sheet-done-name">{exerciseName(ex)}</span><span className="tag acc done-chip"><Icon name="checkCircle" />{t('Done')}</span></h3>
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
-    <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals />
+    <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals topWeight />
     <div style={{ height: 10 }} />
     {prevBest > 0 ? <div className="small dim" style={{ textAlign: 'center', marginBottom: 12 }}>{t('Previous best:')} {fmtWeight(prevBest, true)} {st.unit}{maxSet > prevBest && <span style={{ color: 'var(--yellow)' }}> — {t('new record!')}</span>}</div> : <div style={{ height: 4 }} />}
     {unitDone ? <>

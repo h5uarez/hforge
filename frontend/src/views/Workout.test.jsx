@@ -442,6 +442,18 @@ describe('scrollable workout composition contracts', () => {
     }
   })
 
+  it('localizes unilateral markers and uses prior history only as empty-field hints', () => {
+    expect(source).toContain("import { t, sideLabel } from '../lib/i18n.js'")
+    expect(source).toContain('previousSetValue(last, i, col.f)')
+    expect(source).toContain('previousSetValue(last, i, col.f, side)')
+    expect(source).toContain("sideLabel('left').marker")
+    expect(source).toContain("sideLabel('right').marker")
+    expect(source).toContain('sideText.name')
+    expect(source).toContain('aria-hidden="true"')
+    expect(source).not.toContain('>L</span>')
+    expect(source).not.toContain('>R</span>')
+  })
+
   it('marks only workout-record mutations and clears the active reminder lifecycle', () => {
     expect(source).toContain('touchActiveRecord')
     expect(source).toContain('s.active = null')

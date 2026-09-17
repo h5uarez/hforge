@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, previousSetValue, currentSessionHeaviestWeight, topWeightInitialValue, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition, historyTargetBaseline } from './history-edit.js'
 import { rebuildHistory } from './history-rebuild.js'
@@ -149,6 +149,37 @@ describe('side-aware set accounting', () => {
     expect(setsDone(w)).toBe(0)
     w.entries[0].sets[0].right.done = true
     expect(setsDone(w)).toBe(1)
+  })
+})
+
+describe('workout history hints and TopWeight defaults', () => {
+  it('reads the previous occurrence by set position and falls back to its final set', () => {
+    const last = { sets: [{ w: 40, r: 8 }, { w: 45, r: 6 }] }
+    expect(previousSetValue(last, 0, 'w')).toBe(40)
+    expect(previousSetValue(last, 1, 'r')).toBe(6)
+    expect(previousSetValue(last, 4, 'w')).toBe(45)
+    expect(previousSetValue(last, 0, 'rir')).toBeUndefined()
+  })
+
+  it('uses explicit side history and splits aggregate legacy reps for side hints', () => {
+    const side = { sets: [{ left: { w: 20, r: 5 }, right: { w: 22, r: 4 }, w: 22, r: 9 }] }
+    expect(previousSetValue(side, 0, 'w', 'left')).toBe(20)
+    expect(previousSetValue(side, 0, 'r', 'right')).toBe(4)
+    expect(previousSetValue({ sets: [{ w: 30, r: 10 }] }, 0, 'r', 'left')).toBe(5)
+  })
+
+  it('prefers the current session load over any target or historical fallback', () => {
+    const entry = { target: { weight: 90 }, sets: [{ w: 55, done: true }, { w: 60, done: true }] }
+    expect(currentSessionHeaviestWeight(entry)).toBe(60)
+    expect(topWeightInitialValue(entry)).toBe(60)
+    expect(topWeightInitialValue({ target: { weight: 40 }, sets: [{ w: 0, done: true }] })).toBe(0)
+    expect(topWeightInitialValue({ target: { weight: 40 }, sets: [{ w: 60, done: false }] })).toBe(40)
+  })
+
+  it('uses the heavier explicit side when a unilateral set has different loads', () => {
+    const entry = { target: { weight: 90 }, sets: [{ left: { w: 55, done: true }, right: { w: 62, done: true } }] }
+    expect(currentSessionHeaviestWeight(entry)).toBe(62)
+    expect(topWeightInitialValue(entry)).toBe(62)
   })
 })
 

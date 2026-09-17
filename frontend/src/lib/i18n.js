@@ -99,6 +99,19 @@ export function t(s, ...args) {
   for (let i = 0; i < args.length; i++) v = v.replaceAll('{' + i + '}', args[i])
   return v
 }
+// Stored side keys stay English (`left` / `right`); only the active-workout marker and its
+// accessible name follow the selected UI language. Unsupported locales intentionally retain the
+// English L/R convention until a locale pack is added.
+const SIDE_SOURCE_KEYS = { left: 'Left', right: 'Right' }
+export function sideLabel(side, language = getLang()) {
+  const source = SIDE_SOURCE_KEYS[side]
+  if (!source) return { marker: '', name: '' }
+  const spanish = normalizeLang(language) === 'es'
+  return {
+    marker: spanish ? (side === 'left' ? 'I' : 'D') : (side === 'left' ? 'L' : 'R'),
+    name: t(source),
+  }
+}
 // Instructions for an exercise in the current language (English steps as fallback).
 export const instrFor = ex => (instr && instr[ex.id]) || ex.st || []
 

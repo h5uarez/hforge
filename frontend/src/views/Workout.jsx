@@ -4,10 +4,10 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
 import { removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, previousSetValue, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
-import { t } from '../lib/i18n.js'
+import { t, sideLabel } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
 import Media, { prefetchWorkoutMedia } from '../components/Media.jsx'
@@ -134,11 +134,13 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
   }
   const cell = (s, i, col, cls) => {
     const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    const historyHint = previousSetValue(last, i, col.f)
+    const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
     return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
           Vacant effort keeps a neutral "–" ghost in the same full-width track. */}
-      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[col.f] ?? ''}
+      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={s[col.f] ?? ''}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
@@ -148,10 +150,13 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
   // − on empty stays empty, stepping off the floor clears the cell (null drops the key).
   const sideCell = (s, i, side, col, cls) => {
     const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
+    const historyHint = previousSetValue(last, i, col.f, side)
+    const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
+    const sideText = sideLabel(side)
     return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
-      <button aria-label={t('Decrease {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={side.toUpperCase() + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={col.eff ? effortProps.placeholder : undefined} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
-      <button aria-label={t('Increase {0}', side)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+      <button aria-label={t('Decrease {0}', sideText.name)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
+      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={sideText.name + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
+      <button aria-label={t('Increase {0}', sideText.name)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
     </div>
   }
   // Empty notes stay out of the way, while an existing note remains immediately readable. This
@@ -238,16 +243,16 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
               aria-current={isCurrent ? 'true' : undefined}>
               <div className="n">{i + 1}</div>
               {perSide ? <>
-                <span className="side-label side-left-label">L</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
-                <span className="side-label side-right-label">R</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}{col3 && sideCell(s, i, 'right', col3, 'eff')}
+                <span className="side-label side-left-label" aria-hidden="true">{sideLabel('left').marker}</span>{sideCell(s, i, 'left', col1, 'w')}{col2 && sideCell(s, i, 'left', col2, 'r')}{col3 && sideCell(s, i, 'left', col3, 'eff')}
+                <span className="side-label side-right-label" aria-hidden="true">{sideLabel('right').marker}</span>{sideCell(s, i, 'right', col1, 'w')}{col2 && sideCell(s, i, 'right', col2, 'r')}{col3 && sideCell(s, i, 'right', col3, 'eff')}
               </> : <>{cell(s, i, col1, 'w')}{col2 && cell(s, i, col2, 'r')}{col3 && cell(s, i, col3, 'eff')}</>}
               {/* A timed set is started, not typed: the timer counts the hold down and checks the
                   set off itself. The checkbox stays for anyone who timed it on their own watch. */}
               {timed && <button className="setgo" aria-label={t('Start set')} disabled={projectSideSet(s).done || !!working}
                 onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
               {perSide ? <div className="side-checks">
-                <Check aria-label={'L ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
-                <Check aria-label={'R ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
+                <Check aria-label={sideLabel('left').name + ' ' + t('Sets') + ' ' + (i + 1)} checked={!!s.left?.done} onChange={() => onToggle(i, 'left')} />
+                <Check aria-label={sideLabel('right').name + ' ' + t('Sets') + ' ' + (i + 1)} checked={!!s.right?.done} onChange={() => onToggle(i, 'right')} />
               </div> : <Check aria-label={t('Sets') + ' ' + (i + 1)} checked={s.done} onChange={() => onToggle(i)} />}
             </div>
             {target && <div id={targetId(i)} className="setrow-info" role="region" hidden={!targetOpen}

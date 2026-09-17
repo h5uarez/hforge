@@ -139,6 +139,27 @@ export function syncSideSet(s) {
   return s
 }
 
+// The heaviest completed set in the active session is the honest default for the TopWeight
+// question. A completed unloaded set deliberately returns 0 instead of falling through to a
+// historical value or a heavier routine target.
+export function currentSessionHeaviestWeight(entry) {
+  let completed = false
+  let best = 0
+  ;(entry?.sets || []).forEach(raw => {
+    if (!setIsDone(raw)) return
+    completed = true
+    best = Math.max(best, weightOfSet(raw))
+  })
+  return completed ? best : null
+}
+
+export function topWeightInitialValue(entry) {
+  const current = currentSessionHeaviestWeight(entry)
+  if (current !== null) return current
+  const target = Number(entry?.target?.weight)
+  return Number.isFinite(target) && target > 0 ? target : 0
+}
+
 // mm:ss for a work duration — seconds alone read badly past a minute ("90 s" vs "1:30").
 export function fmtSec(sec) {
   const n = Math.max(0, Math.round(Number(sec) || 0))
@@ -407,6 +428,20 @@ export function lastEntryFor(S, exId) {
   }
   return null
 }
+
+// Visual-only history hint for a newly built workout. The current set remains the controlled
+// value; this helper supplies a placeholder only when that value is empty. Side-aware history is
+// preferred, while legacy aggregate reps split evenly for the two visible side fields.
+export function previousSetValue(last, index, field, side) {
+  if (field !== 'w' && field !== 'r') return undefined
+  const sets = Array.isArray(last?.sets) ? last.sets : []
+  const previous = sets[index] || sets[sets.length - 1]
+  if (!previous) return undefined
+  if (side && previous[side] && Number.isFinite(previous[side][field])) return previous[side][field]
+  if (side && field === 'r' && Number.isFinite(previous.r)) return sideReps(previous.r)
+  return Number.isFinite(previous[field]) ? previous[field] : undefined
+}
+
 export function bestWeightFor(S, exId) {
   let best = 0
   S.workouts.forEach(w => w.entries.forEach(e => {

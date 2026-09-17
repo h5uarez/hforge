@@ -22,7 +22,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, weightBounds, clampWeight, adjustWeight, weightControlSteps, savedWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
+const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
@@ -232,11 +232,16 @@ describe('weight bounds and precision modes', () => {
     expect(adjustWeight(72, 1, 'kg')).toBe(73)
   })
 
-  it('keeps the top-weight slider and primary controls at one kilogram', () => {
-    expect(weightBounds('kg').step).toBe(1)
+  it('keeps the TopWeight slider independent at one kilogram through 500 kg / 1100 lb', () => {
+    expect(topWeightBounds('kg')).toEqual({ min: 1, max: 500, step: 1 })
+    expect(topWeightBounds('lb')).toEqual({ min: 1, max: 1100, step: 1 })
+    expect(weightBounds('kg').max).toBe(180)
+    expect(clampWeight(500, 'kg')).toBe(180)
+    expect(clampTopWeight(500, 'kg')).toBe(500)
+    expect(clampTopWeight(1101, 'lb')).toBe(1100)
     expect(weightControlSteps(true)).toEqual({ primary: 1, chips: [-0.25, 0.25] })
-    expect(adjustWeight(122.5, -weightControlSteps(true).primary, 'kg', true)).toBe(121.5)
-    expect(adjustWeight(122.5, weightControlSteps(true).primary, 'kg', true)).toBe(123.5)
+    expect(adjustTopWeight(122.5, -weightControlSteps(true).primary, 'kg', true)).toBe(121.5)
+    expect(adjustTopWeight(122.5, weightControlSteps(true).primary, 'kg', true)).toBe(123.5)
     expect(adjustWeight(7.25, -0.25, 'kg', true)).toBe(7)
     expect(adjustWeight(7.25, 0.25, 'kg', true)).toBe(7.5)
   })
@@ -256,7 +261,7 @@ describe('weight bounds and precision modes', () => {
   it.each([
     ['manual bodyweight', 'kg', 181.27, 180],
     ['goal weight', 'kg', 181.27, 180],
-    ['top weight', 'lb', 397, 396],
+    ['ordinary selector', 'lb', 397, 396],
   ])('clamps the %s save consumer through the shared helper', (_consumer, unit, value, expected) => {
     expect(savedWeight(value, unit)).toBe(expected)
   })
@@ -308,7 +313,22 @@ describe('weight bounds and precision modes', () => {
   it('clamps fine top-weight adjustments to the same valid bounds', () => {
     expect(adjustWeight(1, -0.5, 'kg', true)).toBe(1)
     expect(adjustWeight(180, 0.1, 'kg', true)).toBe(180)
+    expect(adjustTopWeight(500, 0.1, 'kg', true)).toBe(500)
     expect(savedWeight(0.5, 'kg', true)).toBe(1)
+    expect(savedTopWeight(1200, 'lb', true)).toBe(1100)
+    expect(clampConfiguredWeight(0, 'kg')).toBe(0)
+    expect(clampConfiguredWeight(500, 'kg')).toBe(180)
+  })
+
+  it('wires ordinary and TopWeight bounds to separate sheet consumers', () => {
+    const topBlock = sheetsSource.match(/function TopWeight[\s\S]*?export const workoutCompleteSheet/)?.[0] || ''
+    const configBlock = sheetsSource.match(/function ExConfig[\s\S]*?\/\* ============================ workout detail/)?.[0] || sheetsSource
+    expect(topBlock).toContain('topWeightInitialValue(entry)')
+    expect(topBlock).toContain('savedTopWeight')
+    expect(topBlock).toContain('topWeight />')
+    expect(topBlock).not.toContain('Math.max(maxSet, prevBest)')
+    expect(configBlock).toContain('clampConfiguredWeight')
+    expect(sheetsSource).toContain('function WeightInput({ value, setValue, unit, allowDecimals = false, bodyweight = false, topWeight = false })')
   })
 })
 

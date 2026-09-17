@@ -106,6 +106,16 @@ describe('Spanish translation and instruction contracts', () => {
     expect(t('a key absent from every locale')).toBe('a key absent from every locale')
   })
 
+  it('localizes unilateral markers and accessible side names without changing side keys', async () => {
+    const { setLang, sideLabel } = await import('./i18n.js')
+    expect(sideLabel('left', 'en')).toEqual({ marker: 'L', name: 'Left' })
+    expect(sideLabel('right', 'fr')).toEqual({ marker: 'R', name: 'Right' })
+    await setLang('es')
+    expect(sideLabel('left')).toEqual({ marker: 'I', name: 'Izquierda' })
+    expect(sideLabel('right')).toEqual({ marker: 'D', name: 'Derecha' })
+    expect(sideLabel('unknown', 'es')).toEqual({ marker: '', name: '' })
+  })
+
   it('formats decimal set counts with the active locale', async () => {
     const { setLang, t } = await import('./i18n.js')
     const { fmtNum } = await import('./format.js')
