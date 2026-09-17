@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY server.js ./
+COPY db.js ./
+COPY migrations/ ./migrations/
 COPY state-validation.js ./
 COPY inactivity-reminders.js ./
 COPY push-catalog.js ./
