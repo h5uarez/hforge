@@ -58,7 +58,7 @@
   --ease-exit:cubic-bezier(.32,.72,0,1);
   --fast:140ms; --med:220ms;
   /* P0 directional + tab motion: enter is slower than exit, always */
-  --motion-tab:140ms; --motion-push:240ms; --motion-back:180ms;
+  --motion-tab:200ms; --motion-push:240ms; --motion-back:180ms;
   /* physical control thumbs (switch knob, slider knob) stay iOS-white in both
      themes — a token, never a hard-coded surface, so no theme flashes white */
   --knob:#fff;
@@ -265,8 +265,8 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
 .hdr h1{font-size:clamp(26px,7vw + 8px,34px);line-height:1.06;font-weight:700;letter-spacing:-.028em}
 .hdr .sub{color:var(--label-2);font-size:15px;letter-spacing:-.006em;margin-top:4px}
-/* P0 page headers (Home/Stats/History): sticky title band; past scrollY 0 a hairline
-   fades in (opacity only) with a shadow, and the title compacts (transform only).
+/* P0 page headers (Home/Stats/History): sticky title band; past scrollY 0 a
+   soft/faded edge appears (opacity only) with a shadow, and the title compacts (transform only).
    No layout animation, no scroll listener cost beyond passive+rAF (see useScrolled). */
 .hdr.page{
   /* Start at the viewport edge so the header also paints the device's safe-area
@@ -279,8 +279,9 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
 }
 .hdr.page::after{
-  content:'';position:absolute;left:0;right:0;bottom:0;height:var(--hair);
-  background:var(--sep);opacity:0;transition:opacity var(--fast) var(--ease);
+  content:'';position:absolute;left:0;right:0;bottom:-12px;height:12px;
+  background:linear-gradient(to bottom,var(--sep-op),transparent);filter:blur(2px);
+  pointer-events:none;opacity:0;transition:opacity var(--fast) var(--ease);
 }
 .hdr.page h1{transition:transform var(--fast) var(--ease);transform-origin:left bottom}
 .hdr.page.scrolled::after{opacity:1}
@@ -470,9 +471,9 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
    above and the desktop transform below; compacting never replaces either one.
    Scaling from the bottom centre keeps the safe-area anchor fixed while the
    complete shell retreats modestly toward the page centre. Logical button boxes
-   grow to 46px so their 0.96 visual scale remains a real 44px hit target. */
-#tabbar.is-compact{scale:.96}
-#tabbar.is-compact button{min-width:46px;min-height:46px}
+   grow to 50px so their 0.88 visual scale remains a real 44px hit target. */
+#tabbar.is-compact{scale:.88}
+#tabbar.is-compact button{min-width:50px;min-height:50px}
 
 /* ------------------------------------------------------------ week strip -- */
 .week{display:flex;justify-content:space-between;gap:4px}
