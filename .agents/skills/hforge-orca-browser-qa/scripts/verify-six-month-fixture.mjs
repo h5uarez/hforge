@@ -29,6 +29,7 @@ const MAX_GENERATOR_OUTPUT_BYTES = 256 * 1024
 const GENERATOR_TIMEOUT_MS = 10_000
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
+const normalizeLf = bytes => Buffer.from(bytes.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8')
 const fail = message => { throw new Error(`Six-month fixture verification failed: ${message}`) }
 const expectEqual = (actual, expected, label) => {
   if (actual !== expected) fail(`${label}: expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`)
@@ -111,9 +112,10 @@ const runGenerator = () => new Promise((resolvePromise, rejectPromise) => {
 })
 
 const main = async () => {
-  const committedBytes = await readFile(fixturePath)
-  expectEqual(committedBytes.length, EXPECTED.bytes, 'committed byte count')
-  expectEqual(sha256(committedBytes), EXPECTED.sha256, 'committed SHA-256')
+  const rawCommittedBytes = await readFile(fixturePath)
+  const committedBytes = normalizeLf(rawCommittedBytes)
+  expectEqual(committedBytes.length, EXPECTED.bytes, 'canonical LF byte count')
+  expectEqual(sha256(committedBytes), EXPECTED.sha256, 'canonical LF SHA-256')
 
   let payload
   try {
@@ -129,9 +131,10 @@ const main = async () => {
   }
 
   console.log(`Verified ${fixturePath}`)
-  console.log(`  ${committedBytes.length} bytes; SHA-256 ${EXPECTED.sha256}`)
+  console.log(`  raw checkout: ${rawCommittedBytes.length} bytes; SHA-256 ${sha256(rawCommittedBytes)}`)
+  console.log(`  canonical LF: ${committedBytes.length} bytes; SHA-256 ${EXPECTED.sha256}`)
   console.log(`  ${EXPECTED.fixtureId}; ${EXPECTED.weeks} weeks; ${EXPECTED.workouts} workouts; ${EXPECTED.routines} routines; ${EXPECTED.bodyweight} bodyweight rows; active:null`)
-  console.log(`  generator stdout matches committed bytes exactly`)
+  console.log(`  generator stdout matches canonical LF bytes exactly`)
 }
 
 main().catch(error => {
