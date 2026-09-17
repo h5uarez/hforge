@@ -31,6 +31,17 @@ Default helper bounds are eight candidates, 60 seconds startup, and the remainin
 - If a journey needs API, media, or another service, allocate and verify each service independently under this same contract. Never fall back to fixed 3000/8080/8888 values.
 - An already-running server may be reused only when policy allows it and live evidence proves the same canonical worktree, equivalent command/cwd, selected port, and listener owner. "It returns 200" is insufficient.
 
+## Cross-run supervisor/frontend retention (measured run qa-boot-20260917-1901-a1)
+
+Retaining the lease plus a live supervisor frontend across runs saves ~5s boot plus cold compilation when policy permits it. Reuse is allowed only when all hold:
+
+1. Policy explicitly permits cross-run retention for this worktree/purpose.
+2. The retained manifest's worktree hash/ID matches the current canonical worktree root exactly — verify before reuse, never assume. A stale or mismatched hash forces a fresh boot; never point tabs at a server from another worktree or an outdated checkout.
+3. Live ownership still verifies: the listener PID is the retained supervisor's exact Vite child, the lease file is still exclusively held, and HTTP readiness plus OS listener proof both pass.
+4. The retaining run reported the exact supervisor handle/PID, lease manifest, and ID-scoped cleanup command, and the reusing run re-manifests them under its own `runId` (linking the prior receipt) so ownership never goes untracked.
+
+If any check fails, release the retained lease and boot fresh under the allocation algorithm above.
+
 ## Supervision and cleanup
 
 Run the helper in a dedicated Orca terminal so it remains a foreground supervisor. The helper owns its Vite child and lease, handles termination, and removes only its run directory/lease. Record the returned terminal handle in the manifest receipt.
