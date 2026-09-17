@@ -116,7 +116,7 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     return ids
   }, []).join(' ')
   // Fresh sessions retain their current routine/progression values in state, but unedited fields
-  // can visually show the previous occurrence as a placeholder. This ref survives rerenders
+  // can visually show the previous occurrence as a hint. This ref survives rerenders
   // without adding hint metadata to the active session or saved history.
   const historyPreview = useRef(S.active?.lastRecordEditAt === S.active?.start)
   const historyEdited = useRef(new Set())
@@ -144,13 +144,15 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
     const historyHint = previousSetValue(last, i, col.f)
     const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
-    const value = historyInputValue(s[col.f], historyHint, historyPreview.current && !projectSideSet(s).done, historyEdited.current.has(historyKey(i, col.f)))
+    const hintVisible = historyHint != null && historyPreview.current && !projectSideSet(s).done && !historyEdited.current.has(historyKey(i, col.f))
+    const value = historyInputValue(s[col.f])
     return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
           Vacant effort keeps a neutral "–" ghost in the same full-width track. */}
-      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={value}
-        onChange={v => { markHistoryEdited(i, col.f); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v) }} /></span>
+      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={hintVisible ? undefined : placeholder} value={value}
+        onChange={v => { markHistoryEdited(i, col.f); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v) }} />
+        {hintVisible && <span className="history-hint" aria-hidden="true">{fmtNum(historyHint)}</span>}</span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   }
@@ -162,10 +164,12 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     const historyHint = previousSetValue(last, i, col.f, side)
     const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
     const sideText = sideLabel(side)
-    const value = historyInputValue(s[side][col.f], historyHint, historyPreview.current && !projectSideSet(s).done, historyEdited.current.has(historyKey(i, col.f, side)))
+    const hintVisible = historyHint != null && historyPreview.current && !projectSideSet(s).done && !historyEdited.current.has(historyKey(i, col.f, side))
+    const value = historyInputValue(s[side][col.f])
     return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
       <button aria-label={t('Decrease {0}', sideText.name)} onClick={() => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side) }}><Icon name="minus" /></button>
-      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={sideText.name + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={value} onChange={v => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side) }} /></span>
+      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={sideText.name + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={hintVisible ? undefined : placeholder} value={value} onChange={v => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side) }} />
+        {hintVisible && <span className="history-hint" aria-hidden="true">{fmtNum(historyHint)}</span>}</span>
       <button aria-label={t('Increase {0}', sideText.name)} onClick={() => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side) }}><Icon name="plus" /></button>
     </div>
   }

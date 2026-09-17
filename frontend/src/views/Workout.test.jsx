@@ -442,13 +442,18 @@ describe('scrollable workout composition contracts', () => {
     }
   })
 
-  it('localizes unilateral markers and uses prior history only as empty-field hints', () => {
+  it('localizes unilateral markers and keeps prior history visual-only', () => {
+    const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(source).toContain("import { t, sideLabel } from '../lib/i18n.js'")
     expect(source).toContain('previousSetValue(last, i, col.f)')
     expect(source).toContain('previousSetValue(last, i, col.f, side)')
     expect(source).toContain('historyInputValue')
+    expect(source).toContain('historyInputValue(s[col.f])')
+    expect(source).toContain('historyInputValue(s[side][col.f])')
     expect(source).toContain('historyEdited.current.has')
     expect(source).toContain('historyPreview.current')
+    expect(source).toContain('<span className="history-hint" aria-hidden="true">')
+    expect(css).toContain('.stp .val:focus-within .history-hint{display:none}')
     expect(source).toContain('value={value}')
     expect(source).toContain("sideLabel('left').marker")
     expect(source).toContain("sideLabel('right').marker")

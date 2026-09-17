@@ -186,17 +186,17 @@ describe('workout history hints and TopWeight defaults', () => {
     expect(topWeightInitialValue(entry)).toBe(62)
   })
 
-  it('hides seeded targets only for the visual input while leaving saved session values untouched', () => {
+  it('keeps seeded session values in the controlled input while history stays visual-only', () => {
     const [set] = buildSets(emptyS, { id: LIFT, sets: 1, reps: 8, weight: 50 })
-    expect(historyInputValue(set.r, 6, true)).toBe('')
-    expect(historyInputValue(set.w, 40, true)).toBe('')
-    expect(historyInputValue(set.r, 6, true, true)).toBe(8)
-    expect(historyInputValue(set.r, undefined, true)).toBe(8)
+    expect(historyInputValue(set.r)).toBe(8)
+    expect(historyInputValue(set.w)).toBe(50)
+    expect(historyInputValue(set.r, 6, true)).toBe(8)
+    expect(historyInputValue(null, 40, true)).toBe('')
     expect(set).toEqual({ w: 50, r: 8, done: false })
 
     const [side] = buildSets(emptyS, { id: '0739', sets: 1, reps: 12, weight: 20, side: true })
-    expect(historyInputValue(side.left.r, 4, true)).toBe('')
-    expect(historyInputValue(side.right.w, 22, true)).toBe('')
+    expect(historyInputValue(side.left.r, 4, true)).toBe(6)
+    expect(historyInputValue(side.right.w, 22, true)).toBe(20)
     const saved = copyHistoryEntry({ id: LIFT, sets: [{ ...set, done: true }] })
     expect(saved.sets[0]).toEqual({ w: 50, r: 8, done: true })
     expect(saved.sets[0]).not.toHaveProperty('historyHint')

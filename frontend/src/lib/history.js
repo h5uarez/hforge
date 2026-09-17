@@ -430,8 +430,8 @@ export function lastEntryFor(S, exId) {
 }
 
 // Visual-only history hint for a newly built workout. The current set remains the controlled
-// value; this helper supplies a placeholder only when that value is empty. Side-aware history is
-// preferred, while legacy aggregate reps split evenly for the two visible side fields.
+// value; callers can render this as a native placeholder or a separate visual hint. Side-aware
+// history is preferred, while legacy aggregate reps split evenly for the two visible side fields.
 export function previousSetValue(last, index, field, side) {
   if (field !== 'w' && field !== 'r') return undefined
   const sets = Array.isArray(last?.sets) ? last.sets : []
@@ -442,12 +442,9 @@ export function previousSetValue(last, index, field, side) {
   return Number.isFinite(previous[field]) ? previous[field] : undefined
 }
 
-// NumberField is controlled, so a placeholder is hidden whenever the seeded session value is
-// passed through unchanged. Keep that current target in session state for progression/finish
-// semantics, but expose an empty visual value until the user edits the field. The history hint is
-// never returned as a session value and therefore cannot leak into saved history.
-export function historyInputValue(actual, historyHint, preview = false, touched = false) {
-  if (historyHint != null && preview && !touched) return ''
+// NumberField is controlled, so its value must always remain the active session value. Previous
+// history is rendered separately as a visual hint by Workout.jsx and can never replace this value.
+export function historyInputValue(actual) {
   return actual ?? ''
 }
 
