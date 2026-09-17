@@ -1,4 +1,4 @@
-# Hforge Mobile Browser QA Visual Rubric
+# Hforge Mobile Browser QA Visual Rubric (v1.16)
 
 Use this rubric for bounded, human-observable Hforge QA through Orca only. Snapshot is useful accessible-structure evidence, but it is optional. A snapshot failure must never prevent target-tab creation when control, eval, and at least one usable Orca-native visual route remain healthy.
 
@@ -10,18 +10,18 @@ Use this rubric for bounded, human-observable Hforge QA through Orca only. Snaps
 
 ## Controller and bounded capability preflight
 
-Set `controller_started_at` and one global deadline before starting a child process. Resolve one Orca executable, run `status --json`, fetch `skills get orca-cli`, and fetch the version-matched browser reference. If a required option is absent, run only that command's bounded `--help`; do not infer flags from an older guide.
+Set `controller_started_at` and one global deadline before starting a child process. Resolve one Orca executable, run `status --json`, fetch `skills get orca-cli`, and fetch the version-matched browser reference. After resolving Orca version/platform/architecture, run this literal capability-cache read shape with the default 24-hour TTL: `node .agents/skills/hforge-orca-browser-qa/scripts/capability-cache.mjs read --orca-version <version> --platform <platform> --arch <arch> --ttl-ms 86400000`. Also consult the separate version/platform/architecture-keyed viewport behavior cache with `node .agents/skills/hforge-orca-browser-qa/scripts/viewport-reset-cache.mjs read --orca-version <version> --platform <platform> --arch <arch> --ttl-ms 86400000`. For a fresh optional failure, use this literal capability-cache write shape: `node .agents/skills/hforge-orca-browser-qa/scripts/capability-cache.mjs write --orca-version <version> --platform <platform> --arch <arch> --ttl-ms 86400000 --capability <snapshot|browser_screenshot> --outcome <timeout|error> --failure-domain capability`. Inspect `capabilities.<name>.status`: only `negative` suppresses that probe; `unknown` proceeds. Inspect the viewport cache's top-level `status`: only `observed` selects its verified optimization; `unknown` uses probe-first behavior. Both caches fail open on storage errors. If a required option is absent, run only that command's bounded `--help`; do not infer flags from an older guide.
 
 Classify capabilities independently under killable watchdogs. A failure short-circuits only that capability:
 
 1. **Control plane (required):** runtime status, target-tab create/show/switch, page-specific eval, and page-specific viewport.
-2. **Snapshot (optional/preferred):** probe once on a disposable page when its status is unknown. On timeout/error, terminate the child tree, set `snapshot=unavailable`, and do not call snapshot again during that run.
-3. **Browser screenshot (preferred visual):** probe once independently even if snapshot failed. On timeout/error, terminate the child tree, set `browser_screenshot=unavailable`, and do not call it again during that run.
+2. **Snapshot (optional/preferred):** when the cache says `status=negative`, do not probe and record `not_run_cached_known_unavailable`; otherwise probe once on a disposable page. On timeout/error, terminate that child tree, set `snapshot=unavailable`, record `not_run_known_unavailable`, and run `scripts/capability-cache.mjs write --capability snapshot --outcome <timeout|error> --failure-domain capability`.
+3. **Browser screenshot (preferred visual):** apply the same cache/probe rule independently with `browser_screenshot`. A cached negative records `not_run_cached_known_unavailable`; a timeout/error terminates only its child tree, sets `browser_screenshot=unavailable`, records `not_run_known_unavailable`, and writes only that negative result. A successful probe is never cached.
 4. **Orca app/window screenshot (required fallback when browser screenshot is unavailable):** use the version-documented `computer capabilities`, `list-apps`, `list-windows`, and `get-app-state` surface. Require `observation.screenshot=true`, an identified Orca process/window, a usable screenshot receipt/path, and the binding proof below.
 
-Keep each browser capture watchdog at 5–15s and reserve cleanup time. Close the disposable page/profile in `finally`. An optional snapshot failure is recorded, not promoted to `blocked_evidence_transport`. Continue only if the control plane and at least one visual route are healthy.
+Keep each browser capture watchdog at 5–15s and reserve cleanup time. After disposable page/profile and control setup, launch the two uncached capability probes concurrently, each with its own watchdog and receipt; await both settled results before closing the disposable page/profile in `finally`. One failure must not cancel or classify the other. An optional snapshot failure is recorded, not promoted to `blocked_evidence_transport`. Continue only if the control plane and at least one visual route are healthy.
 
-Record a known snapshot or browser-screenshot timeout once in the run capability matrix. Every lane then records `not_run_known_unavailable` for that capability; never repeat a known-hanging command in either lane.
+Record a known snapshot or browser-screenshot timeout once in the run capability matrix. Every lane records `not_run_cached_known_unavailable` when the fresh capability cache skipped the probe, or `not_run_known_unavailable` when this run's probe failed; never repeat a known-hanging command in either lane. Invalid or corrupt cache state is `unknown` and never suppresses a probe. A `cache_write_unavailable` result is also `unknown`, so the probe result still governs this run and the next run probes again. Do not cache control-plane failures, successful capabilities, or tab inventory. For an unknown viewport-cache result, write `reload_resets_viewport` only after a post-reload probe actually observes the reset, using the literal shape `node .agents/skills/hforge-orca-browser-qa/scripts/viewport-reset-cache.mjs write --orca-version <version> --platform <platform> --arch <arch> --ttl-ms 86400000 --behavior reload_resets_viewport --evidence <opaque-id>`. The evidence identifier must be opaque and bounded; never put fixture/source contents, credentials, or absolute project paths in it.
 
 ### Capability/evidence matrix
 
@@ -37,7 +37,7 @@ Record a known snapshot or browser-screenshot timeout once in the run capability
 
 ## Human-observable tabs and immutable identity
 
-After target readiness, inventory open tabs with `tab list` and reuse two usable prior-run `HFORGE QA` tabs for the same worktree/purpose when present (adopt as M/L, reapply M = 390x844 and L = 430x932 viewports/profiles, relabel with the current `runId`, re-verify, reseed); create with `tab create` only the missing lanes. Never reuse default/unrelated tabs and never leave more than two QA tabs per run — explicitly adopt or close orphans with receipts. Use isolated profiles when available and label each page by setting and verifying its document title:
+After `terminal create`, immediately emit exactly one read-only, uncached `tab list --json` together with the supervisor readiness/status read as one grouped batch. Await both results before target-tab adoption or creation; never wait for readiness before launching the inventory, and never cache tab inventory. Then reuse two usable prior-run `HFORGE QA` tabs for the same worktree/purpose when present (adopt as M/L, reapply M = 390x844 and L = 430x932 viewports/profiles, relabel with the current `runId`, re-verify, reseed); create with `tab create` only the missing lanes. Never reuse default/unrelated tabs and never leave more than two QA tabs per run — explicitly adopt or close orphans with receipts. Use isolated profiles when available and label each page by setting and verifying its document title:
 
 ```text
 HFORGE QA M · run=<runId>
@@ -68,7 +68,7 @@ A generic desktop image, an image of another lane, or an image without selected-
 
 ## Viewport and lifecycle integrity
 
-Every command targets the stored page ID. After navigation/reload and immediately after final viewport application, eval all fields below. The final gate must match exactly; CLI `ok` is not evidence.
+Every command targets the stored page ID. Apply the lane viewport once during tab setup and immediately prove it with the full probe below. Independent M/L setup, eval, reload, and probe commands are emitted as one grouped batch in ascending stored page-ID order, with no serial reasoning or orchestration idle between them; preserve only the necessary within-lane dependencies. After navigation, run the combined lifecycle/viewport probe. After the consuming reload, if the viewport cache is `observed`, immediately apply the lane viewport once and then run the combined post-reload lifecycle/viewport proof; if it is `unknown`, run that proof first. If the proof still mismatches, allow only the existing one bounded viewport reapply/reprobe. On the unknown path, write the behavior cache only after the proof actually observes a reset and use only a bounded opaque evidence ID. The final viewport/Home probe remains mandatory in all paths; CLI `ok` is not evidence and a cache entry never substitutes for verification.
 
 | Lane | Expected width | Expected height |
 | --- | ---: | ---: |
@@ -81,19 +81,19 @@ Allow one guide-documented same-page viewport reapply. On a second mismatch retu
 
 ## Fixture and Home sequence
 
-Read `assets/gym-state-v1-six-month-2026-09-07.json` as raw bytes and use those identical bytes in exactly two isolated profiles. Decode the bytes once as UTF-8 and seed that exact string into each profile's raw `gym_state_v1` localStorage key. Record the expected fixture hash and verify `gym_state_v1`, fixture ID, 26 weeks, counts, date range, `active:null`, and byte/string equality in both lanes before and after the one consuming reload. Do not invoke `assets/generate-six-month-fixture.mjs` or parse, serialize, or normalize JSON during a QA run; the generator is provenance/maintenance-only. The maintenance/CI command `node .agents/skills/hforge-orca-browser-qa/scripts/verify-six-month-fixture.mjs` checks the committed bytes and fresh generator stdout, but is not a per-lane QA step.
+Host-side, read `assets/gym-state-v1-six-month-2026-09-07.json` as raw bytes once. Record the observed raw checkout byte count and SHA-256 used by QA, plus the already-known metadata once: fixture ID `hforge-six-month-2026-09-07-v1`, schema `1`, `26` weeks, `26` workouts, `3` routines, `52` bodyweight rows, date range `2026-03-16` through `2026-09-07`, bodyweight end `2026-09-10`, and `active:null`. Decode the bytes once as UTF-8 to one immutable `fixtureString`. The known metadata and whole-string equality prove the payload; do not invoke `assets/generate-six-month-fixture.mjs` or parse, serialize, normalize, or repeatedly hash the JSON during a QA run. The maintenance/CI command `node .agents/skills/hforge-orca-browser-qa/scripts/verify-six-month-fixture.mjs` is separate and not a per-lane QA step.
 
-For each lane:
+Run exactly two isolated lane transactions concurrently when the Orca surface safely supports immutable page IDs. Keep `tabs-ready` as the completed-tab/setup gate and emit distinct `Home-ready` only after the final readiness/parity gate. For each lane:
 
-1. Use its manifested page ID and navigate Home.
-2. Immediately eval lifecycle identity/viewport.
-3. Seed and verify the fixture, then perform exactly one consuming reload.
-4. Immediately eval lifecycle identity/viewport again.
-5. Apply the lane viewport as final setup; immediately run the complete final probe. Perform no later viewport-affecting navigation.
-6. Wait for the bounded Home readiness selector/text and collect DOM/UX/basic-a11y data.
-7. Capture visual evidence through the classified route. Record snapshot only when available; otherwise `not_run_known_unavailable`.
+1. Use its manifested page ID, profile, and lane viewport. The viewport was applied once during tab setup and already proved; do not reapply it here.
+2. Navigate Home and run one initial combined lifecycle identity/full-viewport eval.
+3. Run one seed-and-pre-reload eval that writes `fixtureString` to the raw `gym_state_v1` localStorage key, reads it back, and returns exact string equality, string length, and UTF-8 byte length. Do not parse, serialize, normalize, or inspect one field at a time; equality against the immutable host string plus byte length equal to the recorded raw byte count is the exact-byte proof.
+4. Perform exactly one consuming reload. If the exact-runtime viewport behavior cache is `status=observed`, immediately apply the lane viewport once; then run one combined post-reload eval returning lifecycle identity, every full viewport field above, exact stored-string/length/UTF-8 byte proof, `location.hash`/stable Home state, and the known fixture metadata receipt. If the cache is `unknown`, run that combined proof before any viewport reapply. Do not use regex when direct property/text/selector checks suffice.
+5. If the combined proof still shows a viewport mismatch, reapply the requested viewport once and immediately run the full viewport recovery probe. On the unknown-cache path, write `reload_resets_viewport` only after the proof observed the reset, with a bounded opaque evidence ID. A matching post-reload proof is final, but never skips the mandatory final readiness probe.
+6. Use one final combined viewport/Home readiness probe after the bounded readiness wait, returning the full viewport, stable Home readiness selector/text, visibility, route, and required DOM/basic-a11y measurements. Do not poll individual assertions with eval loops.
+7. Capture visual evidence through the classified route. Record snapshot as available, `not_run_cached_known_unavailable`, or `not_run_known_unavailable` according to the preflight result.
 
-Run lanes concurrently when the available Orca surface safely supports immutable page targeting; use an equivalent bounded settled execution otherwise. One lane timeout cancels pending expensive work but does not close ready retained tabs.
+The fixture/Home setup target is no more than 6 page eval commands per lane (excluding required `tab show`/`viewport` commands): setup identity/viewport, post-navigation identity/viewport, seed/pre-reload proof, post-reload combined proof, one conditional viewport-recovery probe, and final combined readiness. Emit each independent M/L stage as one batch in ascending stored page-ID order and do not insert serial reasoning or orchestration idle between its commands. The recovery probe is the only optional command. Compare the single returned M/L receipts host-side for exact fixture ID, metadata, raw byte/string equality, Home state, and parity; never transfer the fixture again. One lane timeout cancels pending expensive work but does not close ready retained tabs.
 
 ## Evidence threshold per lane
 
@@ -119,9 +119,9 @@ If visual evidence exists only for some lanes, or required DOM/interaction/parit
 
 ## Timeouts, cleanup, and state records
 
-Defaults: Orca command 15s, target/stack readiness 60s, lane 90s, global run 180s, cleanup 15s. Pass remaining global time to nested work. No unbounded sleep, polling, retry, live watcher, or unresolved promise.
+Defaults: Orca command 15s, target/stack readiness 60s, lane 90s, global run 180s, cleanup 15s. Pass remaining global time to nested work. Record `commandElapsedMs` from each Orca command's actual invocation through settlement, and record `orchestrationIdleMs` separately for agent/orchestrator gaps between independent commands or batches. Idle is diagnostic only and must never be reported as product latency. No unbounded sleep, polling, retry, live watcher, or unresolved promise.
 
-Emit one record for every reached state: `preflight`, `tabs-ready`, `lanes-started`, `evidence`, and `cleanup/retained`, each with timestamp/deadline. In `finally`, stop controller-owned process trees, remove temporary fixture data, close disposable/partial pages, and retain ready target tabs/profiles. Uncertain process/temp cleanup prohibits `PASS`. Report an exact ID-scoped cleanup command but do not execute it automatically.
+Emit one record for every reached state: `preflight`, `tabs-ready`, `lanes-started`, per-lane `Home-ready`, `evidence`, and `cleanup/retained`, each with timestamp/deadline. In `finally`, stop controller-owned process trees, remove temporary fixture data, close disposable/partial pages, and retain ready target tabs/profiles. Uncertain process/temp cleanup prohibits `PASS`. Report an exact ID-scoped cleanup command but do not execute it automatically.
 
 Target startup follows `port-and-process-contract.md`. The run manifest is part of the evidence receipt and must include the canonical worktree root/ID, `runId`, lease path, bounded candidate attempts, selected service ports, exact target URL, launch command/cwd, supervisor handle/PID, listener PID, ownership result, readiness result, and retention/cleanup state. Never infer ownership from HTTP readiness and never terminate by port.
 
