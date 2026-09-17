@@ -632,6 +632,7 @@ export default {
   'A fuller dot means less left in the tank — the same weight at a lower {0} is progress the line alone does not show.': 'Punto más lleno = apuraste más (menos RIR). Mover el mismo peso con menos {0} también es progreso, aunque la línea no suba.',
 
   // --- bodyweight & per side ---
+  'Left': 'Izquierda', 'Right': 'Derecha',
   'Bodyweight': 'Peso corporal',
   'No weight to enter — just log the reps.': 'No hay peso que introducir — solo registra las reps.',
   'Ask for a weight on every set.': 'Pedir un peso en cada serie.',

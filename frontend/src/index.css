@@ -573,22 +573,6 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .historical-sets{align-items:flex-start;margin:0 0 8px}
 .historical-no-sets{display:block;padding:3px 0;line-height:1.35}
 
-/* --- login language control --- */
-.login-lang{
-  align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:9px;
-  margin-bottom:clamp(18px,5vh,32px);text-align:left;
-}
-.login-lang label{font-size:13px;color:var(--label-2)}
-.login-lang select{
-  min-height:44px;max-width:calc(100% - 12px);padding:8px 32px 8px 12px;
-  border:1px solid var(--sep);border-radius:var(--r);background:var(--surface);
-  color:var(--label);font-size:15px;line-height:1.2;
-}
-.login-lang select:active{background:var(--surface-2)}
-/* the login language <select> is the one native popup left: theme its list box
-   so dark mode never gets a white system sheet */
-.login-lang select option{background:var(--surface);color:var(--label)}
-
 /* --- brand mark: the approved black wordmark in light mode, inverted to white in dark mode.
    It deliberately does not use --acc: branding follows only data-theme, never the account accent. */
 .login-brand{width:min(260px,100%);margin:0 auto clamp(20px,3vh,28px)}
@@ -753,8 +737,15 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .setrow.eff3 .stp button::after,.setrow.timed .stp button::after,.setrow.per-side .stp button::after{inset:-2px -8px}
 .stp button:active{background:var(--surface-3)}
 .stp .val{
-  flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:3px;padding:0 2px;
+  flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:3px;padding:0 2px;position:relative;
 }
+.stp .history-hint{
+  position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;pointer-events:none;white-space:nowrap;text-overflow:ellipsis;
+  background:var(--surface-2);color:var(--label-3);font-size:var(--history-hint-size,17px);font-weight:500;
+  letter-spacing:-.012em;font-variant-numeric:tabular-nums;
+}
+.stp .val:focus-within .history-hint{display:none}
 .stp .val i{font-style:normal;font-size:12px;color:var(--label-2);flex:none}
 .stp .num{
   width:100%;min-width:0;text-align:center;background:none;border:none;outline:none;
@@ -1058,7 +1049,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .setrow.eff3 .stp button,.setrow.timed .stp button,.setrow.per-side .stp button{width:22px}
 .setrow:not(.per-side) .stp button::after{inset:-2px -10px}
 .setrow.eff3 .stp button::after,.setrow.timed .stp button::after,.setrow.per-side .stp button::after{inset:-2px -11px}
-.setrow .stp .val{padding:0 1px}
+.setrow .stp .val{padding:0 1px;--history-hint-size:clamp(12px,2.8vw + 3px,14px)}
 .setrow .stp .num,.setrow.eff3 .stp .num,.setrow.timed .stp .num,.setrow.per-side .stp .num{
   flex:1;font-size:clamp(12px,2.8vw + 3px,14px);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
 }

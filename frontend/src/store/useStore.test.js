@@ -62,7 +62,7 @@ afterEach(() => {
 describe('appearance defaults', () => {
   it('starts fresh state in light/default while preserving explicit choices', () => {
     expect(DEF).toMatchObject({ theme: 'light', accent: 'default' })
-    expect(useStore.getState().S).toMatchObject({ theme: 'light', accent: 'default' })
+    expect(useStore.getState().S).toMatchObject({ theme: 'light', accent: 'default', lang: 'es' })
 
     useStore.getState().replaceState({ theme: 'dark', accent: 'ember', routines: [], workouts: [] })
     expect(useStore.getState().S).toMatchObject({ theme: 'dark', accent: 'ember' })
@@ -448,7 +448,7 @@ describe('server boot and synchronization boundaries', () => {
   })
 
   it('boots an authenticated profile and accepts a newer remote state', async () => {
-    const remote = { _ts: Date.now() + 10_000, unit: 'lb', routines: [{ id: 'remote', ex: [] }], workouts: [] }
+    const remote = { _ts: Date.now() + 10_000, unit: 'lb', lang: 'en', routines: [{ id: 'remote', ex: [] }], workouts: [] }
     globalThis.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { id: 'u1', name: 'Remote User' } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ state: remote }) })
@@ -458,6 +458,7 @@ describe('server boot and synchronization boundaries', () => {
     expect(useStore.getState().ready).toBe(true)
     expect(useStore.getState().user).toEqual({ id: 'u1', name: 'Remote User' })
     expect(useStore.getState().S.unit).toBe('lb')
+    expect(useStore.getState().S.lang).toBe('en')
     expect(useStore.getState().S.routines).toEqual(remote.routines)
     expect(globalThis.fetch.mock.calls.map(call => call[0])).toEqual(['/api/me', '/api/data'])
   })

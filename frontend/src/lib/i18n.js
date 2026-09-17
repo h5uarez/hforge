@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from 'react'
 
 // UI languages. Only English and Spanish are supported; legacy preferences for
-// removed languages resolve to null and fall back to English via getInitialLang.
+// removed languages resolve to null and fall back to the Spanish first-run default.
 export const LANGS = {
   en: 'English', es: 'Español'
 }
@@ -37,18 +37,6 @@ export function normalizeLang(value) {
   return hasLang(primary) ? primary : null
 }
 
-// Match in the order supplied by the browser. navigator.languages is already ordered by user
-// preference, and matching both the full tag and its primary subtag handles values such as
-// `es-MX` without adding regional variants to the app's language registry.
-export function matchLang(values) {
-  const candidates = Array.isArray(values) ? values : [values]
-  for (const value of candidates) {
-    const matched = normalizeLang(value)
-    if (matched) return matched
-  }
-  return null
-}
-
 export function getExplicitLang() {
   return normalizeLang(storageValue(LANG_PREF_KEY))
 }
@@ -60,20 +48,10 @@ function persistedStateLang() {
   } catch { return null }
 }
 
-function browserLang() {
-  try {
-    // A Node runtime may expose navigator without being a browser. Requiring window keeps unit
-    // tests and SSR deterministic while still covering regular browsers and Capacitor WebViews.
-    if (typeof window === 'undefined') return null
-    const nav = window.navigator || globalThis.navigator
-    return matchLang([...(Array.isArray(nav?.languages) ? nav.languages : []), nav?.language])
-  } catch { return null }
-}
-
-// Preference order matters: a deliberate local choice wins over the legacy profile state, and
-// only a profile with no language setting falls through to the browser/device language.
+// Preference order matters: a deliberate device choice wins over persisted profile state, and a
+// profile with no language setting starts in Spanish. Language changes remain available in Settings.
 export function getInitialLang() {
-  return getExplicitLang() || persistedStateLang() || browserLang() || 'en'
+  return getExplicitLang() || persistedStateLang() || 'es'
 }
 
 export function saveLangPreference(value) {
@@ -98,6 +76,19 @@ export function t(s, ...args) {
   let v = dict[s] || s
   for (let i = 0; i < args.length; i++) v = v.replaceAll('{' + i + '}', args[i])
   return v
+}
+// Stored side keys stay English (`left` / `right`); only the active-workout marker and its
+// accessible name follow the selected UI language. Unsupported locales intentionally retain the
+// English L/R convention until a locale pack is added.
+const SIDE_SOURCE_KEYS = { left: 'Left', right: 'Right' }
+export function sideLabel(side, language = getLang()) {
+  const source = SIDE_SOURCE_KEYS[side]
+  if (!source) return { marker: '', name: '' }
+  const spanish = normalizeLang(language) === 'es'
+  return {
+    marker: spanish ? (side === 'left' ? 'I' : 'D') : (side === 'left' ? 'L' : 'R'),
+    name: t(source),
+  }
 }
 // Instructions for an exercise in the current language (English steps as fallback).
 export const instrFor = ex => (instr && instr[ex.id]) || ex.st || []

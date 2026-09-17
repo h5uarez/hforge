@@ -167,6 +167,7 @@ test('starting a routine keeps fresh exercise weights at the routine values', as
   const weights = page.locator('input[aria-label^="Sets "][aria-label$="Weight (kg)"]')
   await expect(weights).toHaveCount(10)
   expect(await weights.evaluateAll(inputs => inputs.map(input => input.value))).toEqual(Array(10).fill('0'))
+  await expect(page.locator('.history-hint')).toHaveCount(20)
   await assertNoHorizontalOverflow(page)
 })
 
