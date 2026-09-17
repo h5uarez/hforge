@@ -1,16 +1,32 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { once } from 'node:events';
-import { readFile, rm, writeFile, mkdtemp } from 'node:fs/promises';
+import { rm, writeFile, mkdtemp } from 'node:fs/promises';
 import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const apiDirectory = fileURLToPath(new URL('.', import.meta.url));
+// SQLite inspection helpers for assertions (the server owns app.db; each helper opens,
+// reads and closes immediately so temp-dir cleanup never hits a Windows file lock).
+// node:sqlite rows use a null prototype, so spread them into plain objects for deepEqual.
+const queryAppDb = (data, sql, params = []) => {
+  const db = new DatabaseSync(path.join(data, 'app.db'));
+  try { return db.prepare(sql).all(...params).map(row => ({ ...row })); }
+  finally { db.close(); }
+};
+const readStateDocument = (data, uid) => {
+  const rows = queryAppDb(data, 'SELECT document FROM user_states WHERE user_id = ?', [uid]);
+  return rows.length ? rows[0].document : null;
+};
+const readLegacyReminders = data => queryAppDb(data,
+  'SELECT user_id AS userId, session_id AS sessionId, deadline_ms AS deadline, sent_at_ms AS sentAt, locale FROM inactivity_reminders ORDER BY rowid');
+
 const validState = () => ({
   unit: 'kg', _ts: 1, reminder: { on: false, time: '08:00', tz: null }, routines: [{ id: 'r1', name: 'One', ex: [] }],
   week: { 1: 'r1' }, dayPlan: {}, exWeights: {}, bodyweight: [], workouts: [{ d: '2025-01-02', entries: [], block: { id: 'legacy' } }], blocks: [],
@@ -66,11 +82,13 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
   const uid = 'runtime-user', secret = 'runtime-test-secret';
   await writeFile(path.join(data, 'secret'), secret);
   await writeFile(path.join(data, 'db.json'), JSON.stringify({ users: [{ id: uid, name: 'Runtime', sv: 0 }], creds: [], subs: [], invites: [] }));
-  t.after(() => rm(data, { recursive: true, force: true }));
   const { child, exited, port } = await startServer(data);
+  // One teardown in dependency order: the server must die before rm, otherwise the
+  // still-locked app.db makes temp-dir cleanup fail on Windows and the child outlives us.
   t.after(async () => {
     if (!child.killed) child.kill();
     await Promise.race([exited, delay(2000)]);
+    await rm(data, { recursive: true, force: true });
   });
   assert.equal((await request(port, 'GET')).status, 401);
   const payload = `${uid}:${Date.now() + 60000}:0`;
@@ -80,7 +98,7 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
   const canonical = Object.fromEntries(Object.entries(submitted).filter(([key]) => !['active', 'blocks', 'activeBlock'].includes(key)));
   canonical.workouts = canonical.workouts.map(workout => Object.fromEntries(Object.entries(workout).filter(([key]) => key !== 'block')));
   assert.deepEqual(await request(port, 'GET', undefined, cookie), { status: 200, body: { state: canonical } });
-  const saved = await readFile(path.join(data, `state-${uid}.json`));
+  const saved = readStateDocument(data, uid);
   const invalid = [
     (() => { const state = validState(); Object.defineProperty(state.active.local, 'constructor', { value: true, enumerable: true }); return state; })(),
     (() => { const state = validState(); state.routines = {}; return state; })(),
@@ -98,7 +116,7 @@ test('real signed-cookie state writes preserve canonical bytes and reject invali
     assert.equal(response.body.error, 'invalid state');
     assert.equal(typeof response.body.code, 'string');
     assert.equal(typeof response.body.path, 'string');
-    assert.deepEqual(await readFile(path.join(data, `state-${uid}.json`)), saved);
+    assert.equal(readStateDocument(data, uid), saved);
   }
 });
 
@@ -115,13 +133,20 @@ test('durable inactivity routes enforce auth and ownership, survive restart, rep
     subs: [{ userId: 'user-a', endpoint: 'https://push.example/a', keys: { p256dh: 'p256dh', auth: 'auth' } }],
     inactivityReminders: [],
   }));
-  t.after(() => rm(data, { recursive: true, force: true }));
   const cookieA = signedCookie('user-a', secret);
   const cookieB = signedCookie('user-b', secret);
-  let server = await startServer(data);
-  t.after(async () => {
+  const servers = [];
+  const stopServer = async server => {
     if (!server.child.killed) server.child.kill();
     await Promise.race([server.exited, delay(2000)]);
+  };
+  let server = await startServer(data);
+  servers.push(server);
+  // One teardown in dependency order: every server dies before rm, otherwise the
+  // still-locked app.db makes temp-dir cleanup fail on Windows and children outlive us.
+  t.after(async () => {
+    for (const running of servers) await stopServer(running);
+    await rm(data, { recursive: true, force: true });
   });
 
   const schedulePath = '/api/push/inactivity/schedule';
@@ -138,13 +163,13 @@ test('durable inactivity routes enforce auth and ownership, survive restart, rep
   assert.equal((await request(server.port, 'POST', { sessionId: 'bad id', deadline: firstDeadline }, cookieA, schedulePath)).status, 400);
   assert.equal((await request(server.port, 'POST', { sessionId, deadline: firstDeadline + 1000, locale: 'es' }, cookieA, schedulePath)).body.locale, 'es');
 
-  const saved = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
+  const saved = { inactivityReminders: readLegacyReminders(data) };
   assert.deepEqual(saved.inactivityReminders, [{ userId: 'user-a', sessionId, deadline: firstDeadline + 1000, sentAt: null, locale: 'es' }]);
   assert.equal(Object.hasOwn(saved.inactivityReminders[0], 'active'), false);
 
-  if (!server.child.killed) server.child.kill();
-  await Promise.race([server.exited, delay(2000)]);
+  await stopServer(server);
   server = await startServer(data);
+  servers.push(server);
   assert.deepEqual((await request(server.port, 'POST', { sessionId }, cookieA, '/api/push/inactivity/recover')).body, {
     ok: true, status: 'pending', sessionId, deadline: firstDeadline + 1000, sentAt: null, locale: 'es'
   });
@@ -162,9 +187,9 @@ test('durable inactivity routes enforce auth and ownership, survive restart, rep
   const sent = (await request(server.port, 'GET', undefined, cookieA, statusPath(sessionId))).body;
   assert.equal(sent.status, 'sent');
   assert.equal(typeof sent.sentAt, 'number');
-  if (!server.child.killed) server.child.kill();
-  await Promise.race([server.exited, delay(2000)]);
+  await stopServer(server);
   server = await startServer(data);
+  servers.push(server);
   assert.equal((await request(server.port, 'POST', { sessionId }, cookieA, '/api/push/inactivity/recover')).body.status, 'sent');
   assert.equal((await request(server.port, 'POST', { sessionId, deadline: due + 2000, locale: 'en' }, cookieA, schedulePath)).body.status, 'sent');
 });

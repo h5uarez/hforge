@@ -12,10 +12,11 @@ import webpush from 'web-push';
 import { preparePersistedState } from './state-validation.js';
 import {
   buildInactivityPushPayload, claimDueInactivityReminder, cancelInactivityReminder,
-  normalizeInactivityReminders, publicInactivityStatus, pushOriginCapable,
+  publicInactivityStatus, pushOriginCapable,
   upsertInactivityReminder, validateInactivitySchedule, validateInactivitySession,
 } from './inactivity-reminders.js';
 import { buildPushPayload } from './push-catalog.js';
+import { createDatabase } from './db.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -38,43 +39,18 @@ const PUSH_ORIGIN_CAPABLE = pushOriginCapable(ORIGIN);
 
 fs.mkdirSync(DATA, { recursive: true });
 
-/* ---------- secret + db ---------- */
+/* ---------- secret + sqlite store ---------- */
 const secretFile = path.join(DATA, 'secret');
 if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
 const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
-const dbFile = path.join(DATA, 'db.json');
-let db = { users: [], creds: [], subs: [], invites: [] };
-try {
-  const loaded = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
-  if (loaded && typeof loaded === 'object' && !Array.isArray(loaded)) db = loaded;
-} catch {}
-db.users = Array.isArray(db.users) ? db.users : [];
-db.creds = Array.isArray(db.creds) ? db.creds : [];
-db.subs = Array.isArray(db.subs) ? db.subs : [];
-db.invites = Array.isArray(db.invites) ? db.invites : [];
-const rawInactivityReminders = db.inactivityReminders;
-db.inactivityReminders = normalizeInactivityReminders(rawInactivityReminders);
+// Phase 1 SQLite store (parity with the former db.json + state-<uid>.json files). secret and
+// vapid.json stay on the filesystem. Unknown state fields are preserved verbatim inside the
+// user_states.document JSON column.
+const store = createDatabase(DATA);
 const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
 const publicUser = user => ({ id: user.id, name: user.name, admin: isAdmin(user) });
-function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2)); }
-function atomicWrite(file, content) {
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, content);
-  fs.renameSync(tmp, file);
-}
-if (JSON.stringify(rawInactivityReminders) !== JSON.stringify(db.inactivityReminders)) saveDb();
-const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
-function readState(uid) {
-  try {
-    const file = stateFile(uid);
-    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-    const prepared = preparePersistedState(raw);
-    if (!prepared.ok) return null;
-    if (JSON.stringify(raw) !== JSON.stringify(prepared.state)) atomicWrite(file, JSON.stringify(prepared.state));
-    return prepared.state;
-  } catch { return null; }
-}
+function readState(uid) { return store.getUserState(uid); }
 
 /* ---------- push notifications (Web Push / VAPID) ---------- */
 const vapidFile = path.join(DATA, 'vapid.json');
@@ -85,13 +61,13 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT || (SECURE ? ORIGIN : 'mailto:ad
 webpush.setVapidDetails(VAPID_SUBJECT, vapid.publicKey, vapid.privateKey);
 
 async function sendPush(userId, payload, { single = false } = {}) {
-  const allSubs = db.subs.filter(s => s.userId === userId && validPushSubscription(s));
+  const allSubs = store.listUserSubscriptions(userId).filter(validPushSubscription);
   // An active-workout job is one user-facing event, not one alert per browser subscription. The
   // existing day/rest alerts retain their fan-out behavior; the durable one-shot takes one target.
   const subs = single ? allSubs.slice(-1) : allSubs;
   if (!subs.length) return;
   const body = JSON.stringify(payload);
-  let dirty = false;
+  const deadEndpoints = [];
   await Promise.all(subs.map(async sub => {
     // urgency 'high' is the one lever we have over delivery speed — iOS/Android throttle
     // low-urgency background push more aggressively under battery-saving modes. TTL is left
@@ -102,11 +78,11 @@ async function sendPush(userId, payload, { single = false } = {}) {
     catch (e) {
       console.error('push send failed', userId, e.statusCode, e.body || e.message);
       if (e.statusCode === 404 || e.statusCode === 410) {
-        db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint); dirty = true;
+        deadEndpoints.push(sub.endpoint);
       }
     }
   }));
-  if (dirty) saveDb();
+  if (deadEndpoints.length) store.deletePushSubscriptionsByEndpoints(deadEndpoints);
 }
 
 // Active-workout reminders are the only server push job that is persisted. The claim is saved
@@ -118,10 +94,9 @@ async function processDueInactivityReminders(now = Date.now()) {
   inactivityTickRunning = true;
   try {
     for (;;) {
-      const claim = claimDueInactivityReminder(db.inactivityReminders, now);
+      const claim = claimDueInactivityReminder(store.listInactivityReminders(), now);
       if (!claim.job) return;
-      db.inactivityReminders = claim.reminders;
-      saveDb();
+      store.saveInactivityReminders(claim.reminders);
       const payload = { ...buildInactivityPushPayload(claim.job.locale), sessionId: claim.job.sessionId };
       await sendPush(claim.job.userId, payload, { single: true });
     }
@@ -175,8 +150,8 @@ function userNow(tz) {
   } catch { return null; } // unknown/invalid tz string — skip this user rather than guess
 }
 setInterval(() => {
-  for (const user of db.users) {
-    if (!db.subs.some(s => s.userId === user.id)) continue;
+  for (const user of store.listUsers()) {
+    if (!store.hasPushSubscription(user.id)) continue;
     const S = readState(user.id);
     if (!S?.reminder?.on) continue;
     const now = userNow(S.reminder.tz || 'UTC');
@@ -187,8 +162,7 @@ setInterval(() => {
     if (!rid) continue; // rest day — nothing planned
     const routine = (S.routines || []).find(r => r.id === rid);
     console.log('reminder firing', user.id, rid);
-    user.lastReminder = now.date;
-    saveDb();
+    store.setUserLastReminder(user.id, now.date);
     sendPush(user.id, buildPushPayload(S.lang, routine ? 'day-reminder' : 'day-reminder-generic',
       routine ? { emoji: routine.emoji || '🏋️', name: routine.name } : {}));
   }
@@ -231,7 +205,7 @@ function readSession(req) {
   if (!payload) return null;
   const [uid, exp, ver] = payload.split(':');
   if (!uid || +exp < Date.now()) return null;
-  const user = db.users.find(u => u.id === uid) || null;
+  const user = store.findUserById(uid);
   if (!user) return null;
   if (user.disabled) return null;           // disabled accounts are locked out everywhere
   // Missing third field = pre-versioning cookie = version 0. Anything non-numeric is a malformed
@@ -305,7 +279,7 @@ function inactivityQuery(req) {
 }
 
 function inactivityStatus(userId, sessionId) {
-  return publicInactivityStatus(db.inactivityReminders.find(item =>
+  return publicInactivityStatus(store.listInactivityReminders().find(item =>
     item.userId === userId && item.sessionId === sessionId));
 }
 
@@ -324,7 +298,7 @@ setInterval(() => { for (const [k, v] of presence) if (Date.now() - v.updatedAt 
 
 /* ---------- routes ---------- */
 const routes = {
-  'GET /api/health': async (req, res) => json(res, 200, { ok: true, users: db.users.length }),
+  'GET /api/health': async (req, res) => json(res, 200, { ok: true, users: store.countUsers() }),
 
   // Public config the login screen needs before anyone is signed in.
   'GET /api/config': async (req, res) => json(res, 200, { invite_only: INVITE_ONLY }),
@@ -344,8 +318,8 @@ const routes = {
     const raw = String(body.name ?? '').trim();
     if (!raw) return json(res, 400, { error: 'name required' });
     if (raw.length > 40) return json(res, 400, { error: 'name too long' });
+    store.updateUserName(user.id, raw);
     user.name = raw;
-    saveDb();
     json(res, 200, { user: publicUser(user) });
   },
 
@@ -354,7 +328,8 @@ const routes = {
     const name = String(body.name || '').trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
     const code = String(body.code || '').trim().toUpperCase();
-    if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked))
+    const gate = code ? store.findInviteByCode(code) : null;
+    if (INVITE_ONLY && (!gate || gate.usedBy))
       return json(res, 403, { error: 'a valid invite code is required' });
     const uid = crypto.randomBytes(12).toString('base64url');
     const options = await generateRegistrationOptions({
@@ -384,23 +359,26 @@ const routes = {
     } catch (e) { return json(res, 400, { error: 'verification failed: ' + e.message }); }
     if (!verification.verified) return json(res, 400, { error: 'not verified' });
     const { credential } = verification.registrationInfo;
-    if (db.creds.find(x => x.id === credential.id)) return json(res, 409, { error: 'credential already registered' });
+    if (store.findCredentialById(credential.id)) return json(res, 409, { error: 'credential already registered' });
     // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
     let invite = null;
     if (INVITE_ONLY) {
-      invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
-      if (!invite) return json(res, 403, { error: 'invite code is no longer valid — ask for a new one' });
+      invite = c.code ? store.findInviteByCode(c.code) : null;
+      if (!invite || invite.usedBy) return json(res, 403, { error: 'invite code is no longer valid — ask for a new one' });
     }
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
-    if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
-    db.users.push(user);
-    db.creds.push({
+    if (invite) user.invitedBy = invite.code;
+    const newCred = {
       id: credential.id, userId: user.id,
       publicKey: Buffer.from(credential.publicKey).toString('base64url'),
       counter: credential.counter || 0,
       transports: body.credential?.response?.transports || []
+    };
+    store.transaction(() => {
+      if (invite) store.markInviteUsed(invite.code, user.id, user.created);
+      store.createUser(user);
+      store.createCredential(newCred);
     });
-    saveDb();
     json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
   },
 
@@ -416,7 +394,7 @@ const routes = {
     const body = await readBody(req);
     const c = takeChallenge(body.cid);
     if (!c) return json(res, 400, { error: 'challenge expired — try again' });
-    const cred = db.creds.find(x => x.id === body.credential?.id);
+    const cred = store.findCredentialById(body.credential?.id);
     if (!cred) return json(res, 404, { error: 'unknown passkey — create a profile first' });
     let verification;
     try {
@@ -435,9 +413,8 @@ const routes = {
       });
     } catch (e) { return json(res, 400, { error: 'verification failed: ' + e.message }); }
     if (!verification.verified) return json(res, 400, { error: 'not verified' });
-    cred.counter = verification.authenticationInfo.newCounter;
-    saveDb();
-    const user = db.users.find(u => u.id === cred.userId);
+    store.updateCredentialCounter(cred.id, verification.authenticationInfo.newCounter);
+    const user = store.findUserById(cred.userId);
     if (!user) return json(res, 500, { error: 'user missing' });
     if (user.disabled) return json(res, 403, { error: 'this account has been disabled' });
     json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
@@ -452,8 +429,7 @@ const routes = {
   'POST /api/logout/all': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    user.sv = sessionVersion(user) + 1;
-    saveDb();
+    user.sv = store.bumpSessionVersion(user.id);
     json(res, 200, { ok: true }, { 'Set-Cookie': clearCookie });
   },
 
@@ -469,7 +445,7 @@ const routes = {
     const body = await readBody(req);
     const prepared = preparePersistedState(body?.state);
     if (!prepared.ok) return json(res, 400, { error: 'invalid state', code: prepared.code, path: prepared.path });
-    atomicWrite(stateFile(user.id), JSON.stringify(prepared.state));
+    store.setUserState(user.id, prepared.state);
     json(res, 200, { ok: true, ts: prepared.state._ts || null });
   },
 
@@ -481,9 +457,7 @@ const routes = {
     const body = await readBody(req);
     const sub = body.subscription;
     if (!validPushSubscription(sub)) return json(res, 400, { error: 'invalid subscription' });
-    db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint);
-    db.subs.push({ userId: user.id, endpoint: sub.endpoint, keys: sub.keys, created: new Date().toISOString() });
-    saveDb();
+    store.upsertSubscription({ userId: user.id, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, created: new Date().toISOString() });
     json(res, 200, { ok: true });
   },
 
@@ -493,12 +467,11 @@ const routes = {
     const body = await readBody(req);
     if (!body || typeof body.endpoint !== 'string' || !safePushEndpoint(body.endpoint) || Object.keys(body).some(key => key !== 'endpoint'))
       return json(res, 400, { error: 'invalid subscription' });
-    db.subs = db.subs.filter(s => !(s.userId === user.id && s.endpoint === body.endpoint));
-    saveDb();
+    store.deleteSubscription(user.id, body.endpoint);
     json(res, 200, { ok: true });
   },
 
-  // The active workout itself remains browser-local. Only this bounded metadata enters db.json,
+  // The active workout itself remains browser-local. Only this bounded metadata enters the store,
   // and only a signed-in browser with a stored Push subscription can create a server job.
   'POST /api/push/inactivity/schedule': async (req, res) => {
     const user = readSession(req);
@@ -508,9 +481,9 @@ const routes = {
     const input = validateInactivitySchedule(body);
     if (!input.ok) return json(res, 400, { error: input.error });
     if (!PUSH_ORIGIN_CAPABLE) return json(res, 409, { error: 'active workout push requires HTTPS or localhost' });
-    if (!db.subs.some(sub => sub.userId === user.id && validPushSubscription(sub))) return json(res, 409, { error: 'active push subscription required' });
-    const result = upsertInactivityReminder(db.inactivityReminders, user.id, input.value);
-    if (result.changed) { db.inactivityReminders = result.reminders; saveDb(); }
+    if (!store.listUserSubscriptions(user.id).some(validPushSubscription)) return json(res, 409, { error: 'active push subscription required' });
+    const result = upsertInactivityReminder(store.listInactivityReminders(), user.id, input.value);
+    if (result.changed) store.saveInactivityReminders(result.reminders);
     json(res, 200, { ok: true, ...publicInactivityStatus(result.job) });
   },
 
@@ -521,8 +494,8 @@ const routes = {
     try { body = await readBody(req); } catch { return json(res, 400, { error: 'invalid request' }); }
     const input = validateInactivitySession(body);
     if (!input.ok) return json(res, 400, { error: input.error });
-    const result = cancelInactivityReminder(db.inactivityReminders, user.id, input.value.sessionId);
-    if (result.changed) { db.inactivityReminders = result.reminders; saveDb(); }
+    const result = cancelInactivityReminder(store.listInactivityReminders(), user.id, input.value.sessionId);
+    if (result.changed) store.saveInactivityReminders(result.reminders);
     json(res, 200, { ok: true, status: 'none' });
   },
 
@@ -591,7 +564,7 @@ const routes = {
   // One row per user, cheap enough for a personal instance (reads each state file once).
   'GET /api/admin/users': async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const users = db.users.map(u => {
+    const users = store.listUsers().map(u => {
       const S = readState(u.id) || {};
       const workouts = S.workouts || [];
       const last = workouts[workouts.length - 1];
@@ -601,7 +574,7 @@ const routes = {
         workouts: workouts.length,
         lastWorkout: last ? last.d : null,
         lastSync: S._ts || null,
-        hasPush: db.subs.some(s => s.userId === u.id),
+        hasPush: store.hasPushSubscription(u.id),
         live: livePresence(u.id)
       };
     });
@@ -612,7 +585,7 @@ const routes = {
   'GET /api/admin/user': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const id = new URL(req.url, 'http://x').searchParams.get('id');
-    const u = db.users.find(x => x.id === id);
+    const u = store.findUserById(id);
     if (!u) return json(res, 404, { error: 'no such user' });
     const S = readState(u.id) || {};
     json(res, 200, {
@@ -628,20 +601,21 @@ const routes = {
   'POST /api/admin/user/disable': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const body = await readBody(req);
-    const u = db.users.find(x => x.id === body.id);
+    const u = store.findUserById(body.id);
     if (!u) return json(res, 404, { error: 'no such user' });
     if (isAdmin(u)) return json(res, 400, { error: 'cannot disable an admin' });
-    u.disabled = !!body.disabled;
-    if (u.disabled) presence.delete(u.id);   // drop them off "training now" at once
-    saveDb();
-    json(res, 200, { ok: true, id: u.id, disabled: u.disabled });
+    const disabled = !!body.disabled;
+    store.setUserDisabled(u.id, disabled);
+    if (disabled) presence.delete(u.id);   // drop them off "training now" at once
+    json(res, 200, { ok: true, id: u.id, disabled });
   },
 
   'GET /api/admin/invites': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     // resolve usedBy uid → name for display
-    const invites = db.invites.map(i => ({
-      ...i, usedByName: i.usedBy ? (db.users.find(u => u.id === i.usedBy) || {}).name || null : null
+    const allUsers = store.listUsers();
+    const invites = store.listInvites().map(i => ({
+      ...i, usedByName: i.usedBy ? (allUsers.find(u => u.id === i.usedBy) || {}).name || null : null
     }));
     json(res, 200, { invites, invite_only: INVITE_ONLY });
   },
@@ -652,23 +626,21 @@ const routes = {
     let code;
     // 16 hex chars = 64 bits, up from 8 chars / 32 bits. The app has no rate limiting by design
     // (that's the reverse proxy's job) and /api/register/options tells a caller whether a code is
-    // good, so the code itself has to be the thing that isn't worth guessing. Codes already in
-    // db.json keep working — validation is an exact string compare, never a length or format check.
-    do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (db.invites.some(i => i.code === code));
+    // good, so the code itself has to be the thing that isn't worth guessing. Codes already
+    // issued keep working — validation is a string compare, never a length or format check.
+    do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (store.findInviteByCode(code));
     const invite = { code, note: String(body.note || '').slice(0, 60), createdBy: admin.id, created: new Date().toISOString() };
-    db.invites.push(invite);
-    saveDb();
+    store.createInvite(invite);
     json(res, 200, { invite });
   },
 
   'POST /api/admin/invites/revoke': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const body = await readBody(req);
-    const inv = db.invites.find(i => i.code === String(body.code || '').toUpperCase());
+    const inv = store.findInviteByCode(String(body.code || '').toUpperCase());
     if (!inv) return json(res, 404, { error: 'no such code' });
     if (inv.usedBy) return json(res, 400, { error: 'already used — cannot revoke' });
-    db.invites = db.invites.filter(i => i.code !== inv.code);
-    saveDb();
+    store.deleteInvite(inv.code);
     json(res, 200, { ok: true });
   }
 };

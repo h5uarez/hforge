@@ -2,15 +2,24 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const apiDirectory = fileURLToPath(new URL('.', import.meta.url));
+// SQLite inspection helpers for assertions (the server owns app.db; each helper opens,
+// reads and closes immediately so temp-dir cleanup never hits a Windows file lock).
+// node:sqlite rows use a null prototype, so spread them into plain objects for deepEqual.
+const queryAppDb = (data, sql, params = []) => {
+  const store = new DatabaseSync(path.join(data, 'app.db'));
+  try { return store.prepare(sql).all(...params).map(row => ({ ...row })); }
+  finally { store.close(); }
+};
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const freePort = async () => {
@@ -95,6 +104,12 @@ const createFixture = async (t, options = {}) => {
   const db = { users, creds: [], subs: [], invites: [], ...(options.db || {}) };
   await writeFile(path.join(data, 'secret'), secret);
   await writeFile(path.join(data, 'db.json'), JSON.stringify(db));
+  // Legacy state files are imported into SQLite at server boot, so fixtures for them must
+  // exist before the server starts (mirrors the production upgrade path).
+  for (const [uid, state] of Object.entries(options.states || {})) {
+    const safe = String(uid).replace(/[^a-zA-Z0-9_-]/g, '');
+    await writeFile(path.join(data, `state-${safe}.json`), JSON.stringify(state));
+  }
   const server = await startServer(data, { ADMIN_UIDS: 'admin', ...(options.env || {}) });
   t.after(async () => {
     await stopServer(server);
@@ -166,8 +181,8 @@ test('logout clears only the browser cookie while logout-all revokes every sessi
   assert.equal(revoked.status, 200);
   assert.equal((await request(server.port, 'GET', '/api/me', { cookie: memberCookie })).status, 401);
   assert.equal((await request(server.port, 'POST', '/api/logout/all', { cookie: memberCookie, body: {} })).status, 401);
-  const db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.equal(db.users.find(user => user.id === 'member').sv, 1);
+  const sessionVersion = queryAppDb(data, 'SELECT session_version AS sv FROM users WHERE id = ?', ['member']);
+  assert.equal(sessionVersion[0].sv, 1);
   assert.equal((await request(server.port, 'GET', '/api/me', { cookie: signedCookie('member', secret, { version: 1 }) })).status, 200);
 });
 
@@ -182,15 +197,15 @@ test('profile updates enforce authentication, validation, and mutation boundarie
   assert.equal((await request(fixture.server.port, 'PATCH', '/api/me', { cookie: memberCookie, body: { name: 'x'.repeat(41) } })).status, 400);
   const malformed = await request(fixture.server.port, 'PATCH', '/api/me', { cookie: memberCookie, raw: '{bad' });
   assert.notEqual(Math.floor(malformed.status / 100), 2);
-  let db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.equal(db.users.find(user => user.id === 'member').name, 'Member');
+  let memberName = queryAppDb(data, 'SELECT name FROM users WHERE id = ?', ['member']);
+  assert.equal(memberName[0].name, 'Member');
   const renamed = await request(fixture.server.port, 'PATCH', '/api/me', { cookie: memberCookie, body: { name: '  New Name  ' } });
   assert.deepEqual(responseBody(renamed), {
     status: 200, body: { user: { id: 'member', name: 'New Name', admin: false } },
   });
 
-  db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.equal(db.users.find(user => user.id === 'member').name, 'New Name');
+  memberName = queryAppDb(data, 'SELECT name FROM users WHERE id = ?', ['member']);
+  assert.equal(memberName[0].name, 'New Name');
 });
 
 test('oversized JSON bodies are never accepted and do not terminate the server', async t => {
@@ -223,12 +238,12 @@ test('push subscription routes validate input and isolate unsubscribe ownership'
   assert.equal((await request(server.port, 'POST', '/api/push/subscribe', { cookie: memberCookie, body: { subscription } })).status, 200);
   assert.equal((await request(server.port, 'POST', '/api/push/subscribe', { cookie: adminCookie, body: { subscription } })).status, 200);
   assert.equal((await request(server.port, 'POST', '/api/push/unsubscribe', { cookie: memberCookie, body: { endpoint } })).status, 200);
-  let db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.deepEqual(db.subs.map(sub => ({ userId: sub.userId, endpoint: sub.endpoint })), [{ userId: 'admin', endpoint }]);
+  let subs = queryAppDb(data, 'SELECT user_id AS userId, endpoint FROM push_subscriptions ORDER BY rowid');
+  assert.deepEqual(subs, [{ userId: 'admin', endpoint }]);
   assert.equal((await request(server.port, 'POST', '/api/push/unsubscribe', { cookie: adminCookie, body: { endpoint, extra: true } })).status, 400);
   assert.equal((await request(server.port, 'POST', '/api/push/unsubscribe', { cookie: adminCookie, body: { endpoint } })).status, 200);
-  db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.deepEqual(db.subs, []);
+  subs = queryAppDb(data, 'SELECT user_id AS userId, endpoint FROM push_subscriptions ORDER BY rowid');
+  assert.deepEqual(subs, []);
 });
 
 test('rest timer boundaries require auth and activity exposes bounded live presence to admins', async t => {
@@ -259,13 +274,15 @@ test('rest timer boundaries require auth and activity exposes bounded live prese
 test('admin user and invite routes enforce roles, mutation guards, ordering, and persistence', async t => {
   const { data, server, adminCookie, memberCookie } = await createFixture(t, {
     db: { invites: [{ code: 'USED', usedBy: 'member', createdBy: 'admin' }] },
+    states: {
+      member: {
+        unit: 'lb', _ts: 50, reminder: { on: false, time: '08:00', tz: null },
+        routines: [{ id: 'r1', name: 'Routine', emoji: 'A', ex: [{ id: 'squat' }] }],
+        week: {}, dayPlan: {}, exWeights: {}, bodyweight: [{ d: '2026-01-01', w: 80, t: 1 }],
+        workouts: [{ d: '2026-01-01', entries: [] }, { d: '2026-01-02', entries: [] }],
+      },
+    },
   });
-  await writeFile(path.join(data, 'state-member.json'), JSON.stringify({
-    unit: 'lb', _ts: 50, reminder: { on: false, time: '08:00', tz: null },
-    routines: [{ id: 'r1', name: 'Routine', emoji: 'A', ex: [{ id: 'squat' }] }],
-    week: {}, dayPlan: {}, exWeights: {}, bodyweight: [{ d: '2026-01-01', w: 80, t: 1 }],
-    workouts: [{ d: '2026-01-01', entries: [] }, { d: '2026-01-02', entries: [] }],
-  }));
 
   assert.equal((await request(server.port, 'GET', '/api/admin/invites')).status, 401);
   assert.equal((await request(server.port, 'GET', '/api/admin/invites', { cookie: memberCookie })).status, 403);
@@ -290,9 +307,10 @@ test('admin user and invite routes enforce roles, mutation guards, ordering, and
   });
   assert.deepEqual(responseBody(disabled), { status: 200, body: { ok: true, id: 'member', disabled: true } });
   assert.equal((await request(server.port, 'GET', '/api/me', { cookie: memberCookie })).status, 401);
-  const db = JSON.parse(await readFile(path.join(data, 'db.json'), 'utf8'));
-  assert.equal(db.users.find(user => user.id === 'member').disabled, true);
-  assert.deepEqual(db.invites.map(invite => invite.code), ['USED']);
+  const disabledFlag = queryAppDb(data, 'SELECT disabled FROM users WHERE id = ?', ['member']);
+  assert.equal(disabledFlag[0].disabled, 1);
+  const inviteCodes = queryAppDb(data, 'SELECT code FROM invites ORDER BY rowid');
+  assert.deepEqual(inviteCodes.map(invite => invite.code), ['USED']);
 });
 
 test('invite-only registration options reject malformed and unauthorized requests before WebAuthn verification', async t => {

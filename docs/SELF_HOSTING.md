@@ -137,6 +137,7 @@ tar czf hforge-backup-$(date +%F).tar.gz data/
 
 That archive contains all profiles, passkeys and workout history. Restore by unpacking it back
 into the project folder. (Individual users can also export their own data as JSON from Settings.)
+For scheduled daily/weekly/monthly backups with pruning, see [docs/BACKUPS.md](BACKUPS.md).
 
 ## 7. Notifications
 
