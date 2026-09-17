@@ -77,7 +77,9 @@ describe('mobile accessibility and layout contracts', () => {
     const pageAfter = css.match(/\.hdr\.page::after\{([^}]*)\}/)?.[1] || ''
     expect(css).toContain('--motion-tab:200ms')
     expect(pageAfter).toContain('linear-gradient(to bottom,var(--sep-op),transparent)')
-    expect(pageAfter).toContain('filter:blur(2px)')
+    expect(pageAfter).toContain('bottom:-24px')
+    expect(pageAfter).toContain('height:24px')
+    expect(pageAfter).toContain('filter:blur(6px)')
     expect(pageAfter).toContain('pointer-events:none')
     expect(pageAfter).not.toContain('height:var(--hair)')
   })
