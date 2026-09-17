@@ -17,13 +17,10 @@ function deferIdle(task) {
 }
 
 function bootstrap() {
-  // Mount React immediately so first paint comes from the localStorage cache.
-  // The locale pack resolves async afterwards; useLang in App re-renders when
-  // it lands. Accepted tradeoff: an `es` device may paint one frame of English
-  // before the Spanish pack arrives — speed now wins over that single frame.
-  // setLang keeps its 4s pack timeout and falls back to English on any error.
-  // Start the pack request before scheduling React so the common case can settle
+  // Start locale loading before scheduling React so the common case can settle
   // before the first login commit without delaying boot on a slow/offline device.
+  // App still re-renders through useLang when the pack lands; setLang keeps its
+  // 4s timeout and falls back to English on any error.
   setLang(getLang()).catch(() => setLang('en'))
 
   try {
