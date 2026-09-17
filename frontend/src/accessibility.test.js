@@ -63,13 +63,23 @@ describe('mobile accessibility and layout contracts', () => {
     expect(tabs).toContain('useScrollDirection')
     expect(tabs).toContain("compact ? 'is-compact' : ''")
     expect(css).toContain('transform-origin:center bottom;scale:1')
-    expect(compactRule).toContain('scale:.96')
+    expect(compactRule).toContain('scale:.88')
     expect(compactRule).not.toContain('transform')
-    expect(compactButtonRule).toContain('min-width:46px;min-height:46px')
+    expect(compactButtonRule).toContain('min-width:50px;min-height:50px')
     expect(compactButtonRule).not.toMatch(/(?:^|;)width:/)
     expect(compactButtonRule).not.toMatch(/(?:^|;)height:/)
     expect(css).toContain('transition:scale var(--motion-tab) var(--ease)')
     expect(css).toContain('transition:color var(--fast)')
+  })
+
+  it('keeps page-header scrolling separation soft and faded', () => {
+    const css = source('index.css')
+    const pageAfter = css.match(/\.hdr\.page::after\{([^}]*)\}/)?.[1] || ''
+    expect(css).toContain('--motion-tab:200ms')
+    expect(pageAfter).toContain('linear-gradient(to bottom,var(--sep-op),transparent)')
+    expect(pageAfter).toContain('filter:blur(2px)')
+    expect(pageAfter).toContain('pointer-events:none')
+    expect(pageAfter).not.toContain('height:var(--hair)')
   })
 
   it('uses a passive rAF document signal and excludes nested sheet scrolling', () => {
@@ -519,6 +529,11 @@ describe('accent palette system (theme-palette-redesign)', () => {
   })
 
   it('keeps the pre-paint migration map in sync with ACCENT_MIGRATION', () => {
+    const app = source('App.jsx')
+    expect(html).toContain('html,body{background:var(--boot-bg,#ffffff)}')
+    expect(html).toContain("document.documentElement.style.setProperty('--boot-bg', bg)")
+    expect(html).not.toContain('html[data-theme="dark"] body{background:#000000}')
+    expect(app).toContain("de.style.setProperty('--boot-bg', bg)")
     const map = html.match(/var MIGRATE\s*=\s*(\{[^}]+\})/)
     expect(map).toBeTruthy()
     expect(JSON.parse(map[1].replace(/'/g, '"'))).toEqual(ACCENT_MIGRATION)

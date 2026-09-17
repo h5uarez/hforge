@@ -45,6 +45,7 @@ function applyPrefs(theme, accent) {
   // theme-color follows the palette on every runtime switch.
   const PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#220a4d","light":"#e7ddfa"},"dragonfruit":{"dark":"#3d0c1e","light":"#f6dbe7"},"ghost":{"dark":"#1a1f1b","light":"#e6f3ed"},"cobalt":{"dark":"#0a1745","light":"#d9e3fb"},"ember":{"dark":"#2a1408","light":"#f6e7d3"}}
   const bg = (PALETTE_BG[de.dataset.accent] && PALETTE_BG[de.dataset.accent][de.dataset.theme]) || PALETTE_BG.default.light
+  de.style.setProperty('--boot-bg', bg)
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.content = bg
 }
