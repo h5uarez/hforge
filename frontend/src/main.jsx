@@ -3,11 +3,8 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { getLang, setLang } from './lib/i18n.js'
 import { registerPwa } from './lib/pwa.js'
+import { removeSplashOnNextFrame } from './lib/boot.js'
 import './index.css'
-
-function removeSplash() {
-  document.getElementById('splash')?.remove()
-}
 
 // Deferred work (PWA registration, version prefetch) must never delay first
 // paint: requestIdleCallback when available, setTimeout as the fallback.
@@ -36,7 +33,7 @@ function bootstrap() {
   } catch {
     // A failed mount must never trap the user on the splash logo.
   } finally {
-    removeSplash()
+    removeSplashOnNextFrame()
   }
 
   // PWA registration (mobile-build and secure-origin guards live in registerPwa).
