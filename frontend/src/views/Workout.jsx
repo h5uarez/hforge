@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, exerciseName } from '../lib/exercises.js'
 import { removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, previousSetValue, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, previousSetValue, historyInputValue, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t, sideLabel } from '../lib/i18n.js'
@@ -115,9 +115,17 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     if (setTarget(s)) ids.push(targetId(i))
     return ids
   }, []).join(' ')
+  // Fresh sessions retain their current routine/progression values in state, but unedited fields
+  // can visually show the previous occurrence as a placeholder. This ref survives rerenders
+  // without adding hint metadata to the active session or saved history.
+  const historyPreview = useRef(S.active?.lastRecordEditAt === S.active?.start)
+  const historyEdited = useRef(new Set())
+  const historyKey = (i, field, side) => `${side || 'set'}:${i}:${field}`
+  const markHistoryEdited = (i, field, side) => historyEdited.current.add(historyKey(i, field, side))
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
+    markHistoryEdited(i, col.f)
     if (col.eff) return onField(i, col.f, stepEffort(col.eff, s[col.f], dir))
     onField(i, col.f, Math.max(0, Math.round(((s[col.f] || 0) + dir * col.step) * 100) / 100))
   }
@@ -136,12 +144,13 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     const effortProps = col.eff ? effortInputProps(s) : { placeholder: undefined, className: '' }
     const historyHint = previousSetValue(last, i, col.f)
     const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
+    const value = historyInputValue(s[col.f], historyHint, historyPreview.current && !projectSideSet(s).done, historyEdited.current.has(historyKey(i, col.f)))
     return <div className={'stp ' + cls}>
       <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       {/* A typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up.
           Vacant effort keeps a neutral "–" ghost in the same full-width track. */}
-      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={s[col.f] ?? ''}
-        onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
+      <span className="val"><NumberField className={effortProps.className} aria-label={t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={value}
+        onChange={v => { markHistoryEdited(i, col.f); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v) }} /></span>
       <button aria-label={t('More time')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
     </div>
   }
@@ -153,10 +162,11 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     const historyHint = previousSetValue(last, i, col.f, side)
     const placeholder = col.eff ? effortProps.placeholder : historyHint == null ? undefined : fmtNum(historyHint)
     const sideText = sideLabel(side)
+    const value = historyInputValue(s[side][col.f], historyHint, historyPreview.current && !projectSideSet(s).done, historyEdited.current.has(historyKey(i, col.f, side)))
     return <div className={'stp ' + cls + ' side-' + side + '-' + cls}>
-      <button aria-label={t('Decrease {0}', sideText.name)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side)}><Icon name="minus" /></button>
-      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={sideText.name + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={s[side][col.f] ?? ''} onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side)} /></span>
-      <button aria-label={t('Increase {0}', sideText.name)} onClick={() => onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side)}><Icon name="plus" /></button>
+      <button aria-label={t('Decrease {0}', sideText.name)} onClick={() => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, -1) : Math.max(0, Math.round(((s[side][col.f] || 0) - col.step) * 100) / 100), side) }}><Icon name="minus" /></button>
+      <span className="val"><NumberField className={'side-input ' + effortProps.className} aria-label={sideText.name + ' ' + t('Sets') + ' ' + (i + 1) + ': ' + col.hd} decimal={col.dec} nullable={col.opt} placeholder={placeholder} value={value} onChange={v => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? capEffort(col.eff, v) : v, side) }} /></span>
+      <button aria-label={t('Increase {0}', sideText.name)} onClick={() => { markHistoryEdited(i, col.f, side); onField(i, col.f, col.eff ? stepEffort(col.eff, s[side][col.f] ?? null, 1) : Math.max(0, Math.round(((s[side][col.f] || 0) + col.step) * 100) / 100), side) }}><Icon name="plus" /></button>
     </div>
   }
   // Empty notes stay out of the way, while an existing note remains immediately readable. This

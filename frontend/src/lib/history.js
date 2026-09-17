@@ -442,6 +442,15 @@ export function previousSetValue(last, index, field, side) {
   return Number.isFinite(previous[field]) ? previous[field] : undefined
 }
 
+// NumberField is controlled, so a placeholder is hidden whenever the seeded session value is
+// passed through unchanged. Keep that current target in session state for progression/finish
+// semantics, but expose an empty visual value until the user edits the field. The history hint is
+// never returned as a session value and therefore cannot leak into saved history.
+export function historyInputValue(actual, historyHint, preview = false, touched = false) {
+  if (historyHint != null && preview && !touched) return ''
+  return actual ?? ''
+}
+
 export function bestWeightFor(S, exId) {
   let best = 0
   S.workouts.forEach(w => w.entries.forEach(e => {

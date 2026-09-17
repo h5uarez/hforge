@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, previousSetValue, currentSessionHeaviestWeight, topWeightInitialValue, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, previousSetValue, historyInputValue, currentSessionHeaviestWeight, topWeightInitialValue, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { EXDB } from './exercises.js'
 import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition, historyTargetBaseline } from './history-edit.js'
 import { rebuildHistory } from './history-rebuild.js'
@@ -180,6 +180,22 @@ describe('workout history hints and TopWeight defaults', () => {
     const entry = { target: { weight: 90 }, sets: [{ left: { w: 55, done: true }, right: { w: 62, done: true } }] }
     expect(currentSessionHeaviestWeight(entry)).toBe(62)
     expect(topWeightInitialValue(entry)).toBe(62)
+  })
+
+  it('hides seeded targets only for the visual input while leaving saved session values untouched', () => {
+    const [set] = buildSets(emptyS, { id: LIFT, sets: 1, reps: 8, weight: 50 })
+    expect(historyInputValue(set.r, 6, true)).toBe('')
+    expect(historyInputValue(set.w, 40, true)).toBe('')
+    expect(historyInputValue(set.r, 6, true, true)).toBe(8)
+    expect(historyInputValue(set.r, undefined, true)).toBe(8)
+    expect(set).toEqual({ w: 50, r: 8, done: false })
+
+    const [side] = buildSets(emptyS, { id: '0739', sets: 1, reps: 12, weight: 20, side: true })
+    expect(historyInputValue(side.left.r, 4, true)).toBe('')
+    expect(historyInputValue(side.right.w, 22, true)).toBe('')
+    const saved = copyHistoryEntry({ id: LIFT, sets: [{ ...set, done: true }] })
+    expect(saved.sets[0]).toEqual({ w: 50, r: 8, done: true })
+    expect(saved.sets[0]).not.toHaveProperty('historyHint')
   })
 })
 
