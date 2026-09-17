@@ -8,10 +8,11 @@
 // environment has no `document`, so we stub the stores out — the helper itself
 // touches none of them, so the stub is just an import-time enabler.
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { EXDB } from './lib/exercises.js'
+import { setLang } from './lib/i18n.js'
 
 const mocks = vi.hoisted(() => ({
   getState: vi.fn(),
@@ -30,6 +31,9 @@ const ACTIVE_LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').
 const sheetsSource = readFileSync(resolve(process.cwd(), 'src/sheets.jsx'), 'utf8')
 
 const activeState = () => ({ unit: 'kg', exWeights: {}, workouts: [], routines: [], active: null })
+
+// These pure formatting contracts use English punctuation; the app's first-run locale is Spanish.
+beforeAll(() => setLang('en'))
 
 describe('commitPickerSelection', () => {
   it('calls commit() before closePicker() when the commit succeeds', () => {

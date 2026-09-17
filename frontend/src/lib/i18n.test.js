@@ -23,7 +23,7 @@ beforeEach(() => { fakeBrowser(); vi.resetModules() })
 afterEach(() => { delete globalThis.localStorage; delete globalThis.navigator; delete globalThis.window })
 
 describe('language matching', () => {
-  it('normalizes regional and underscore-separated browser tags', async () => {
+  it('normalizes regional and underscore-separated language tags', async () => {
     const { normalizeLang } = await import('./i18n.js')
     expect(normalizeLang('es-MX')).toBe('es')
     expect(normalizeLang('ES_mx')).toBe('es')
@@ -31,17 +31,11 @@ describe('language matching', () => {
     expect(normalizeLang('nl-NL')).toBeNull()
   })
 
-  it('rejects removed legacy languages so old preferences fall back to English', async () => {
+  it('rejects removed legacy languages', async () => {
     const { normalizeLang } = await import('./i18n.js')
     for (const legacy of ['de', 'de-DE', 'fr', 'pt-BR', 'it', 'zh-TW', 'ko', 'hi', 'pl', 'tr', 'ru']) {
       expect(normalizeLang(legacy)).toBeNull()
     }
-  })
-
-  it('uses the first supported language in the browser preference order', async () => {
-    const { matchLang } = await import('./i18n.js')
-    expect(matchLang(['nl-NL', 'pt-BR', 'es-ES'])).toBe('es')
-    expect(matchLang(['de-DE', 'fr-FR'])).toBeNull()
   })
 })
 
@@ -55,32 +49,25 @@ describe('initial language selection', () => {
     expect(getLang()).toBe('en')
   })
 
-  it('ignores stale removed-language prefs and falls through to profile, browser, then English', async () => {
+  it('ignores stale removed-language prefs and falls through to profile, then Spanish', async () => {
     values.set('gym_lang_v1', 'de')
     values.set('gym_state_v1', JSON.stringify({ lang: 'es' }))
-    setNavigator({ languages: ['de-DE'], language: 'de-DE' })
     const { getInitialLang } = await import('./i18n.js')
     expect(getInitialLang()).toBe('es')
     values.delete('gym_state_v1')
-    setNavigator({ languages: ['es-MX'], language: 'es-MX' })
     expect(getInitialLang()).toBe('es')
-    setNavigator({ languages: ['de-DE'], language: 'de-DE' })
-    expect(getInitialLang()).toBe('en')
   })
 
-  it('uses a legacy persisted profile language before browser detection', async () => {
+  it('uses a legacy persisted profile language before the Spanish default', async () => {
     values.set('gym_state_v1', JSON.stringify({ lang: 'es' }))
-    setNavigator({ languages: ['de-DE'], language: 'de-DE' })
     const { getInitialLang } = await import('./i18n.js')
     expect(getInitialLang()).toBe('es')
   })
 
-  it('falls back to the first supported browser language and then English', async () => {
-    setNavigator({ languages: ['nl-NL', 'es-MX'], language: 'nl-NL' })
+  it('defaults new users to Spanish without explicit or profile language', async () => {
+    setNavigator({ languages: ['en-US'], language: 'en-US' })
     const { getInitialLang } = await import('./i18n.js')
     expect(getInitialLang()).toBe('es')
-    setNavigator({ languages: ['nl-NL'], language: 'nl-NL' })
-    expect(getInitialLang()).toBe('en')
   })
 
   it('persists normalized explicit choices independently of profile state', async () => {

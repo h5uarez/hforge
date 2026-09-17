@@ -25,6 +25,10 @@ function bootstrap() {
   // it lands. Accepted tradeoff: an `es` device may paint one frame of English
   // before the Spanish pack arrives — speed now wins over that single frame.
   // setLang keeps its 4s pack timeout and falls back to English on any error.
+  // Start the pack request before scheduling React so the common case can settle
+  // before the first login commit without delaying boot on a slow/offline device.
+  setLang(getLang()).catch(() => setLang('en'))
+
   try {
     createRoot(document.getElementById('root')).render(
       <StrictMode><App /></StrictMode>
@@ -34,8 +38,6 @@ function bootstrap() {
   } finally {
     removeSplash()
   }
-
-  setLang(getLang()).catch(() => setLang('en'))
 
   // PWA registration (mobile-build and secure-origin guards live in registerPwa).
   // Update UX is user-approved: the banner in App.jsx offers the reload moment.

@@ -573,22 +573,6 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .historical-sets{align-items:flex-start;margin:0 0 8px}
 .historical-no-sets{display:block;padding:3px 0;line-height:1.35}
 
-/* --- login language control --- */
-.login-lang{
-  align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:9px;
-  margin-bottom:clamp(18px,5vh,32px);text-align:left;
-}
-.login-lang label{font-size:13px;color:var(--label-2)}
-.login-lang select{
-  min-height:44px;max-width:calc(100% - 12px);padding:8px 32px 8px 12px;
-  border:1px solid var(--sep);border-radius:var(--r);background:var(--surface);
-  color:var(--label);font-size:15px;line-height:1.2;
-}
-.login-lang select:active{background:var(--surface-2)}
-/* the login language <select> is the one native popup left: theme its list box
-   so dark mode never gets a white system sheet */
-.login-lang select option{background:var(--surface);color:var(--label)}
-
 /* --- brand mark: the approved black wordmark in light mode, inverted to white in dark mode.
    It deliberately does not use --acc: branding follows only data-theme, never the account accent. */
 .login-brand{width:min(260px,100%);margin:0 auto clamp(20px,3vh,28px)}

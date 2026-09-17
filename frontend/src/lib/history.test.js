@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
+import { setLang } from './i18n.js'
 import { EXDB } from './exercises.js'
 import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition, historyTargetBaseline } from './history-edit.js'
 import { rebuildHistory } from './history-rebuild.js'
@@ -10,6 +11,9 @@ const CARDIO = EXDB.find(e => e.bp === 'cardio').id
 // defaults to bodyweight and would quietly send every label test down the other path.
 const LIFT = EXDB.find(e => e.bp !== 'cardio' && e.eq !== 'body weight').id
 const BW = EXDB.find(e => e.eq === 'body weight').id
+
+// These pure formatting contracts use English punctuation; the app's first-run locale is Spanish.
+beforeAll(() => setLang('en'))
 
 describe('exercise notes', () => {
   it('trims persisted notes, omits empties, and keeps the 280-character limit', () => {

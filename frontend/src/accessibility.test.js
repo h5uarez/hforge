@@ -18,6 +18,18 @@ describe('mobile accessibility and layout contracts', () => {
     expect(workout).toContain('aria-label={t(\'Sets\')')
   })
 
+  it('keeps language selection out of login and available in Settings', () => {
+    const login = source('views/Login.jsx')
+    const settings = source('views/Settings.jsx')
+    const css = source('index.css')
+    expect(login).not.toContain('login-language')
+    expect(login).not.toContain('LANGS')
+    expect(login).not.toContain('setLangPreference')
+    expect(settings).toContain("title={t('Language')}")
+    expect(settings).toContain('Object.entries(LANGS)')
+    expect(css).not.toContain('.login-lang')
+  })
+
   it('keeps narrow controls and fixed navigation clear of content', () => {
     const css = source('index.css')
     const home = source('views/Home.jsx')
