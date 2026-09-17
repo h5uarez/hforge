@@ -386,12 +386,22 @@ describe('scrollable workout composition contracts', () => {
   it('keeps the workout wrapper as the only sticky and composited surface', () => {
     const css = readFileSync(srcPath('index.css'), 'utf8')
     const stickyRule = css.match(/\.workout-session \.workout-sticky-head\{([^}]*)\}/)?.[1] || ''
+    const stickyAfterRule = css.match(/\.workout-session \.workout-sticky-head::after\{([^}]*)\}/)?.[1] || ''
     const progressRule = css.match(/\.workout-session \.wprog\{([^}]*)\}/)?.[1] || ''
     expect(source).toContain('className="workout-sticky-head"')
     expect(source).toContain('className="wprog"')
     expect(stickyRule).toContain('position:sticky')
     expect(stickyRule).toContain('isolation:isolate')
     expect(stickyRule).toContain('transform:translateZ(0);backface-visibility:hidden;will-change:transform')
+    expect(stickyAfterRule).toContain("content:''")
+    expect(stickyAfterRule).toContain('position:absolute')
+    expect(stickyAfterRule).toContain('left:0')
+    expect(stickyAfterRule).toContain('right:0')
+    expect(stickyAfterRule).toContain('bottom:-24px')
+    expect(stickyAfterRule).toContain('height:24px')
+    expect(stickyAfterRule).toContain('background:linear-gradient(to bottom,var(--sep-op),transparent)')
+    expect(stickyAfterRule).toContain('filter:blur(6px)')
+    expect(stickyAfterRule).toContain('pointer-events:none')
     expect(progressRule).not.toContain('position:sticky')
     expect(progressRule).not.toContain('top:var(--sat)')
     expect(progressRule).not.toContain('z-index:20')

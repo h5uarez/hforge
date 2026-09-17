@@ -266,7 +266,7 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
 .hdr h1{font-size:clamp(26px,7vw + 8px,34px);line-height:1.06;font-weight:700;letter-spacing:-.028em}
 .hdr .sub{color:var(--label-2);font-size:15px;letter-spacing:-.006em;margin-top:4px}
 /* P0 page headers (Home/Stats/History): sticky title band; past scrollY 0 a
-   soft/faded edge appears (opacity only) with a shadow, and the title compacts (transform only).
+   soft, blurred 24px separation edge appears (opacity only) with a shadow, and the title compacts (transform only).
    No layout animation, no scroll listener cost beyond passive+rAF (see useScrolled). */
 .hdr.page{
   /* Start at the viewport edge so the header also paints the device's safe-area
@@ -279,8 +279,8 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
 }
 .hdr.page::after{
-  content:'';position:absolute;left:0;right:0;bottom:-12px;height:12px;
-  background:linear-gradient(to bottom,var(--sep-op),transparent);filter:blur(2px);
+  content:'';position:absolute;left:0;right:0;bottom:-24px;height:24px;
+  background:linear-gradient(to bottom,var(--sep-op),transparent);filter:blur(6px);
   pointer-events:none;opacity:0;transition:opacity var(--fast) var(--ease);
 }
 .hdr.page h1{transition:transform var(--fast) var(--ease);transform-origin:left bottom}
@@ -1560,8 +1560,10 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .workout-session .iconbtn,.workout-session .setgo{min-width:44px;min-height:44px}
 /* Sticky session header (title + timer + progress) so it stays visible while scrolling.
    The negative margin cancels all of #app's top inset; padding keeps the controls in
-   their existing visual position while the opaque, isolated wrapper owns the band. */
+   their existing visual position while the opaque, isolated wrapper owns the band.
+   A blurred 24px separation edge stays visible below the wrapper without changing its geometry. */
 .workout-session .workout-sticky-head{position:sticky;top:0;z-index:20;isolation:isolate;background:var(--bg);margin-top:calc(-1 * var(--sat) - 8px);padding-top:calc(var(--sat) + 8px);transform:translateZ(0);backface-visibility:hidden;will-change:transform}
+.workout-session .workout-sticky-head::after{content:'';position:absolute;left:0;right:0;bottom:-24px;height:24px;background:linear-gradient(to bottom,var(--sep-op),transparent);filter:blur(6px);pointer-events:none}
 /* Centered set actions */
 .workout-session .set-actions{justify-content:center;gap:8px;flex-wrap:wrap}
 .workout-session .session-card{scroll-margin-top:calc(24px + var(--sat));}
