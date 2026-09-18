@@ -16,7 +16,7 @@ test('renders Spanish payloads for every push kind under es', () => {
     title: 'Entrenamiento planificado hoy', body: 'Está en tu plan para hoy', tag: 'day-reminder-generic'
   });
   assert.deepEqual(buildPushPayload('es', 'test'), {
-    title: 'Hforge', body: 'Notificación de prueba — así se ven los avisos.', tag: 'test'
+    title: 'Avisos activos', body: 'Así se ven los avisos.', tag: 'test'
   });
 });
 

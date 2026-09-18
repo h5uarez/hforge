@@ -11,9 +11,11 @@ const pushRestTimer = sec => { if (useStore.getState().user) api('/api/push/rest
 const cancelPushRestTimer = () => { if (useStore.getState().user) api('/api/push/rest-timer/cancel', { method: 'POST', body: '{}' }).catch(() => {}) }
 
 let toastTm = null
+let toastLeaveTm = null   // exit-animation window: dismissal fades, never snaps
 let toastQueued = null   // max 1 waiting: a burst shows the latest, never a stack
 const TOAST_PLAIN_MS = 2600
 const TOAST_ACTION_MS = 4500
+const TOAST_LEAVE_MS = 180   // matches toast-out in index.css
 let timerInt = null
 let timerTick = null
 let workInt = null
@@ -26,6 +28,7 @@ export const useUI = create((set, get) => ({
   toastKind: 'neutral',   // neutral | success | warning | error
   toastAction: null,      // { label, onClick } — e.g. Undo, 4–5s on screen
   toastKey: 0,
+  toastLeaving: false,   // true during the 180ms disintegrate exit (Toast.jsx reads it)
   timer: null,         // rest countdown between sets — { left, total, endsAt, sid }
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
 
@@ -47,14 +50,26 @@ export const useUI = create((set, get) => ({
   },
   showToast(msg, opts = {}) {
     const action = opts.action || null
-    set(s => ({ toastMsg: msg, toastKind: opts.kind || 'neutral', toastAction: action, toastKey: s.toastKey + 1 }))
+    set(s => ({ toastMsg: msg, toastKind: opts.kind || 'neutral', toastAction: action, toastKey: s.toastKey + 1, toastLeaving: false }))
     clearTimeout(toastTm)
+    clearTimeout(toastLeaveTm)
     toastTm = setTimeout(() => get().dismissToast(), opts.duration || (action ? TOAST_ACTION_MS : TOAST_PLAIN_MS))
   },
   dismissToast() {
+    if (get().toastLeaving) return
+    if (!get().toastMsg) {
+      if (toastQueued) { const next = toastQueued; toastQueued = null; get().showToast(next.msg, next.opts) }
+      return
+    }
     clearTimeout(toastTm)
-    set({ toastMsg: '', toastAction: null })
-    if (toastQueued) { const next = toastQueued; toastQueued = null; get().showToast(next.msg, next.opts) }
+    // Disintegrate exit: hold the message for one animation frame window so
+    // <Toast> can play toast-out, then clear and release the queued toast.
+    set({ toastLeaving: true })
+    clearTimeout(toastLeaveTm)
+    toastLeaveTm = setTimeout(() => {
+      set({ toastMsg: '', toastAction: null, toastLeaving: false })
+      if (toastQueued) { const next = toastQueued; toastQueued = null; get().showToast(next.msg, next.opts) }
+    }, TOAST_LEAVE_MS)
   },
   runToastAction() {
     const fn = get().toastAction?.onClick

@@ -23,7 +23,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
+const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, shortRoutineName, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
@@ -610,5 +610,23 @@ describe('centralized workout start flow', () => {
     startFlow('today-routine')
     expect(mocks.openSheet).not.toHaveBeenCalled()
     expect(state.S.active).toEqual({ id: 'running', name: 'Today' })
+  })
+})
+
+describe('shortRoutineName', () => {
+  it('takes the last em-dash segment trimmed', () => {
+    expect(shortRoutineName('B11 W1 — Día 2 — DL + Espalda')).toBe('DL + Espalda')
+  })
+  it('trims names without a separator', () => {
+    expect(shortRoutineName('  Pierna  ')).toBe('Pierna')
+  })
+  it('truncates a still-long segment to 26 chars with an ellipsis', () => {
+    const out = shortRoutineName('Plan — Una rutina con un nombre larguísimo de verdad')
+    expect(out.length).toBeLessThanOrEqual(26)
+    expect(out.endsWith('…')).toBe(true)
+  })
+  it('passes short values through untouched', () => {
+    expect(shortRoutineName('Push')).toBe('Push')
+    expect(shortRoutineName('')).toBe('')
   })
 })

@@ -49,6 +49,18 @@ export const validExerciseNote = raw => {
   return note === undefined || note.length <= NOTE_MAX
 }
 
+// Short routine label for toasts: a starter-plan name like "B11 W1 — Día 2 — DL +
+// Espalda" reads as its last "—" segment ("DL + Espalda"), capped so a planned-day
+// toast stays on one line. The full name still shows in the sheet list rows.
+export function shortRoutineName(name, max = 26) {
+  const raw = String(name ?? '').trim()
+  if (!raw) return raw
+  const parts = raw.split('—').map(p => p.trim()).filter(Boolean)
+  const short = parts.length > 1 ? parts[parts.length - 1] : raw
+  if (short.length <= max) return short
+  return short.slice(0, max - 1).trimEnd() + '…'
+}
+
 // An active entry is a session snapshot, not a routine entry. Keep its construction in one
 // pure helper so starting a workout, adding an exercise, and editing an exercise all use the
 // same prescription + set generation path.
@@ -1297,7 +1309,7 @@ function DayOverride({ iso, close }) {
   const set = v => {
     update(s => { if (!v) delete s.dayPlan[iso]; else s.dayPlan[iso] = v })
     close()
-    toast(v === '' ? t('Back to weekly plan') : v === 'rest' ? t('{0} set to rest', fmtDate(iso)) : t('{0} planned for {1}', (st.routines.find(r => r.id === v) || {}).name, fmtDate(iso)))
+    toast(v === '' ? t('Back to weekly plan') : v === 'rest' ? t('{0} set to rest', fmtDate(iso)) : t('{0} planned for {1}', shortRoutineName((st.routines.find(r => r.id === v) || {}).name), fmtDate(iso)))
   }
   return <>
     <h3>{fmtDate(iso, true)}</h3>
@@ -1403,7 +1415,7 @@ function WorkoutDetail({ w, close }) {
     toast(t('Workout timestamps updated'))
   }
   return <>
-    <div className="historical-workout-head"><h3 className="historical-workout-name">{current.name}</h3>{!editing && <Button size="sm" icon="pencil" onClick={openTimeEditor} aria-label={t('Edit workout')}>{t('Edit')}</Button>}</div>
+    <div className="historical-workout-head"><h3 className="historical-workout-name">{current.name}</h3>{!editing && <div className="historical-workout-edit"><Button size="sm" icon="pencil" onClick={openTimeEditor} aria-label={t('Edit workout')}>{t('Edit')}</Button></div>}</div>
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(current.d, true), ...durPart(current.end - current.start), fmtVol(current.vol, st.unit), ...(current.bw ? [fmtNum(current.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {editing && <div className="card" style={{ marginBottom: 12 }}>
       <div style={{ display: 'grid', gap: 10 }}>
