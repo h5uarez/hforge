@@ -397,25 +397,45 @@ export function Row({ icon, iconTint, title, subtitle, value, valueTitle, access
 // theme entirely — on dark mode it flashes a white sheet — and can't show more
 // than a bare label per option. This opens our own sheet with a checkmark on the
 // current value, which is also how iOS itself handles a long option list.
-export function SelectRow({ icon, iconTint, title, value, valueTitle, options, onChange, sheetTitle, className = '' }) {
+const foldSelectSearch = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+export function filterSelectOptions(options = [], query = '') {
+  const words = foldSelectSearch(query).trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return options
+  return options.filter(option => {
+    const text = foldSelectSearch([option?.label, option?.subtitle].filter(value => value != null).join(' '))
+    return words.every(word => text.includes(word))
+  })
+}
+
+function SelectSheet({ close, title, value, options, onChange, searchable }) {
+  const [query, setQuery] = useState('')
+  const visibleOptions = searchable ? filterSelectOptions(options, query) : options
+  return (
+    <>
+      <h3>{title}</h3>
+      {searchable && <SearchField value={query} onChange={e => setQuery(e.target.value)} onClear={() => setQuery('')}
+        placeholder={t('Search options')} aria-label={t('Search options')} />}
+      <div className="sect-b">
+        {visibleOptions.map(o => (
+          <button key={o.value} className="lrow tap" onClick={() => { close(); onChange(o.value) }}>
+            <span className="lrow-m"><span className="lrow-t">{o.label}</span>
+              {o.subtitle && <span className="lrow-s">{o.subtitle}</span>}</span>
+            {o.value === value && <Icon name="check" className="lrow-k" />}
+          </button>
+        ))}
+        {searchable && visibleOptions.length === 0 && <div className="empty" role="status">{t('No options match your search')}</div>}
+      </div>
+      <div style={{ height: 8 }} />
+    </>
+  )
+}
+
+export function SelectRow({ icon, iconTint, title, value, valueTitle, options, onChange, sheetTitle, className = '', searchable = false }) {
   const cur = options.find(o => o.value === value)
   const open = () => {
     const { openSheet } = require_ui()
-    const h = openSheet(close => (
-      <>
-        <h3>{sheetTitle || title}</h3>
-        <div className="sect-b">
-          {options.map(o => (
-            <button key={o.value} className="lrow tap" onClick={() => { close(); onChange(o.value) }}>
-              <span className="lrow-m"><span className="lrow-t">{o.label}</span>
-                {o.subtitle && <span className="lrow-s">{o.subtitle}</span>}</span>
-              {o.value === value && <Icon name="check" className="lrow-k" />}
-            </button>
-          ))}
-        </div>
-        <div style={{ height: 8 }} />
-      </>
-    ))
+    const h = openSheet(close => <SelectSheet close={close} title={sheetTitle || title} value={value} options={options} onChange={onChange} searchable={searchable} />)
     return h
   }
   return (

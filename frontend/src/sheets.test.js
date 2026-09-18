@@ -133,6 +133,13 @@ describe('Historical workout detail presentation', () => {
     expect(sheetsSource).toContain('role="listitem" aria-label={t(\'Set {0}\', set.index + 1) + \': \' + set.label}')
     expect(sheetsSource).not.toContain(".filter(setIsDone).map(s => setLabel(e.id, s, e.target)).join('  ·  ')")
   })
+
+  it('uses the shared time-field styling on both historical time controls', () => {
+    const detail = sheetsSource.match(/function WorkoutDetail[\s\S]*?export const workoutDetailSheet/)?.[0] || ''
+    expect(detail.match(/<TextField type="time" className="timef"/g)).toHaveLength(2)
+    expect(detail).toContain('const dateKey = localDateKey(current.start) || current.d')
+    expect(detail).toContain('if (end !== null && end < start) end += 86400000')
+  })
 })
 
 describe('active workout routine imports', () => {

@@ -91,6 +91,8 @@ export default {
   'That routine is no longer available': 'Esa rutina ya no está disponible',
   '{0} exercises added to this workout': '{0} ejercicios añadidos a este entrenamiento',
   'Search {0} exercises…': 'Buscar entre {0} ejercicios…',
+  'Search options': 'Buscar opciones',
+  'No options match your search': 'Ninguna opción coincide con tu búsqueda',
   'Chosen': 'Elegidos',
   'Nothing chosen yet — add exercises and they’ll show up here.': 'Nada elegido aún — añade ejercicios y aparecerán aquí.',
   'No match': 'Sin resultados',
