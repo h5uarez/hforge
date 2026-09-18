@@ -1632,6 +1632,63 @@ export function beginWorkout(routineId, bw) {
   useUI.getState().stopRest()
   nav('/workout')
 }
+/* ============================ silent TopWeight ============================ */
+// Completing an exercise no longer interrupts the session by default. The gate below
+// decides whether the TopWeight sheet is worth showing at all: null means "record the
+// session max silently and move on", any reason means "ask, because something needs a
+// human eye". The sheet is the exception, never the rule.
+export const TOP_WEIGHT_PROMPT = { UNLOGGED: 'unlogged-weight', PR: 'pr', OVER_RANGE: 'over-range' }
+export function topWeightPromptReason(entry, prevBest, unit) {
+  const maxSet = currentSessionHeaviestWeight(entry) ?? 0
+  // A load above the ordinary control ceiling only fits the TopWeight range — confirm it.
+  if (maxSet > weightBounds(unit).max) return TOP_WEIGHT_PROMPT.OVER_RANGE
+  const prev = Number(prevBest) || 0
+  // A heavier top set than anything on record deserves an explicit confirmation.
+  if (maxSet > 0 && prev > 0 && maxSet > prev) return TOP_WEIGHT_PROMPT.PR
+  // Completed sets with no weight are only suspicious against a known reference: a
+  // previous best, an already-recorded top weight, or a programmed target. Without any
+  // of those, silence stays honest — there is nothing to compare against.
+  const targetW = Number(entry?.target?.weight)
+  const hasReference = prev > 0 || Number(entry?.topW) > 0
+    || (Number.isFinite(targetW) && targetW > 0)
+  if (hasReference && (entry?.sets || []).some(s => setIsDone(s) && !(weightOfSet(s) > 0))) {
+    return TOP_WEIGHT_PROMPT.UNLOGGED
+  }
+  return null
+}
+export function resolveTopWeightAction(entry, prevBest, unit) {
+  const reason = topWeightPromptReason(entry, prevBest, unit)
+  if (!reason) return { type: 'silent', value: currentSessionHeaviestWeight(entry) ?? 0 }
+  return { type: 'prompt', reason, value: topWeightInitialValue(entry) }
+}
+// Silent TopWeight commit: persist the session max and advance exactly like a saved
+// TopWeight would (next unit, or the finish prompt on the last unit) — without opening
+// any sheet and without a toast. The finish path re-derives the same max from the done
+// sets, so this stays consistent even if the session is finished another way.
+export function silentTopWeightCommit(entryIdx) {
+  const st = S()
+  const A = st?.active
+  const entry = A?.entries?.[entryIdx]
+  if (!entry) return false
+  const maxSet = currentSessionHeaviestWeight(entry) ?? 0
+  const units = supersetUnits(A.entries)
+  const unit = unitOf(units, entryIdx)
+  const unitIdx = units.findIndex(u => u === unit)
+  const isLastUnit = unitIdx === units.length - 1
+  const unitDone = unit.every(i => A.entries[i].sets.every(s => projectSideSet(s).done))
+  update(s => {
+    if (!s.active?.entries?.[entryIdx]) return
+    if (maxSet > 0) {
+      s.active.entries[entryIdx].topW = maxSet
+      const cur = s.exWeights[entry.id]
+      if (!cur || maxSet > cur.w) s.exWeights[entry.id] = { w: maxSet, d: todayISO() }
+    }
+    touchActiveRecord(s.active)
+    if (unitDone && !isLastUnit) s.active.cur = units[unitIdx + 1][0]
+  }, false)
+  if (unitDone && isLastUnit) workoutCompleteSheet()   // whole workout done → finish/continue prompt
+  return true
+}
 function TopWeight({ entryIdx, close }) {
   const st = useStore(s => s.S)
   const A = st.active

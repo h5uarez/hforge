@@ -247,9 +247,14 @@ describe('scrollable workout composition contracts', () => {
     const ui = readFileSync(srcPath('components/ui.jsx'), 'utf8')
     const flashBlock = ui.match(/export function scheduleSetRowFlash[\s\S]*?export function Check/)
     // Checking a set must not run the exercise-card focus/scroll path; only the expected
-    // top-weight or whole-workout sheet may take focus after the state update.
+    // silent TopWeight commit or the exception/finish sheets may take focus after the update.
     expect(toggleBlock?.[0]).not.toContain('focusEntry(')
-    expect(toggleBlock?.[0]).toContain('if (askTop) topWeightSheet(idx)')
+    // Silent by default: ordinary completions auto-commit with no sheet; only the gate's
+    // exceptions (unlogged weight, PR, over-range) open the TopWeight sheet.
+    expect(toggleBlock?.[0]).toContain('topWeightPromptReason(live, prev, st.unit)')
+    expect(toggleBlock?.[0]).toContain('if (reason) topWeightSheet(idx, reason)')
+    expect(toggleBlock?.[0]).toContain('else silentTopWeightCommit(idx)')
+    expect(toggleBlock?.[0]).not.toContain('if (askTop) topWeightSheet(idx)')
     expect(toggleBlock?.[0]).toContain('else if (workoutDone) workoutCompleteSheet()')
     expect(flashBlock?.[0]).not.toContain('scrollIntoView')
     // Row keys remain index-stable while the done-run wrapper owns only the visual fusion.
