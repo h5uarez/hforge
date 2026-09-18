@@ -15,7 +15,13 @@ export default defineConfig({
       '/video': { target: media, changeOrigin: true }
     }
   },
-  build: { chunkSizeWarningLimit: 1500 },
+  // Pinned explicit defaults: sourcemap off and the rolldown/oxc minifier this
+  // Vite major resolves by default (merged.minify === true -> 'oxc'), so the
+  // emitted output is identical with or without these keys. NOTE: minify is
+  // deliberately NOT 'esbuild' here — that value selects the deprecated
+  // transformWithEsbuild path, which requires the esbuild package (absent from
+  // this install) and fails the build; 'oxc' is this toolchain's default.
+  build: { chunkSizeWarningLimit: 1500, sourcemap: false, minify: 'oxc' },
   test: {
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     coverage: {

@@ -3,8 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'r
 import { Capacitor } from '@capacitor/core'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { bindUI } from './components/ui.jsx'
-import { Skeleton } from './components/ui.jsx'
+import { bindUI, Skeleton } from './components/ui.jsx'
 import { resolveAccent } from './lib/format.js'
 import { getLang, setLang, useLang } from './lib/i18n.js'
 import { setNav } from './lib/nav.js'
@@ -18,15 +17,16 @@ import PwaUpdateBanner from './components/PwaUpdateBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import InactivityReminder from './components/InactivityReminder.jsx'
 import { handleAndroidBack } from './lib/android-back.js'
-import Login from './views/Login.jsx'
 import Home from './views/Home.jsx'
 import Workout from './views/Workout.jsx'
-// Route code-splitting: Home, Login and Workout stay in the entry chunk so first
+// Route code-splitting: Home and Workout stay in the entry chunk so first
 // paint never waits on the network. Workout is deliberately eager: ActiveWorkout
 // restores focus to the current card on mount, and loading it with the shell keeps
 // the captured layout deterministic — a lazy chunk lets image decode win or lose
 // the race and shifts the captured viewport by a few px (visual workout-active flakes).
-// Every other view lazy-loads on navigation.
+// Login rides the existing boot Suspense (same skeleton as the pre-auth branch),
+// every other view lazy-loads on navigation.
+const Login = lazy(() => import('./views/Login.jsx'))
 const Plan = lazy(() => import('./views/Plan.jsx'))
 const RoutineEdit = lazy(() => import('./views/RoutineEdit.jsx'))
 const Stats = lazy(() => import('./views/Stats.jsx'))
@@ -136,7 +136,11 @@ function Shell() {
           re-mounts the boundary, so the tab bar is always a way out */}
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
-          {!authed ? <Login /> : (
+          {!authed ? (
+            <Suspense fallback={<BootSkeleton />}>
+              <Login />
+            </Suspense>
+          ) : (
             <Suspense fallback={<BootSkeleton />}>
             <Routes>
               <Route path="/home" element={<Home />} />

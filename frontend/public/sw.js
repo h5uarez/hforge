@@ -10,7 +10,7 @@
    banner the user confirmed), so an old client is never swapped for new assets
    mid-workout. Auth/data (/api/) and non-GET requests are never cached. */
 // Bump together with frontend releases so old clients detect the new worker.
-const SW_VERSION = 'hforge-pwa-v1.8.3'
+const SW_VERSION = 'hforge-pwa-v1.8.4'
 const SHELL_CACHE = SW_VERSION + '-shell'
 const RUNTIME_CACHE = SW_VERSION + '-rt'
 const MEDIA_CACHE = SW_VERSION + '-media'
@@ -116,8 +116,12 @@ self.addEventListener('fetch', e => {
     (e.request.headers.get('accept') || '').includes('text/html')
   if (isNavigation) {
     // Network-first so updates show up immediately; the precached shell keeps
-    // an already-loaded app reopenable offline.
-    e.respondWith(fetch(e.request).then(res => {
+    // an already-loaded app reopenable offline. When the page enabled
+    // navigation preload, race its preloaded response against the fetch —
+    // same network-first policy, just skipping one round trip to the worker.
+    const preloaded = e.preloadResponse ? Promise.resolve(e.preloadResponse).catch(() => undefined) : Promise.resolve(undefined)
+    const network = preloaded.then(cached => cached || fetch(e.request))
+    e.respondWith(network.then(res => {
       if (res.ok) {
         const copy = res.clone()
         caches.open(SHELL_CACHE).then(c => c.put('index.html', copy)).catch(() => {})

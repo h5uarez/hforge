@@ -4,6 +4,7 @@
 // Spanish exercise instructions come from the generated pack in src/instr/es.js. No other
 // language pack claims coverage until independently translated source data is supplied.
 import { useSyncExternalStore } from 'react'
+import { STORAGE_LANG_KEY, STORAGE_STATE_KEY, LOCALE_PACK_TIMEOUT_MS } from './constants.js'
 
 // UI languages. Only English and Spanish are supported; legacy preferences for
 // removed languages resolve to null and fall back to the Spanish first-run default.
@@ -15,8 +16,8 @@ const DATE_LOCALES = {
   en: 'en-GB', es: 'es-ES'
 }
 
-export const LANG_PREF_KEY = 'gym_lang_v1'
-const STATE_KEY = 'gym_state_v1'
+export const LANG_PREF_KEY = STORAGE_LANG_KEY
+const STATE_KEY = STORAGE_STATE_KEY
 const localePacks = import.meta.glob('../locales/*.js')
 const instrPacks = import.meta.glob('../instr/*.js')
 
@@ -93,7 +94,7 @@ export function sideLabel(side, language = getLang()) {
 // Instructions for an exercise in the current language (English steps as fallback).
 export const instrFor = ex => (instr && instr[ex.id]) || ex.st || []
 
-const PACK_TIMEOUT_MS = 4000
+const PACK_TIMEOUT_MS = LOCALE_PACK_TIMEOUT_MS
 function loadPack(loader) {
   const pending = Promise.resolve().then(loader)
   if (typeof setTimeout !== 'function') return pending
