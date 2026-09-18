@@ -1689,7 +1689,7 @@ export function silentTopWeightCommit(entryIdx) {
   if (unitDone && isLastUnit) workoutCompleteSheet()   // whole workout done → finish/continue prompt
   return true
 }
-function TopWeight({ entryIdx, close }) {
+function TopWeight({ entryIdx, reason, close }) {
   const st = useStore(s => s.S)
   const A = st.active
   // The workout can end underneath this sheet: finishing from the last exercise clears
@@ -1711,7 +1711,11 @@ function TopWeight({ entryIdx, close }) {
   const isLastUnit = unitIdx === units.length - 1
   if (!entry || !ex) return null
 
-  const commit = advance => {
+  // This sheet only opens on an exception (see topWeightPromptReason), so the copy
+  // always names what was detected. Saving records the weight and advances; skipping
+  // closes WITHOUT saving anything — the session max still reaches the history through
+  // the done sets when the workout is finished.
+  const save = advance => {
     const n = savedTopWeight(v, st.unit, true)
     if (n === null) { toast(t('Enter a valid weight')); return }
     update(s => {
@@ -1726,22 +1730,37 @@ function TopWeight({ entryIdx, close }) {
       else update(s => { s.active.cur = units[unitIdx + 1][0] }, false)
     } else toast(t('Tracked — next time starts at {0}', fmtWeight(S().exWeights[entry.id].w, true) + ' ' + st.unit))
   }
+  const skip = () => {
+    close()
+    if (unitDone) {
+      if (isLastUnit) workoutCompleteSheet()               // still done — skipping never blocks finishing
+      else update(s => { s.active.cur = units[unitIdx + 1][0] }, false)
+    }
+  }
+  const detectedLine = reason === TOP_WEIGHT_PROMPT.UNLOGGED
+    ? t('Some completed sets have no weight yet.')
+    : reason === TOP_WEIGHT_PROMPT.OVER_RANGE
+      ? t('Above the usual {0} range — saved with the TopWeight range.', fmtWeight(weightBounds(st.unit).max, true) + ' ' + st.unit)
+      : t('We detected {0} max.', fmtWeight(maxSet, true) + ' ' + st.unit)
   return <>
     {/* Split title: the exercise name owns the text (elegant 2-line clamp) and
         "Done" is a status chip — never one sentence, so long names like
         "Elevación de gemelos…" stay readable at 320px. */}
     <h3 className="capitalize row sheet-done-title"><span className="sheet-done-name">{exerciseName(ex)}</span><span className="tag acc done-chip"><Icon name="checkCircle" />{t('Done')}</span></h3>
-    <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
+    <div className="muted small">{detectedLine}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
     <WeightInput value={v} setValue={setV} unit={st.unit} allowDecimals topWeight />
     <div style={{ height: 10 }} />
     {prevBest > 0 ? <div className="small dim" style={{ textAlign: 'center', marginBottom: 12 }}>{t('Previous best:')} {fmtWeight(prevBest, true)} {st.unit}{maxSet > prevBest && <span style={{ color: 'var(--yellow)' }}> — {t('new record!')}</span>}</div> : <div style={{ height: 4 }} />}
     {unitDone ? <>
-      <Button variant="primary" trailingIcon={isLastUnit ? null : 'chevronRight'} onClick={() => commit(true)}>{isLastUnit ? t('Save') : t('Save & next exercise')}</Button>
-      <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={() => commit(false)}>{t('Just close')}</Button>
-    </> : <Button variant="primary" onClick={() => commit(false)}>{t('Save weight')}</Button>}
+      <Button variant="primary" trailingIcon={isLastUnit ? null : 'chevronRight'} onClick={() => save(true)}>{isLastUnit ? t('Save') : t('Save & next exercise')}</Button>
+      <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={skip}>{t('Skip')}</Button>
+    </> : <>
+      <Button variant="primary" onClick={() => save(false)}>{t('Save weight')}</Button>
+      <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={skip}>{t('Skip')}</Button>
+    </>}
   </>
 }
-export const topWeightSheet = entryIdx => ui().openSheet(close => <TopWeight entryIdx={entryIdx} close={close} />)
+export const topWeightSheet = (entryIdx, reason) => ui().openSheet(close => <TopWeight entryIdx={entryIdx} reason={reason} close={close} />)
 
 // Shown when the last exercise's last set is checked — finish, or keep going.
 function WorkoutComplete({ close }) {
