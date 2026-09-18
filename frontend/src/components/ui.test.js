@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { nextScrollState, parseNumberDraft, scheduleSetRowFlash } from './ui.jsx'
+import { readFileSync } from 'node:fs'
+import { filterSelectOptions, nextScrollState, parseNumberDraft, scheduleSetRowFlash } from './ui.jsx'
+
+const uiSource = readFileSync(new URL('./ui.jsx', import.meta.url), 'utf8')
+const statsSource = readFileSync(new URL('../views/Stats.jsx', import.meta.url), 'utf8')
+const routineSource = readFileSync(new URL('../views/RoutineEdit.jsx', import.meta.url), 'utf8')
+const settingsSource = readFileSync(new URL('../views/Settings.jsx', import.meta.url), 'utf8')
+const warmupSource = readFileSync(new URL('./HomeWarmup.jsx', import.meta.url), 'utf8')
 
 describe('NumberField drafts', () => {
   it('keeps invalid text out of state while preserving it as a draft', () => {
@@ -15,6 +22,32 @@ describe('NumberField drafts', () => {
     expect(parseNumberDraft('', true, true)).toEqual({ valid: true, value: null })
     expect(parseNumberDraft('12', false)).toEqual({ valid: true, value: 12 })
     expect(parseNumberDraft('12,5', false).valid).toBe(false)
+  })
+})
+
+describe('SelectRow option search', () => {
+  const options = [
+    { value: 'bench', label: 'Bench press', subtitle: 'Chest' },
+    { value: 'row', label: 'Équerre row', subtitle: 'Back' },
+    { value: 'squat', label: 'Squat', subtitle: 'Legs' },
+  ]
+
+  it('matches labels and subtitles case- and accent-insensitively', () => {
+    expect(filterSelectOptions(options, 'EQUERRE')).toEqual([options[1]])
+    expect(filterSelectOptions(options, 'bench chest')).toEqual([options[0]])
+    expect(filterSelectOptions(options, '')).toBe(options)
+  })
+
+  it('returns no options for an unmatched query and leaves search opt-in', () => {
+    expect(filterSelectOptions(options, 'deadlift')).toEqual([])
+    expect(uiSource).toContain('searchable = false')
+    expect(uiSource).toContain('searchable ? filterSelectOptions(options, query) : options')
+    expect(uiSource).toContain("t('No options match your search')")
+    expect(uiSource).toContain('role="status"')
+    expect(statsSource).toContain('onChange={setExId} searchable')
+    expect(routineSource).not.toContain('searchable')
+    expect(settingsSource).not.toContain('searchable')
+    expect(warmupSource).not.toContain('searchable')
   })
 })
 

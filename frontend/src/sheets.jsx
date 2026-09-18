@@ -1408,10 +1408,10 @@ function WorkoutDetail({ w, close }) {
     {editing && <div className="card" style={{ marginBottom: 12 }}>
       <div style={{ display: 'grid', gap: 10 }}>
         <label className="small dim" style={{ display: 'grid', gap: 6, minWidth: 0 }}>{t('Start time')}
-          <TextField type="time" value={startRaw} onChange={e => setStartRaw(e.target.value)} aria-label={t('Start time')} style={{ width: '100%', minHeight: 44 }} />
+          <TextField type="time" className="timef" value={startRaw} onChange={e => setStartRaw(e.target.value)} aria-label={t('Start time')} style={{ width: '100%', minHeight: 44 }} />
         </label>
         <label className="small dim" style={{ display: 'grid', gap: 6, minWidth: 0 }}>{t('End time')}
-          <TextField type="time" value={endRaw} onChange={e => setEndRaw(e.target.value)} aria-label={t('End time')} style={{ width: '100%', minHeight: 44 }} />
+          <TextField type="time" className="timef" value={endRaw} onChange={e => setEndRaw(e.target.value)} aria-label={t('End time')} style={{ width: '100%', minHeight: 44 }} />
         </label>
       </div>
       <div className="small dim" style={{ marginTop: 8, lineHeight: 1.4 }}>{t('Only the time changes. The date stays the same.')}</div>
