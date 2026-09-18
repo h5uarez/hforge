@@ -431,11 +431,11 @@ function SelectSheet({ close, title, value, options, onChange, searchable }) {
   )
 }
 
-export function SelectRow({ icon, iconTint, title, value, valueTitle, options, onChange, sheetTitle, className = '', searchable = false }) {
+export function SelectRow({ icon, iconTint, title, value, valueTitle, options, onChange, sheetTitle, className = '', searchable = false, tall = false }) {
   const cur = options.find(o => o.value === value)
   const open = () => {
     const { openSheet } = require_ui()
-    const h = openSheet(close => <SelectSheet close={close} title={sheetTitle || title} value={value} options={options} onChange={onChange} searchable={searchable} />)
+    const h = openSheet(close => <SelectSheet close={close} title={sheetTitle || title} value={value} options={options} onChange={onChange} searchable={searchable} />, tall ? { tall: true } : undefined)
     return h
   }
   return (
