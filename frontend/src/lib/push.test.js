@@ -101,11 +101,11 @@ describe('push notification errors resolve through t() keys', () => {
     const { useUI } = await import('../store/useUI.js')
     await setLang('es')
     const err = await enablePush().catch(e => e)
-    expect(err.message).toBe('Las notificaciones push no son compatibles con este navegador')
+    expect(err.message).toBe('Push no compatible con este navegador')
     // The Settings catch path: keyed attempt first, default fallback second — the
     // already-translated message passes through t() idempotently.
     useUI.getState().toast(t(err.message || 'Could not change notification settings'))
-    expect(useUI.getState().toastMsg).toBe('Las notificaciones push no son compatibles con este navegador')
+    expect(useUI.getState().toastMsg).toBe('Push no compatible con este navegador')
     vi.advanceTimersByTime(2500) // let the toast auto-clear timer elapse
   })
 

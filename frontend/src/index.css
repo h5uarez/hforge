@@ -560,11 +560,14 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 }
 
 /* Historical detail: reserve the sheet close-button rail, keep action controls intact, and let
-   both workout and exercise names wrap naturally before they can collide with anything beside them. */
-.historical-workout-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0;margin-bottom:8px;padding-right:48px}
+   both workout and exercise names wrap naturally before they can collide with anything beside them.
+   The header stacks vertically (title full-width, Edit below) so long names like
+   "B11 W1 — Día 3 — Pierna" never squeeze the button mid-header, even at 320px. */
+.historical-workout-head{display:flex;flex-direction:column;align-items:stretch;min-width:0;margin-bottom:8px;padding-right:48px}
 .historical-workout-name{flex:1 1 auto;min-width:0;margin:0;line-height:1.2;overflow-wrap:anywhere;text-wrap:pretty}
 .sheet .historical-workout-name{padding-right:0;margin-bottom:0}
-.historical-workout-head>.btn{flex:0 0 auto;align-self:flex-start}
+.historical-workout-edit{align-self:flex-start;margin-top:8px;min-width:0;max-width:100%}
+.historical-workout-edit>.btn{min-height:44px}
 .historical-workout-entry{align-items:flex-start;min-width:0}
 .historical-entry-content{flex:1 1 auto;min-width:0}
 .historical-exercise-head{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px;min-width:0;margin-bottom:4px}
@@ -1772,6 +1775,13 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 #toast.toast-success{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--acc)}
 #toast.toast-warning{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--orange)}
 #toast.toast-error{box-shadow:0 10px 30px -6px rgba(0,0,0,.5),inset 3px 0 0 var(--red)}
+/* Premium disintegrate exit: dismissal fades down + softens, never snaps. Enter
+   (transition on #toast) is untouched; exit is faster than enter. The blanket
+   prefers-reduced-motion kill already nulls this; the explicit rule below keeps
+   the intent local so the exit never animates for motion-sensitive users. */
+#toast.leaving{animation:toast-out 180ms var(--ease-exit) forwards}
+@keyframes toast-out{to{opacity:0;transform:translateX(-50%) translateY(8px) scale(.96);filter:blur(6px) saturate(.8)}}
+@media (prefers-reduced-motion:reduce){#toast.leaving{animation:none}}
 
 /* ------------------------------------------------------- P0 skeletons --- */
 /* Loading rule: <300ms nothing · 300ms–1s inline spinner · >1s skeleton (see
@@ -1908,8 +1918,9 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   box-shadow:0 12px 34px -8px rgba(0,0,0,.55);
   animation:slideup var(--med) var(--ease);
 }
-.pwa-banner-t{flex:1;min-width:0;font-size:14px;line-height:1.35}
+.pwa-banner-t{flex:1;min-width:0;font-size:14px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pwa-banner-acts{flex:none;display:flex;gap:8px}
+.pwa-banner-acts button{white-space:nowrap;flex:none}
 @media (min-width:1000px){
   .pwa-banner{left:50%;right:auto;margin-left:-260px;width:520px;bottom:112px}
 }

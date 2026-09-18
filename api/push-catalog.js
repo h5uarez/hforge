@@ -17,8 +17,10 @@ export const catalogs = {
     '{emoji} {name} today': '{emoji} {name} today',
     "It's on your plan for today": "It's on your plan for today",
     'Workout planned today': 'Workout planned today',
-    'Hforge': 'Hforge',
-    'Test notification — this is how alerts look.': 'Test notification — this is how alerts look.',
+    // Test notification title avoids the brand token on purpose: the OS already
+    // prefixes the app name, so a 'Hforge' title would read "Hforge from Hforge".
+    'Alerts on': 'Alerts on',
+    'This is how alerts look.': 'This is how alerts look.',
   },
   es: {
     'Rest over': 'Descanso terminado',
@@ -26,9 +28,8 @@ export const catalogs = {
     '{emoji} {name} today': '{emoji} {name} hoy',
     "It's on your plan for today": "Está en tu plan para hoy",
     'Workout planned today': 'Entrenamiento planificado hoy',
-    // Brand token — kept identical in both templates (documented exclusion).
-    'Hforge': 'Hforge',
-    'Test notification — this is how alerts look.': 'Notificación de prueba — así se ven los avisos.',
+    'Alerts on': 'Avisos activos',
+    'This is how alerts look.': 'Así se ven los avisos.',
   },
 };
 
@@ -38,7 +39,7 @@ const KINDS = {
   'rest-timer': { title: 'Rest over', body: 'Time for your next set.' },
   'day-reminder': { title: '{emoji} {name} today', body: "It's on your plan for today" },
   'day-reminder-generic': { title: 'Workout planned today', body: "It's on your plan for today" },
-  'test': { title: 'Hforge', body: 'Test notification — this is how alerts look.' },
+  'test': { title: 'Alerts on', body: 'This is how alerts look.' },
 };
 
 // Placeholder replacement is byte-for-byte: values are inserted exactly as given, never

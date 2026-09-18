@@ -9,6 +9,7 @@ export default function Toast() {
   const kind = useUI(s => s.toastKind)
   const action = useUI(s => s.toastAction)
   const tkey = useUI(s => s.toastKey)
+  const leaving = useUI(s => s.toastLeaving)
   const { dismissToast, runToastAction } = useUI()
   const ref = useRef(null)
   const drag = useRef({ x: null, y: null, dx: 0, dy: 0 })
@@ -41,7 +42,7 @@ export default function Toast() {
   }
 
   return (
-    <div id="toast" ref={ref} key={tkey} className={(msg ? 'show' : '') + (kind && kind !== 'neutral' ? ' toast-' + kind : '') + (action ? ' has-action' : '')}
+    <div id="toast" ref={ref} key={tkey} className={(msg ? 'show' : '') + (kind && kind !== 'neutral' ? ' toast-' + kind : '') + (action ? ' has-action' : '') + (leaving ? ' leaving' : '')}
       role="status" aria-live="polite"
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <span className="toast-msg">{msg}</span>
