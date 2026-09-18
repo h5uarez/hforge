@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { ACCENTS, ACCENT_MIGRATION, resolveAccent } from './lib/format.js'
+import { ACCENTS, ACCENT_MIGRATION, DEFAULT_ACCENTS, resolveAccent, resolveDefaultAccent } from './lib/format.js'
 
 const source = name => readFileSync(resolve(process.cwd(), 'src', name), 'utf8')
 
@@ -427,21 +427,22 @@ describe('accent palette system (theme-palette-redesign)', () => {
     // dark rules — --acc/--acc-2/--on-acc prefix byte-identical, then the full
     // 11-token visual system (bg/surface ramp + neutral labels/seps)
     expect(css).toContain(':root[data-accent="default"],.pal-prev[data-accent="default"]{--acc:#0A84FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#000000;--bg-el:#0e0e10;--surface:#1c1c1e;--surface-2:#2c2c2e;--surface-3:#3a3a3c;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
-    expect(css).toContain(':root[data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"]{--acc:#6A00F4;--acc-2:color-mix(in srgb,var(--acc) 62%,#fff);--on-acc:#fff;--bg:#220a4d;--bg-el:#260d52;--surface:#290f57;--surface-2:#34166a;--surface-3:#3e1d7a;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
-    expect(css).toContain(':root[data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"]{--acc:#FF4696;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#3d0c1e;--bg-el:#400e20;--surface:#431023;--surface-2:#58172f;--surface-3:#671f39;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
-    expect(css).toContain(':root[data-accent="ghost"],.pal-prev[data-accent="ghost"]{--acc:#D7FFE0;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#1a1f1b;--bg-el:#1c231e;--surface:#1e2621;--surface-2:#29332c;--surface-3:#323e35;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
-    expect(css).toContain(':root[data-accent="cobalt"],.pal-prev[data-accent="cobalt"]{--acc:#0038FF;--acc-2:color-mix(in srgb,var(--acc) 62%,#fff);--on-acc:#fff;--bg:#0a1745;--bg-el:#0d1a4a;--surface:#0f1d50;--surface-2:#162762;--surface-3:#1d3072;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
-    expect(css).toContain(':root[data-accent="ember"],.pal-prev[data-accent="ember"]{--acc:#FF9030;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#2a1408;--bg-el:#30170a;--surface:#351b0c;--surface-2:#492512;--surface-3:#592f18;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
+    expect(css).toContain(':root[data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"]{--acc:#EAC66B;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#201800;--bg:#10163A;--bg-el:#151C48;--surface:#181F4B;--surface-2:#29326A;--surface-3:#36417E;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
+    expect(css).toContain(':root[data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"]{--acc:#6FD3A0;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#062316;--bg:#0C1F16;--bg-el:#10261B;--surface:#10271D;--surface-2:#204C37;--surface-3:#2B6347;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
+    expect(css).toContain(':root[data-accent="ghost"],.pal-prev[data-accent="ghost"]{--acc:#D7F338;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#1A2E05;--bg:#1A1E0C;--bg-el:#202411;--surface:#202513;--surface-2:#404A25;--surface-3:#525E31;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
+    expect(css).toContain(':root[data-accent="cobalt"],.pal-prev[data-accent="cobalt"]{--acc:#F07FC4;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#3A0A1E;--bg:#241016;--bg-el:#2E1520;--surface:#371A28;--surface-2:#522639;--surface-3:#6B3349;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
+    expect(css).toContain(':root[data-accent="ember"],.pal-prev[data-accent="ember"]{--acc:#F2A18E;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#3A0D04;--bg:#2E1510;--bg-el:#382016;--surface:#3A1A13;--surface-2:#5F2E22;--surface-3:#77402E;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}')
     // light rules — dragonfruit/ghost invert roles, ember keeps black ink
     expect(css).toContain(':root[data-theme="light"][data-accent="default"],.pal-prev[data-accent="default"][data-theme="light"]{--acc:#007AFF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#ffffff;--bg-el:#f7f7f8;--surface:#f7f7f8;--surface-2:#ececef;--surface-3:#e3e3e8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    expect(css).toContain(':root[data-theme="light"][data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"][data-theme="light"]{--acc:#6A00F4;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#e7ddfa;--bg-el:#f8f7fb;--surface:#fdfcfe;--surface-2:#f0edf5;--surface-3:#eae7f0;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    expect(css).toContain(':root[data-theme="light"][data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"][data-theme="light"]{--acc:#1E1033;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#f6dbe7;--bg-el:#fbf7f8;--surface:#fefdfd;--surface-2:#f5eef1;--surface-3:#f1e8ec;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    expect(css).toContain(':root[data-theme="light"][data-accent="ghost"],.pal-prev[data-accent="ghost"][data-theme="light"]{--acc:#050505;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#e6f3ed;--bg-el:#f7faf8;--surface:#fdfffe;--surface-2:#edf3ef;--surface-3:#e5ede8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    expect(css).toContain(':root[data-theme="light"][data-accent="cobalt"],.pal-prev[data-accent="cobalt"][data-theme="light"]{--acc:#0038FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#d9e3fb;--bg-el:#f6f8fb;--surface:#fcfdfe;--surface-2:#edeff5;--surface-3:#e7eaf1;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    expect(css).toContain(':root[data-theme="light"][data-accent="ember"],.pal-prev[data-accent="ember"][data-theme="light"]{--acc:#FF9030;--acc-2:color-mix(in srgb,var(--acc) 72%,#000);--on-acc:#000;--bg:#f6e7d3;--bg-el:#fbf9f7;--surface:#fefdfd;--surface-2:#f5f2ee;--surface-3:#f2ede8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
-    // icon-ink override scope — exactly the three combos failing 3:1 on bare surfaces
+    expect(css).toContain(':root[data-theme="light"][data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"][data-theme="light"]{--acc:#8A5A00;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#E4E7FA;--bg-el:#EFF1FD;--surface:#F2F4FD;--surface-2:#D8DCF4;--surface-3:#C2C8EA;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
+    expect(css).toContain(':root[data-theme="light"][data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"][data-theme="light"]{--acc:#0E6B3C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#DCEFE2;--bg-el:#EAF6EE;--surface:#EFF8F2;--surface-2:#CFE5D5;--surface-3:#B8D8C0;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
+    expect(css).toContain(':root[data-theme="light"][data-accent="ghost"],.pal-prev[data-accent="ghost"][data-theme="light"]{--acc:#4D7C0F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#E2E6CF;--bg-el:#EFF2E2;--surface:#F2F5E7;--surface-2:#D6DCBC;--surface-3:#C2C9A4;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
+    expect(css).toContain(':root[data-theme="light"][data-accent="cobalt"],.pal-prev[data-accent="cobalt"][data-theme="light"]{--acc:#B4128F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#FBE4EF;--bg-el:#FDF0F6;--surface:#FDF2F7;--surface-2:#F3C9DD;--surface-3:#E9A9C7;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
+    expect(css).toContain(':root[data-theme="light"][data-accent="ember"],.pal-prev[data-accent="ember"][data-theme="light"]{--acc:#A31621;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#F5E1C6;--bg-el:#F9EBD9;--surface:#F8E8D4;--surface-2:#EAD0A8;--surface-3:#DCBE96;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}')
+    // icon-ink override scope — exactly the two combos failing 3:1 on bare surfaces
+    // (sakura pink clears 6.37 dark / 4.15+ light, so cobalt left this scope)
     expect(css).toContain('[data-theme="dark"][data-accent="ultraviolet"]')
-    expect(css).toContain('[data-theme="dark"][data-accent="cobalt"]')
+    expect(css).not.toContain('[data-accent="cobalt"] :is(.acc-ink')
     expect(css).toContain('[data-theme="light"][data-accent="ember"]')
     expect(css).not.toContain('[data-theme="light"][data-accent="ultraviolet"] :is(.acc-ink')
     expect(css).not.toContain('[data-theme="dark"][data-accent="ember"] :is(.acc-ink')
@@ -503,18 +504,18 @@ describe('accent palette system (theme-palette-redesign)', () => {
     // status holds ≥0.84× its neutral baseline (no tint may regress legibility
     // beyond the clarito budget), and black chip ink on every fixed status must
     // clear 4.5:1. WAIVER (user-approved 2026-09-16): danger text lives on
-    // near-white --surface at 3.31+ regardless of bg tint, so the bg ratio is
+    // near-white --surface at 3.20+ regardless of bg tint, so the bg ratio is
     // advisory — the old ≥3.0 floor is relaxed to ≥2.6, and the parity gate from
     // 0.95× to 0.84× because WCAG parity is luminance-only
-    // ((Lbg+0.05)/0.941): any d20-30 purple/pink/blue tint necessarily lands at
-    // 0.85-0.87× (measured 0.857/0.861/0.868 on ultraviolet/dragonfruit/cobalt;
-    // ember still clears 0.90× at 0.919; ghost-mint sits at 0.978; classic white
+    // ((Lbg+0.05)/0.941): the five premium lights are saturated papers, so all
+    // sit at parity 0.87-0.93× (measured 0.909/0.929/0.927/0.880/0.874 on
+    // ultraviolet/dragonfruit/cobalt/ember/ghost; classic white
     // default sits above parity at 1.12 — white can only raise light-status
     // ratios vs #f2f2f7). Yellow/orange/
     // green cannot take the absolute floor — they sit 1.35/1.97/1.99 on plain
     // #f2f2f7 itself, so parity is their gate and the relaxed ≥2.6 rule binds
-    // red only (measured 2.72-2.92 on the four vivid clarito light bgs plus
-    // ghost-mint at 3.11; classic white default measures 3.55).
+    // red only (measured 2.78-2.95 on the five premium light bgs;
+    // classic white default measures 3.55).
     const lightStatus = { red: '#ff3b30', yellow: '#ffcc00', orange: '#ff9500', green: '#34c759' }
     const neutral = '#f2f2f7'
     for (const key of Object.keys(ACCENTS)) {
@@ -577,5 +578,80 @@ describe('accent palette system (theme-palette-redesign)', () => {
   it('keeps the store defaults light and on the default palette', () => {
     const store = source('store/useStore.js')
     expect(store).toContain("theme: 'light', accent: 'default'")
+  })
+
+  it('keeps the default-neutral sub-accents at ≥4.5:1 with fixed neutral shells', () => {
+    // Raw declaration block of one default+sub-accent override rule.
+    const daccBody = (key, light) => {
+      const sel = light
+        ? `:root[data-theme="light"][data-accent="default"][data-default-accent="${key}"]`
+        : `:root[data-accent="default"][data-default-accent="${key}"]`
+      const m = css.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^{]*\\{([^}]*)\\}'))
+      expect(m).toBeTruthy()
+      return m[1]
+    }
+    expect(Object.keys(DEFAULT_ACCENTS).sort()).toEqual(['blue', 'emerald', 'lilac', 'orange', 'red', 'rose', 'teal', 'yellow'])
+    // CSS uses #fff shorthand for white registry hexes — expand before comparing.
+    const normHex = h => {
+      const m = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(h)
+      return (m ? '#' + m[1] + m[1] + m[2] + m[2] + m[3] + m[3] : h).toLowerCase()
+    }
+    const cssHas = hex => css.toLowerCase().includes(hex.toLowerCase()) || css.toLowerCase().includes(normHex(hex))
+    for (const [key, c] of Object.entries(DEFAULT_ACCENTS)) {
+      // every registry hex lands in the CSS override table
+      expect(cssHas(c.light)).toBe(true)
+      expect(cssHas(c.dark)).toBe(true)
+      expect(cssHas(c.onLight)).toBe(true)
+      expect(cssHas(c.onDark)).toBe(true)
+      // each pair clears 4.5:1 in both modes (Red-light included at 5.74, Yellow-light
+      // amber-graded at 5.02 — pure yellow on white cannot pass, so this is amber by design)
+      expect(ratio(c.light, c.onLight)).toBeGreaterThanOrEqual(4.5)
+      expect(ratio(c.dark, c.onDark)).toBeGreaterThanOrEqual(4.5)
+      for (const light of [false, true]) {
+        const body = daccBody(key, light)
+        expect(normHex(token(body, '--acc'))).toBe(normHex(light ? c.light : c.dark))
+        expect(normHex(token(body, '--on-acc'))).toBe(normHex(light ? c.onLight : c.onDark))
+        // the sub-row ONLY rewrites accent roles — the neutral Default shell
+        // (bg/surfaces/labels/seps) is never redeclared here, so PALETTE_BG
+        // keeps one bg per mode for every sub-accent
+        for (const name of ['--bg', '--bg-el', '--surface', '--surface-2', '--surface-3', '--label', '--label-2', '--label-3', '--label-4', '--sep', '--sep-op']) {
+          expect(body.split(';').find(p => p.trim().startsWith(name + ':'))).toBeFalsy()
+        }
+      }
+    }
+  })
+
+  it('resolves the default sub-accent without touching palette plumbing', () => {
+    expect(resolveDefaultAccent('teal')).toBe('teal')
+    expect(resolveDefaultAccent('orange')).toBe('orange')
+    expect(resolveDefaultAccent('magenta')).toBe('blue')
+    expect(resolveDefaultAccent(undefined)).toBe('blue')
+    // the sub-accent namespace never consults the legacy 8→6 palette migration
+    expect(resolveDefaultAccent('lime')).toBe('blue')
+    const store = source('store/useStore.js')
+    expect(store).toContain("defaultAccent: 'blue'")
+    expect(store).toContain('next.defaultAccent = resolveDefaultAccent(next.defaultAccent)')
+    const app = source('App.jsx')
+    expect(app).toContain('de.dataset.defaultAccent = resolveDefaultAccent(defaultAccent)')
+    expect(app).toContain('applyPrefs(S.theme, S.accent, S.defaultAccent)')
+    expect(html).toContain('document.documentElement.dataset.defaultAccent = dacc')
+    expect(html).toContain("document.documentElement.dataset.defaultAccent = 'blue'")
+    const settings = source('views/Settings.jsx')
+    expect(settings).toContain("if (resolveAccent(S.accent) !== 'default') return null")
+    expect(settings).toContain('<DefaultAccentSubRow S={S} update={update} />')
+    expect(settings).toContain('aria-pressed={on}')
+    // quarantine: series on the dedicated token, grid/labels/goal unchanged
+    const chart = source('components/LineChart.jsx')
+    expect(chart).toContain("color = 'var(--chart-series)'")
+    expect(chart).toContain('stroke="var(--sep-op)"')
+    expect(chart).toContain('fill="var(--label-2)"')
+    expect(chart).toContain('stroke="var(--yellow)"')
+    expect(css).toContain('--chart-series:#79AFFF')
+    expect(css).toContain('--chart-series:#0B69E3')
+    // quarantine: fixed skin ramp per mode, heat still on the accent scale
+    expect(css).toContain('--bm-base:#2e3138')
+    expect(css).toContain('--bm-base:#d9d9de')
+    expect(css).toContain('.bm-sil{fill:var(--bm-sil)}')
+    expect(css).toContain('.bm-m.l4{fill:var(--acc)}')
   })
 })

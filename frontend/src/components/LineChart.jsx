@@ -12,7 +12,10 @@ const W = 340   // viewBox width; the svg stretches to its container, height com
 // opts: { h, unit, color, axes, goal, invert }
 //   invert flips the y axis, for a scale that counts down as it gets harder (RIR). Without it
 //   a curve of reps-in-reserve reads upside down, with the hardest sets at the floor.
-export default function LineChart({ points, h = 150, unit = '', color = 'var(--acc)', axes = true, goal = null, invert = false }) {
+//   color defaults to the dedicated per-mode series token (never --acc: the curve
+//   keeps one fixed reading on every palette; goal/effort callers pass --yellow
+//   explicitly and are untouched).
+export default function LineChart({ points, h = 150, unit = '', color = 'var(--chart-series)', axes = true, goal = null, invert = false }) {
   const svgRef = useRef(null)
   const wrapRef = useRef(null)
   const tipRef = useRef(null)

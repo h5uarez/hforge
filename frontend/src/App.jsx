@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI, Skeleton } from './components/ui.jsx'
-import { resolveAccent } from './lib/format.js'
+import { resolveAccent, resolveDefaultAccent } from './lib/format.js'
 import { getLang, setLang, useLang } from './lib/i18n.js'
 import { setNav } from './lib/nav.js'
 import { useWakeLock } from './lib/wakelock.js'
@@ -37,13 +37,18 @@ const Admin = lazy(() => import('./views/Admin.jsx'))
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
-function applyPrefs(theme, accent) {
+function applyPrefs(theme, accent, defaultAccent) {
   const de = document.documentElement
   de.dataset.theme = theme === 'dark' || theme === 'light' ? theme : 'light'
   de.dataset.accent = resolveAccent(accent)
+  // Eligible accent inside the neutral Default palette (own namespace — the
+  // legacy ACCENT_MIGRATION is never consulted). Always written; the CSS
+  // override rules only match when data-accent is "default", and the neutral
+  // shell keeps one bg per mode so PALETTE_BG below is untouched.
+  de.dataset.defaultAccent = resolveDefaultAccent(defaultAccent)
   // Duplicated per-pair×mode --bg mirror (see PALETTE_BG in index.html):
   // theme-color follows the palette on every runtime switch.
-  const PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#220a4d","light":"#e7ddfa"},"dragonfruit":{"dark":"#3d0c1e","light":"#f6dbe7"},"ghost":{"dark":"#1a1f1b","light":"#e6f3ed"},"cobalt":{"dark":"#0a1745","light":"#d9e3fb"},"ember":{"dark":"#2a1408","light":"#f6e7d3"}}
+  const PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#10163A","light":"#E4E7FA"},"dragonfruit":{"dark":"#0C1F16","light":"#DCEFE2"},"ghost":{"dark":"#1A1E0C","light":"#E2E6CF"},"cobalt":{"dark":"#241016","light":"#FBE4EF"},"ember":{"dark":"#2E1510","light":"#F5E1C6"}}
   const bg = (PALETTE_BG[de.dataset.accent] && PALETTE_BG[de.dataset.accent][de.dataset.theme]) || PALETTE_BG.default.light
   de.style.setProperty('--boot-bg', bg)
   const meta = document.querySelector('meta[name="theme-color"]')
@@ -72,7 +77,7 @@ function Shell() {
   const isGuest = useStore(s => s.isGuest())
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
+  useEffect(() => { applyPrefs(S.theme, S.accent, S.defaultAccent) }, [S.theme, S.accent, S.defaultAccent])
   useEffect(() => {
     const runtimeLang = getLang()
     const selectedLang = S.lang || runtimeLang

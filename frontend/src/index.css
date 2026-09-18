@@ -47,6 +47,9 @@
   --on-acc:#000000;
   --acc-soft: color-mix(in srgb, var(--acc) 16%, transparent);
   --acc-line: color-mix(in srgb, var(--acc) 38%, transparent);
+  /* chart series (fixed per mode, never the account accent: the weight curve
+     keeps one reading everywhere while accents stay free for meaning) */
+  --chart-series:#79AFFF;
 
   /* geometry */
   --r-sm:8px; --r:12px; --r-lg:16px; --r-xl:22px; --r-card:14px;
@@ -90,82 +93,111 @@
   --purple:#af52de; --mint:#00c7be; --brown:#a2845e; --grey:#8e8e93;
   --acc-2:#248a3d;
   --on-acc:#ffffff;
+  --chart-series:#0B69E3;
 }
 
 /* accents — 6 canonical pairs (registry in lib/format.js; the pair hexes are
    duplicated here on purpose and drift-guarded by accessibility.test.js).
-   Vivid-identity direction (2026 pro palettes): dark = tinted near-blacks with
-   brand DNA, never pure black; light = white carrying the brand hue — except
-   default, the classic neutral pair (true black / pure white, no tint). Roles are
-   measured per mode so --on-acc always clears 3:1 (AA large text, 17px/600)
+   Premium direction (2026): default stays the classic neutral pair (true black /
+   pure white, no tint); the five specials are fully distinct material worlds,
+   hue-separated ≥40° with no neon purple/pink:
+       default #007AFF/#0A84FF · ultraviolet #8A5A00/#EAC66B · dragonfruit #0E6B3C/#6FD3A0
+        ghost #4D7C0F/#D7F338 · cobalt #B4128F/#F07FC4 · ember #A31621/#F2A18E
+   (light acc / dark acc; --on-acc is white in every light mode and a deep
+   ink of the same hue in every dark mode — all ten pairs measure ≥4.5:1).
+   Roles are measured per mode so --on-acc always clears 4.5:1 (AA normal text)
    against --acc:
-     default #007AFF/#0A84FF · ultraviolet #6A00F4/#FFD6A5 · dragonfruit #FF4696/#1E1033
-     ghost #D7FFE0/#050505 · cobalt #0038FF/#D6E3FF · ember #FF9030/#111827
-   Dragonfruit and ghost invert roles in dark mode (the lighter hex carries
-   --acc); white ink is forbidden on dragonfruit/ghost dark and ember in both
-   modes (<3:1 measured). --acc-2 is a color-mix derivative of --acc: darkened
-   for pressed fills by default, lightened for dark ultraviolet/cobalt so the
-   icon-ink override below clears 3:1 on dark surfaces, and darkened further for
-   light ember (72% mix ≈ #B86823, measured 3.53:1 on #ececef — #cc7326 only
-   scored 2.94:1). Accent roles are unchanged from the previous generation:
+      ultraviolet Midnight Gold (hue ~45°) · dragonfruit Emerald Forest (~158°)
+        ghost Graphite Lime (~88°) · cobalt Sakura Pink (~314° light / ~323° dark,
+        magenta luminoso, nunca vino) · ember Bordeaux Cacao (~355° wine-red light /
+        ~11° terracotta dark, cálido anaranjado-rojizo — nunca ciruela ni rosa frío,
+        claramente al otro lado del eje rosa de Sakura)
+   --acc-2 is a color-mix derivative of --acc, darkened (82% mix) for pressed
+   fills in every pair×mode — every --acc already clears 3:1 on its own worst
+   surface (min 4.12 Graphite Lime light on --surface-2), so no lightened
+   variant is needed. The icon-ink override scope below (dark ultraviolet/cobalt,
+   light ember) is kept byte-identical as a harmless backstop: --acc-2 still
+   clears 3:1 there. Accent roles are unchanged from the previous generation:
    the identity lives in the bg/surface ramps, so the registry, the swatches
    and every --acc/--on-acc pairing stay exactly as measured.    Each rule carries
    the full 11-token visual system for its pair×mode (--bg/--bg-el/--surface/
    --surface-2/--surface-3 + neutral --label 1-4/--sep/--sep-op), so a palette
-   owns backgrounds, surfaces, text and borders in both modes. Default is the
-   classic neutral pair: dark = true black #000000 with the default gray ramp
-   (#0e0e10/#1c1c1e/#2c2c2e/#3a3a3c, bg→surface step wide open — red binds at
-   4.99 on --surface) and system blues for accents (dark #0A84FF, light #007AFF,
-   both with white --on-acc at 3.65/4.02:1), light = pure white #ffffff with a
-   clean gray ramp (#f7f7f8/#ececef/#e3e3e8; --bg-el shares --surface, elevation
-   rides on blur/shadow). Ghost is back to its mint identity: dark = deep
-   mint-black #1a1f1b with a proportional mint-gray ramp (#1c231e/#1e2621/
-   #29332c/#323e35 — same recipe as the vivid darks: compressed bg→surface
-   first step, red binds at 4.55 on --surface — then +7/+11 lightness points
-   of unmistakable elevation, hue 132–142° throughout), light = mint clarito
-   #e6f3ed with near-white mint surfaces (#f7faf8/#fdfffe/#edf3ef/#e5ede8);
-   accent stays mint #D7FFE0 in dark. The four vivid dark bgs are the anchors,
-   hue-adjacent tuned where a HARD gate demanded it: ultraviolet deep violet #220a4d,
-   dragonfruit wine #3d0c1e (suggested #420d20 darkened — its red-on-bg 4.705
-   left no room for a visible bg→surface step under the dark-red 4.5 ceiling
-   of L≤0.01849), cobalt deep navy #0a1745, ember warm charcoal #2a1408. Dark
-   surfaces ramp in hue at small HSL-lightness steps; the bg→surface first step
-   is deliberately compressed (red #ff453a binds at 4.53-4.74 on --surface —
-   the HARD gate wins over a wider step) while --surface-2/--surface-3 climb
-   7-13 points for unmistakable elevation. Light bgs are the vivid clarito
-   anchors, all passing as suggested: ultraviolet lavender #e7ddfa, dragonfruit
-   rose #f6dbe7, cobalt ice #d9e3fb, ember peach #f6e7d3, ghost-mint #e6f3ed;
-   --surface stays near-white tinted (danger text 3.47+ on --surface on the
-   four vivid lights, 3.53 on ghost-mint, 3.31 on classic white default) and
-   the tint deepens through --surface-2/--surface-3. 60-30-10 holds: tinted bg,
-   tinted surfaces, one confident accent (default: neutral bg, neutral surfaces,
-   one blue accent). WAIVER (user-approved 2026-09-16): fixed red
-   on light --bg may sit 2.6-3.1 on the five tinted lights (measured
-   2.72/2.74/2.76/2.92 + ghost-mint 3.11) — classic white default clears 3.55; danger
-   text lives on near-white --surface at 3.31+ regardless of bg tint, so the bg
-   ratio is advisory; yellow/orange/green sit 1.1-1.9 even on plain #f2f2f7, so
-   any absolute floor can only ever bind red. Measured windows, drift-guarded by
-   accessibility.test.js: dark L(--bg) ≤ 0.016 (max 0.0135 dragonfruit),
-   L(--surface) ≤ 0.020 (max 0.0177 ghost-mint), light L(--bg) ≥ 0.70
-   (min 0.756 ultraviolet), body text ≥ 4.5:1 everywhere. The same file also appends
+    owns backgrounds, surfaces, text and borders in both modes. Default is the
+    classic neutral pair: dark = true black #000000 with the default gray ramp
+    (#0e0e10/#1c1c1e/#2c2c2e/#3a3a3c, bg→surface step wide open — red binds at
+    4.99 on --surface) and system blues for accents (dark #0A84FF, light #007AFF,
+    both with white --on-acc at 3.65/4.02:1), light = pure white #ffffff with a
+    clean gray ramp (#f7f7f8/#ececef/#e3e3e8; --bg-el shares --surface, elevation
+    rides on blur/shadow). The five premium dark bgs are saturated material
+    colours, never near-black: ultraviolet midnight navy #10163A, dragonfruit
+     deep forest #0C1F16, cobalt plum noir #241016, ember cacao rojizo #2E1510,
+    ghost olive void #1A1E0C (bg-vs-black 1.17-1.23 vs the old 1.05-1.13).
+    Dark --surface is the same hue darkened to hold fixed red #ff453a at
+     ≥4.5 (measured 4.60-4.63, thinnest sakura — AA binds the first step, so
+    dark bg↔surface reads 1.08-1.12 plus a hue step; --surface-2/--surface-3
+    keep the full saturated ramp so elevation stays unmistakable). Light bgs
+    are saturated paper anchors: ultraviolet ice #E4E7FA, dragonfruit paper
+      #DCEFE2, cobalt sakura paper #FBE4EF, ember toasted cream #F5E1C6, ghost straw
+    #E2E6CF; --surface is the same hue lifted 25% toward white (never pure
+     white — light bg↔surface reads 1.10-1.15 plus a hue step) and the tint
+    deepens through --surface-2/--surface-3.
+   60-30-10 holds: tinted bg, tinted surfaces, one confident accent (default:
+   neutral bg, neutral surfaces, one blue accent). WAIVER (user-approved 2026-09-16,
+    still valid — the premium lights measure red 2.78-2.95 on --bg, above the
+    relaxed ≥2.6 floor and at parity 0.87-0.93× vs neutral #f2f2f7): fixed red
+    on light --bg may sit below 4.5; danger text lives on tinted --surface
+    at 3.20+ regardless of bg tint, so the bg ratio is advisory; yellow/orange/
+    green sit 1.1-1.9 even on plain #f2f2f7, so any absolute floor can only ever
+    bind red. Measured windows, drift-guarded by
+    accessibility.test.js: dark L(--bg) ≤ 0.016 (max 0.0117 ghost),
+     L(--surface) ≤ 0.020 (max 0.0170 sakura), light L(--bg) ≥ 0.70
+    (min 0.773 ghost), body text ≥ 4.5:1 everywhere (min 16:1). The same file also appends
    .pal-prev[data-accent] to every rule selector, so a Settings preview box
    carrying data-accent (+data-theme for light) resolves the tokens per palette
    and paints its dots purely from var(--bg)/var(--surface)/var(--label)/var(--acc). */
 :root[data-accent="default"],.pal-prev[data-accent="default"]{--acc:#0A84FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#000000;--bg-el:#0e0e10;--surface:#1c1c1e;--surface-2:#2c2c2e;--surface-3:#3a3a3c;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
-:root[data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"]{--acc:#6A00F4;--acc-2:color-mix(in srgb,var(--acc) 62%,#fff);--on-acc:#fff;--bg:#220a4d;--bg-el:#260d52;--surface:#290f57;--surface-2:#34166a;--surface-3:#3e1d7a;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
-:root[data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"]{--acc:#FF4696;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#3d0c1e;--bg-el:#400e20;--surface:#431023;--surface-2:#58172f;--surface-3:#671f39;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
-:root[data-accent="ghost"],.pal-prev[data-accent="ghost"]{--acc:#D7FFE0;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#1a1f1b;--bg-el:#1c231e;--surface:#1e2621;--surface-2:#29332c;--surface-3:#323e35;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
-:root[data-accent="cobalt"],.pal-prev[data-accent="cobalt"]{--acc:#0038FF;--acc-2:color-mix(in srgb,var(--acc) 62%,#fff);--on-acc:#fff;--bg:#0a1745;--bg-el:#0d1a4a;--surface:#0f1d50;--surface-2:#162762;--surface-3:#1d3072;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
-:root[data-accent="ember"],.pal-prev[data-accent="ember"]{--acc:#FF9030;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#000;--bg:#2a1408;--bg-el:#30170a;--surface:#351b0c;--surface-2:#492512;--surface-3:#592f18;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
+:root[data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"]{--acc:#EAC66B;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#201800;--bg:#10163A;--bg-el:#151C48;--surface:#181F4B;--surface-2:#29326A;--surface-3:#36417E;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
+:root[data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"]{--acc:#6FD3A0;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#062316;--bg:#0C1F16;--bg-el:#10261B;--surface:#10271D;--surface-2:#204C37;--surface-3:#2B6347;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
+:root[data-accent="ghost"],.pal-prev[data-accent="ghost"]{--acc:#D7F338;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#1A2E05;--bg:#1A1E0C;--bg-el:#202411;--surface:#202513;--surface-2:#404A25;--surface-3:#525E31;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
+:root[data-accent="cobalt"],.pal-prev[data-accent="cobalt"]{--acc:#F07FC4;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#3A0A1E;--bg:#241016;--bg-el:#2E1520;--surface:#371A28;--surface-2:#522639;--surface-3:#6B3349;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
+:root[data-accent="ember"],.pal-prev[data-accent="ember"]{--acc:#F2A18E;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#3A0D04;--bg:#2E1510;--bg-el:#382016;--surface:#3A1A13;--surface-2:#5F2E22;--surface-3:#77402E;--label:#ffffff;--label-2:rgba(235,235,245,.60);--label-3:rgba(235,235,245,.32);--label-4:rgba(235,235,245,.18);--sep:rgba(84,84,88,.60);--sep-op:rgba(84,84,88,.34)}
 :root[data-theme="light"][data-accent="default"],.pal-prev[data-accent="default"][data-theme="light"]{--acc:#007AFF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#ffffff;--bg-el:#f7f7f8;--surface:#f7f7f8;--surface-2:#ececef;--surface-3:#e3e3e8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-:root[data-theme="light"][data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"][data-theme="light"]{--acc:#6A00F4;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#e7ddfa;--bg-el:#f8f7fb;--surface:#fdfcfe;--surface-2:#f0edf5;--surface-3:#eae7f0;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-:root[data-theme="light"][data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"][data-theme="light"]{--acc:#1E1033;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#f6dbe7;--bg-el:#fbf7f8;--surface:#fefdfd;--surface-2:#f5eef1;--surface-3:#f1e8ec;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-:root[data-theme="light"][data-accent="ghost"],.pal-prev[data-accent="ghost"][data-theme="light"]{--acc:#050505;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#e6f3ed;--bg-el:#f7faf8;--surface:#fdfffe;--surface-2:#edf3ef;--surface-3:#e5ede8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-:root[data-theme="light"][data-accent="cobalt"],.pal-prev[data-accent="cobalt"][data-theme="light"]{--acc:#0038FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#d9e3fb;--bg-el:#f6f8fb;--surface:#fcfdfe;--surface-2:#edeff5;--surface-3:#e7eaf1;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-:root[data-theme="light"][data-accent="ember"],.pal-prev[data-accent="ember"][data-theme="light"]{--acc:#FF9030;--acc-2:color-mix(in srgb,var(--acc) 72%,#000);--on-acc:#000;--bg:#f6e7d3;--bg-el:#fbf9f7;--surface:#fefdfd;--surface-2:#f5f2ee;--surface-3:#f2ede8;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+:root[data-theme="light"][data-accent="ultraviolet"],.pal-prev[data-accent="ultraviolet"][data-theme="light"]{--acc:#8A5A00;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#E4E7FA;--bg-el:#EFF1FD;--surface:#F2F4FD;--surface-2:#D8DCF4;--surface-3:#C2C8EA;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+:root[data-theme="light"][data-accent="dragonfruit"],.pal-prev[data-accent="dragonfruit"][data-theme="light"]{--acc:#0E6B3C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#DCEFE2;--bg-el:#EAF6EE;--surface:#EFF8F2;--surface-2:#CFE5D5;--surface-3:#B8D8C0;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+:root[data-theme="light"][data-accent="ghost"],.pal-prev[data-accent="ghost"][data-theme="light"]{--acc:#4D7C0F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#E2E6CF;--bg-el:#EFF2E2;--surface:#F2F5E7;--surface-2:#D6DCBC;--surface-3:#C2C9A4;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+:root[data-theme="light"][data-accent="cobalt"],.pal-prev[data-accent="cobalt"][data-theme="light"]{--acc:#B4128F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#FBE4EF;--bg-el:#FDF0F6;--surface:#FDF2F7;--surface-2:#F3C9DD;--surface-3:#E9A9C7;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+:root[data-theme="light"][data-accent="ember"],.pal-prev[data-accent="ember"][data-theme="light"]{--acc:#A31621;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#F5E1C6;--bg-el:#F9EBD9;--surface:#F8E8D4;--surface-2:#EAD0A8;--surface-3:#DCBE96;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
+/* Default-neutral sub-accents (registry in lib/format.js DEFAULT_ACCENTS, 8 eligible
+   inside Default): each rule ONLY rewrites --acc/--acc-2/--on-acc. --bg/--bg-el/
+   --surface/-2/-3/--label 1-4/--sep/--sep-op stay exactly the neutral Default shell
+   above, so PALETTE_BG is untouched (one bg per mode for every sub-accent) and the
+   12 pair×mode locks above stay byte-identical. --acc-soft/--acc-line derive from
+   --acc via color-mix, and :focus-visible already keys off var(--acc), so no extra
+   focus token is needed. All eight pairs clear 4.5:1 in both modes (dark inks are
+   tinted, never pure black, to hold the ratio on the light dark-mode fields).
+   Red is interactive-only (danger keeps the fixed --red token); yellow is
+   amber-graded for light-mode contrast; lilac substitutes violet. */
+:root[data-accent="default"][data-default-accent="blue"]{--acc:#53A6FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#04121F}
+:root[data-accent="default"][data-default-accent="teal"]{--acc:#22D3EE;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#03202A}
+:root[data-accent="default"][data-default-accent="emerald"]{--acc:#34D399;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#022016}
+:root[data-accent="default"][data-default-accent="yellow"]{--acc:#FFD60A;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#2A2000}
+:root[data-accent="default"][data-default-accent="orange"]{--acc:#FB923C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#1F1002}
+:root[data-accent="default"][data-default-accent="red"]{--acc:#FF8A80;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#420D09}
+:root[data-accent="default"][data-default-accent="rose"]{--acc:#F472B6;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#2A0A1A}
+:root[data-accent="default"][data-default-accent="lilac"]{--acc:#D8B4FE;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#250A44}
+:root[data-theme="light"][data-accent="default"][data-default-accent="blue"]{--acc:#0B69E3;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="teal"]{--acc:#0E7490;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="emerald"]{--acc:#047857;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="yellow"]{--acc:#B45309;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="orange"]{--acc:#C2410C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="red"]{--acc:#C81E1E;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="rose"]{--acc:#BE185D;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
+:root[data-theme="light"][data-accent="default"][data-default-accent="lilac"]{--acc:#9333EA;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 /* Accent icons sitting directly on a bare surface use --acc-2 where --acc fails
    the 3:1 icon bar on that theme's worst surface (dark #1c1c1e, light #ececef):
-   dark ultraviolet/cobalt (2.36/2.44:1) and light ember (1.92:1). Scoped to
+   dark ultraviolet (2.36:1) and light ember (kept byte-identical as a harmless
+   backstop after the 2026-09-18 warm Bordeaux re-grade). Sakura pink clears it
+   outright (6.37 dark on --surface, 4.15+ light), so cobalt left this scope. Scoped to
    icon-on-surface selectors only: filled buttons/chips/tiles, tinted (acc-soft)
    usages, charts, focus rings and text links keep --acc, and every other pair
    already clears 3:1 there. .acc-ink is the same ink for JSX icons stuck with
@@ -173,7 +205,6 @@
    script in index.html always writes the attribute. */
 :root .acc-ink{color:var(--acc)}
 :root[data-theme="dark"][data-accent="ultraviolet"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)),
-:root[data-theme="dark"][data-accent="cobalt"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)),
 :root[data-theme="light"][data-accent="ember"] :is(.acc-ink,.icn.accent,.lrow-k,.setrow .setgo,#tabbar button.on,.ss-label,.ss-hd,.ss-amp,.progline:not(.warn)){color:var(--acc-2)}
 
 /* ---------------------------------------------------------------- reset -- */
@@ -1674,17 +1705,22 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .hm-legend .hm-c{width:10px;height:10px}
 
 /* --- muscle map --- */
-/* Reuses the .hm-c level ramp above, so one accent scale means one thing app-wide. */
-/* An untrained muscle is derived from the text colour rather than a fixed surface, so
-   the body keeps the same contrast in both themes — pinned to --surface-2 it was all
-   but invisible on a white card. */
+/* Heat keeps the accent scale (same 30/55/78/100 steps as the .hm-c activity ramp,
+   so "more accent = more training" still means one thing app-wide), but untrained
+   skin is a FIXED ramp per mode — never var(--acc) or var(--surface) — so the body
+   reads as skin on every palette instead of dissolving into the card. */
 .bodymap{
   display:flex;gap:6px;justify-content:center;align-items:flex-start;
-  --bm-base:color-mix(in srgb,var(--label) 11%,var(--surface));
+  --bm-base:#2e3138;   /* fixed dark skin (untrained muscle) */
+  --bm-sil:#3b3f47;    /* fixed dark silhouette (inert paths) */
+}
+:root[data-theme="light"] .bodymap{
+  --bm-base:#d9d9de;   /* fixed light skin */
+  --bm-sil:#c3c3c9;    /* fixed light silhouette */
 }
 .bm-v{flex:1;min-width:0;height:auto;max-height:min(46vh,340px);max-height:min(46dvh,340px)}
 .bm-ph{height:200px}                       /* holds the space while the geometry loads */
-.bm-sil{fill:color-mix(in srgb,var(--label) 18%,var(--surface))}
+.bm-sil{fill:var(--bm-sil)}
 .bm-m{fill:var(--bm-base);transition:fill var(--med) var(--ease)}
 .bm-m.l1{fill:color-mix(in srgb,var(--acc) 30%,var(--bm-base))}
 .bm-m.l2{fill:color-mix(in srgb,var(--acc) 55%,var(--bm-base))}
@@ -1841,32 +1877,38 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
 .export-calendar-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 
-/* --- accent swatches ---
-   One row, always: 6 palette swatches in a nowrap flex strip, never scroll-x,
-   never a second row. Painted circle is 24px; 6×44px targets cannot fit 320px
-   with row padding (6×44 = 264px > ~260px usable), so the touch target is
-   40px via the ::before slop (inset -8px), not painted size — spacing is
-   preserved and every target still clears the 40px floor. Gap is fluid so the
-   320px budget holds: 6×24 + 5×4.8 ≈ 168px of circles inside ~260px usable,
-   the rest owned by the 6 flex:1 name/preview columns.
-   The selected ring (.swatch.on::after at inset -3px + 2px shadow = 5px past
-   the painted edge) needs 5px of breathing room: padding:5px gives it a home
-   so neither the first nor the last ring is clipped, margin:-5px compensates
-   so card/row spacing is unchanged, and overflow:visible (was hidden, which
-   sliced the rings at the strip edges) lets the ring paint into that padding.
-   Page-level overflow-x:clip still guards against horizontal scroll. */
-.swatches{display:flex;flex-wrap:nowrap;gap:clamp(4px,1.2vw,8px);justify-content:flex-start;align-items:center;overflow:visible;min-width:0;padding:5px;margin:-5px}
+/* --- accent swatches (mobile-first) ---
+    Base (≤360px, stress 320): 6 palette columns wrap to 2 rows of 3 instead of
+    a 361px nowrap strip clipped by .sect-b{overflow:hidden} with no page
+    x-scroll (6th palette inselectable). flex:1 1 30% fits 3 per row (3×30% +
+    gaps ≤ 100%, 4×30% > 100%) and row-gap:12px keeps the two rows composed,
+    not squished. Painted circle stays 24px by tokens; the real 44px touch
+    target is the ::before slop (inset -10px → 24+20 = 44px). ≥390px the single
+    premium row fits again, so flex-wrap:nowrap is restored there.
+    The selected ring (.swatch.on::after at inset -3px + 2px shadow = 5px past
+    the painted edge) needs 5px of breathing room: padding:5px gives it a home
+    so neither the first nor the last ring is clipped, margin:-5px compensates
+    so card/row spacing is unchanged, and overflow:visible lets the ring paint
+    into that padding. Page-level overflow-x:clip still guards against
+    horizontal scroll. */
+.swatches{display:flex;flex-wrap:wrap;gap:12px clamp(4px,1.2vw,8px);justify-content:flex-start;align-items:center;overflow:visible;min-width:0;max-width:100%;padding:5px;margin:-5px}
 .swatch{width:24px;height:24px;flex:none;border-radius:50%;position:relative;transition:transform var(--fast)}
-.swatch::before{content:'';position:absolute;inset:-8px;border-radius:50%}
+.swatch::before{content:'';position:absolute;inset:-10px;border-radius:50%}
 .swatch:active{transform:scale(.9)}
 .swatch.on::after{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 0 2px var(--label)}
+@media (min-width:390px){
+  .swatches{flex-wrap:nowrap;gap:clamp(4px,1.2vw,8px)}
+}
 /* Each palette is a column: painted circle, proper-noun name, and a 4-dot
    .pal-prev strip (bg / surface / text / accent) that resolves its tokens from
    its own data-accent+data-theme attributes — a live miniature of the palette
-   in the current mode. Columns share the strip width (flex:1, min-width:0) so
-   the 320px budget still holds; the 9px name ellipsises inside its column
-   ("ultraviolet"/"dragonfruit" clip to ~39px) instead of pushing a second row. */
-.pal-opt{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1 1 0;min-width:0;padding:5px 0}
+   in the current mode. Base flex:1 1 30% forces the 2×3 wrap at 320px (each
+   column ~80px: 24px circle + 9px ellipsis name + dots, none clipped); at
+   ≥390px the single-row share (flex:1 1 0) is restored. */
+.pal-opt{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1 1 30%;min-width:0;max-width:100%;padding:5px 0}
+@media (min-width:390px){
+  .pal-opt{flex:1 1 0}
+}
 .swatch-name{font-size:9px;line-height:1.2;color:var(--label-2);text-transform:capitalize;letter-spacing:.01em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .pal-prev{display:flex;gap:2px;align-items:center}
 .pal-prev i{width:7px;height:7px;border-radius:50%;border:.5px solid var(--sep)}
@@ -1874,6 +1916,28 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .pal-prev .d-sf{background:var(--surface)}
 .pal-prev .d-tx{background:var(--label)}
 .pal-prev .d-ac{background:var(--acc)}
+/* --- default-neutral sub-accent row (DefaultAccentSubRow, Settings only) ---
+   Mobile-first wrap strip: 6 pill buttons (dot + name) that reflow to 2-3 rows
+   at 320px instead of scrolling — flex-wrap + min-width:0 + max-width:100%, never
+   a nowrap strip. Every pill owns a real 44px target (min-height:44px, no slop
+   tricks); the dot colour is the only data-driven paint (registry hex, same as
+   .swatch), everything else resolves from tokens. Selected state is an inset
+   accent ring + tinted fill, both tokens, so it survives every palette. */
+.dacc-row{display:flex;flex-wrap:wrap;gap:8px;min-width:0;max-width:100%;margin-top:2px}
+.dacc{
+  display:inline-flex;align-items:center;gap:8px;flex:1 1 30%;min-width:0;max-width:100%;
+  min-height:44px;padding:6px 12px 6px 8px;border-radius:99px;
+  background:var(--surface-2);color:var(--label);
+  transition:background var(--fast),box-shadow var(--fast),transform var(--fast);
+}
+.dacc:active{transform:scale(.97)}
+.dacc-dot{width:26px;height:26px;border-radius:50%;flex:none;border:.5px solid var(--sep)}
+.dacc-name{
+  font-size:14px;letter-spacing:-.006em;flex:1 1 auto;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;
+}
+.dacc.on{background:var(--acc-soft);box-shadow:inset 0 0 0 2px var(--acc)}
+.dacc.on .dacc-name{font-weight:600}
 
 /* --- supersets --- */
 .ss-label{

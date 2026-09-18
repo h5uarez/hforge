@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { ACCENTS, resolveAccent, todayISO, localTZ } from '../lib/format.js'
+import { ACCENTS, DEFAULT_ACCENTS, resolveAccent, resolveDefaultAccent, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush, cancelInactivityPush } from '../lib/push.js'
@@ -205,14 +205,15 @@ export default function Settings() {
             <div key={k} className="pal-opt">
               <button className={'swatch' + (resolveAccent(S.accent) === k ? ' on' : '')}
                 style={{ background: `linear-gradient(135deg, ${c.a} 0 50%, ${c.b} 50% 100%)` }}
-                onClick={() => update(s => { s.accent = k })} aria-label={k} />
-              <span className="swatch-name" aria-hidden="true">{k}</span>
+                onClick={() => update(s => { s.accent = k })} aria-label={PALETTE_LABEL[k] || k} />
+              <span className="swatch-name" aria-hidden="true">{PALETTE_LABEL[k] || k}</span>
               <span className="pal-prev" data-accent={k} data-theme={S.theme === 'dark' ? 'dark' : 'light'} aria-hidden="true">
                 <i className="d-bg" /><i className="d-sf" /><i className="d-tx" /><i className="d-ac" />
               </span>
             </div>
           ))}
         </div>
+        <DefaultAccentSubRow S={S} update={update} />
       </div>
     </Section>
 
@@ -235,6 +236,48 @@ export default function Settings() {
       <AppVersion />
     </div>
   </div>
+}
+
+// Premium display names for the six palette keys. Keys stay frozen (gym_state_v1
+// + ACCENT_MIGRATION); only this label map is user-facing. English neutral.
+const PALETTE_LABEL = {
+  default: 'Default',
+  ultraviolet: 'Midnight Gold',
+  dragonfruit: 'Emerald Forest',
+  cobalt: 'Sakura Pink',
+  ember: 'Bordeaux Cacao',
+  ghost: 'Graphite Lime',
+}
+// Eligible accents inside the neutral Default palette. Rendered ONLY while the
+// Default palette is resolved — any other palette returns null (not hidden), so
+// the row never occupies layout, tab order, or the accessibility tree there.
+// Eight wrap pills (dot + name) below the palette strip: flex-wrap owns 320px with
+// no x-scroll (3 per row → 3 rows), every pill is a real 44px target, and
+// everything but the data-driven dot paint resolves from tokens (see .dacc-row
+// in index.css). Rainbow order; Lilac substitutes Violet (see DEFAULT_ACCENTS).
+const DEFAULT_ACCENT_ORDER = ['blue', 'teal', 'emerald', 'yellow', 'orange', 'red', 'rose', 'lilac']
+const DEFAULT_ACCENT_LABEL = { blue: 'Blue', teal: 'Teal', emerald: 'Emerald', yellow: 'Yellow', orange: 'Orange', red: 'Red', rose: 'Rose', lilac: 'Lilac' }
+function DefaultAccentSubRow({ S, update }) {
+  if (resolveAccent(S.accent) !== 'default') return null
+  const cur = resolveDefaultAccent(S.defaultAccent)
+  const dark = S.theme === 'dark'
+  return (
+    <div className="dacc-row" role="group">
+      {DEFAULT_ACCENT_ORDER.map(k => {
+        const c = DEFAULT_ACCENTS[k]
+        const hex = dark ? c.dark : c.light
+        const on = cur === k
+        return (
+          <button key={k} type="button" className={'dacc' + (on ? ' on' : '')}
+            aria-pressed={on} aria-label={DEFAULT_ACCENT_LABEL[k]}
+            onClick={() => update(s => { s.defaultAccent = k })}>
+            <i className="dacc-dot" style={{ background: hex }} aria-hidden="true" />
+            <span className="dacc-name" aria-hidden="true">{DEFAULT_ACCENT_LABEL[k]}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 // The whole point is that the two scales are one judgement counted from opposite ends, and a

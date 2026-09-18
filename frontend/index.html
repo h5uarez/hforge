@@ -36,13 +36,13 @@
 <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
 <style>html,body{background:var(--boot-bg,#ffffff)}#splash{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;min-height:100vh;min-height:100dvh;margin:0;padding:0;display:flex;align-items:center;justify-content:center;background:#ffffff;overflow:hidden}html[data-theme="dark"] #splash{background:#000000}#splash img{width:100%;height:100%;display:block;object-fit:cover}</style>
 <script>
-/* Pre-paint appearance: set data-theme/data-accent before React boots so frame 1
-   paints with the persisted theme + palette (no light flash). Mirror of the
-   ACCENT_MIGRATION map in frontend/src/lib/format.js — kept in sync by the drift
+/* Pre-paint appearance: set data-theme/data-accent/data-default-accent before React
+   boots so frame 1 paints with the persisted theme + palette + Default sub-accent
+   (no light flash). Mirror of the ACCENT_MIGRATION map in frontend/src/lib/format.js — kept in sync by the drift
    guard in accessibility.test.js. PALETTE_BG mirrors the per-pair×mode --bg tokens
    in index.css (same drift guard covers html↔CSS↔App.jsx): theme-color follows
    the selected palette, while the splash itself is always pure black or white.
-   Missing/corrupt storage falls back to light + default. */
+   Missing/corrupt storage falls back to light + default + blue. */
 (function () {
   try {
     var st = JSON.parse(localStorage.getItem('gym_state_v1') || 'null')
@@ -51,9 +51,17 @@
     var KNOWN = ['default','ultraviolet','dragonfruit','ghost','cobalt','ember']
     var rawAccent = st && st.accent
     var accent = KNOWN.indexOf(rawAccent) >= 0 ? rawAccent : (Object.prototype.hasOwnProperty.call(MIGRATE, rawAccent) ? MIGRATE[rawAccent] : 'default')
-    var PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#220a4d","light":"#e7ddfa"},"dragonfruit":{"dark":"#3d0c1e","light":"#f6dbe7"},"ghost":{"dark":"#1a1f1b","light":"#e6f3ed"},"cobalt":{"dark":"#0a1745","light":"#d9e3fb"},"ember":{"dark":"#2a1408","light":"#f6e7d3"}}
+    // Eligible accent inside the neutral Default palette (own namespace, validated
+    // against the DEFAULT_ACCENTS registry in lib/format.js — never the MIGRATE map
+    // above). Always written; the CSS overrides only match data-accent "default",
+    // and every sub-accent shares the neutral Default bg, so PALETTE_BG is untouched.
+    var KNOWN_DACC = ['blue','teal','emerald','yellow','orange','red','rose','lilac']
+    var rawDacc = st && st.defaultAccent
+    var dacc = KNOWN_DACC.indexOf(rawDacc) >= 0 ? rawDacc : 'blue'
+    var PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#10163A","light":"#E4E7FA"},"dragonfruit":{"dark":"#0C1F16","light":"#DCEFE2"},"ghost":{"dark":"#1A1E0C","light":"#E2E6CF"},"cobalt":{"dark":"#241016","light":"#FBE4EF"},"ember":{"dark":"#2E1510","light":"#F5E1C6"}}
     document.documentElement.dataset.theme = theme
     document.documentElement.dataset.accent = accent
+    document.documentElement.dataset.defaultAccent = dacc
     var bg = (PALETTE_BG[accent] && PALETTE_BG[accent][theme]) || PALETTE_BG.default.light
     document.documentElement.style.setProperty('--boot-bg', bg)
     var meta = document.querySelector('meta[name="theme-color"]')
@@ -61,6 +69,7 @@
   } catch (e) {
     document.documentElement.dataset.theme = 'light'
     document.documentElement.dataset.accent = 'default'
+    document.documentElement.dataset.defaultAccent = 'blue'
     document.documentElement.style.setProperty('--boot-bg', '#ffffff')
   }
 })()
