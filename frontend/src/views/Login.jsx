@@ -1,8 +1,8 @@
-import { useStore } from '../store/useStore.js'
+import { useStore, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, api, BIO } from '../lib/api.js'
-import { hasData } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
+import { LOGIN_FOCUS_DELAY_MS } from '../lib/constants.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '../components/ui.jsx'
@@ -13,7 +13,7 @@ function RegisterSheet({ close }) {
   const [code, setCode] = useState('')
   const [inviteOnly, setInviteOnly] = useState(false)
   const ref = useRef(null)
-  useEffect(() => { setTimeout(() => ref.current?.focus(), 250) }, [])
+  useEffect(() => { setTimeout(() => ref.current?.focus(), LOGIN_FOCUS_DELAY_MS) }, [])
   useEffect(() => { api('/api/config').then(c => setInviteOnly(!!c.invite_only)).catch(() => {}) }, [])
   const go = async () => {
     const n = name.trim()

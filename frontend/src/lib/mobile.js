@@ -10,6 +10,7 @@
 // Like the demo build, MOBILE is replaced at build time, so all of this folds away in
 // web bundles; the Capacitor plugins are only ever imported behind it.
 import { t } from './i18n.js'
+import { BASE_100 } from './constants.js'
 import { ACTIVE_INACTIVITY_NOTIFICATION_ID, inactivityDeadline } from './inactivity.js'
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
@@ -40,7 +41,7 @@ export async function nativeSave(state) {
 export async function syncReminder(S, interactive = false) {
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications')
-    await LocalNotifications.cancel({ notifications: [0, 1, 2, 3, 4, 5, 6].map(d => ({ id: 100 + d })) }).catch(() => {})
+    await LocalNotifications.cancel({ notifications: [0, 1, 2, 3, 4, 5, 6].map(d => ({ id: BASE_100 + d })) }).catch(() => {})
     const r = S.reminder
     if (!r?.on) return true
     let perm = await LocalNotifications.checkPermissions()
@@ -50,7 +51,7 @@ export async function syncReminder(S, interactive = false) {
     const notifications = Object.entries(S.week || {})
       .filter(([, rid]) => rid && (S.routines || []).some(x => x.id === rid))
       .map(([day, rid]) => ({
-        id: 100 + Number(day),
+        id: BASE_100 + Number(day),
         title: t('Workout day'),
         body: t('{0} is on the plan today — let’s go!', S.routines.find(x => x.id === rid).name),
         smallIcon: 'notification_monochrome',

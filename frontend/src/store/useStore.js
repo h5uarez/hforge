@@ -10,9 +10,15 @@ import { hasLegacyExerciseIds, normalizeExerciseIds } from '../lib/exercise-ids.
 import { normalizeActiveInactivity } from '../lib/inactivity.js'
 import { cancelInactivityPush } from '../lib/push.js'
 import { rebuildHistory } from '../lib/history-rebuild.js'
-
-const KEY = 'gym_state_v1'
-const LAST_VALID_KEY = 'gym_state_last_valid_v1'
+import {
+  STORAGE_STATE_KEY as KEY,
+  STORAGE_LAST_VALID_KEY as LAST_VALID_KEY,
+  STORAGE_USER_KEY,
+  STORAGE_GUEST_KEY,
+  STORAGE_DIRTY_KEY,
+  PUSH_DEBOUNCE_MS,
+  NATIVE_PERSIST_DEBOUNCE_MS,
+} from '../lib/constants.js'
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'es',
   theme: 'light', accent: 'default', body: 'male', targetW: null, bodyweightCheckEnabled: true,
@@ -94,14 +100,14 @@ export const useStore = create((set, get) => {
       if (!get().user) return
       if (get().S.active) { schedulePush(); return }
       get().pushState()
-    }, 1500)
+    }, PUSH_DEBOUNCE_MS)
   }
 
   // Mobile build: mirror the state into a file in the app's data directory (survives WebView
   // storage eviction) and keep the native reminder schedule in step with the weekly plan.
   const nativePersist = () => {
     clearTimeout(saveTm)
-    saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
+    saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, NATIVE_PERSIST_DEBOUNCE_MS)
   }
 
   const persist = (S, push = true, transaction = null, { rebuild = true } = {}) => {
@@ -156,8 +162,8 @@ export const useStore = create((set, get) => {
   const clearLocalSession = () => {
     const language = getExplicitLang() || normalizeLang(getLang()) || getInitialLang()
     get().setUser(null)
-    localStorage.removeItem('gym_guest')
-    localStorage.removeItem('gym_dirty')
+    localStorage.removeItem(STORAGE_GUEST_KEY)
+    localStorage.removeItem(STORAGE_DIRTY_KEY)
     localStorage.removeItem(KEY)
     persist(Object.assign(clone(DEF), { lang: language }), false)
   }
@@ -165,7 +171,7 @@ export const useStore = create((set, get) => {
   return {
     S: (() => { const s = loadState(); registerCustom(s.customEx); return s })(),
     persistence: null,
-    user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
+    user: (() => { try { return JSON.parse(localStorage.getItem(STORAGE_USER_KEY)) || null } catch { return null } })(),
     ready: false,
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
@@ -199,12 +205,12 @@ export const useStore = create((set, get) => {
       persist(next, push)
     },
 
-    isGuest: () => localStorage.getItem('gym_guest') === '1',
-    setGuest(v) { if (v) localStorage.setItem('gym_guest', '1'); else localStorage.removeItem('gym_guest'); set({}) },
+    isGuest: () => localStorage.getItem(STORAGE_GUEST_KEY) === '1',
+    setGuest(v) { if (v) localStorage.setItem(STORAGE_GUEST_KEY, '1'); else localStorage.removeItem(STORAGE_GUEST_KEY); set({}) },
 
     setUser(u) {
-      if (u) { localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest') }
-      else localStorage.removeItem('gym_user')
+      if (u) { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(u)); localStorage.removeItem(STORAGE_GUEST_KEY) }
+      else localStorage.removeItem(STORAGE_USER_KEY)
       set({ user: u })
     },
 
@@ -225,10 +231,10 @@ export const useStore = create((set, get) => {
         const state = { ...(snapshot || get().S) }
         delete state.active
         await api('/api/data', { method: 'PUT', body: JSON.stringify({ state }) })
-        localStorage.removeItem('gym_dirty')
+        localStorage.removeItem(STORAGE_DIRTY_KEY)
         return true
       } catch (e) {
-        localStorage.setItem('gym_dirty', '1')
+        localStorage.setItem(STORAGE_DIRTY_KEY, '1')
         // A remote push that rejects while the live session is intact in localStorage must never
         // raise the blocking recovery card (leave/re-enter with an active workout, backend down,
         // 502, offline). Stay silent, keep the draft exactly as it is, and retry in the background
@@ -244,16 +250,19 @@ export const useStore = create((set, get) => {
         return false
       }
     },
-    async pullState() {
+    async pullState(prefetchedData = null) {
       try {
-        const { state } = await api('/api/data')
+        // Boot fires the snapshot GET in the same tick as /api/me so the two
+        // requests overlap on the wire; every other caller passes nothing and
+        // fetches here exactly as before.
+        const { state } = prefetchedData ? await prefetchedData : await api('/api/data')
         const S = get().S
         const active = S.active
         // A live session is browser-local. Boot refresh may update the local copy, but must not
         // turn that refresh (or legacy-ID repair) into an implicit remote save. Explicit completed
         // workout, history, and settings saves still call pushState directly.
         const liveActive = !!active
-        const dirty = localStorage.getItem('gym_dirty') === '1'
+        const dirty = localStorage.getItem(STORAGE_DIRTY_KEY) === '1'
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const migrated = hasLegacyExerciseIds(state)
           const next = normalizeState(state)
@@ -293,7 +302,7 @@ export const useStore = create((set, get) => {
     async resetDemo() {
       const { buildDemoState } = await import('../lib/demoSeed.js')
       const language = getExplicitLang() || normalizeLang(getLang()) || getInitialLang()
-      localStorage.removeItem('gym_dirty')
+      localStorage.removeItem(STORAGE_DIRTY_KEY)
       persist(normalizeState(Object.assign(buildDemoState(), { lang: language })), false)
     },
 
@@ -301,7 +310,9 @@ export const useStore = create((set, get) => {
     // paint immediately and refresh from the server without blocking it.
     // /api/me and /api/data both authenticate via the session cookie, but the
     // remote snapshot (plus its legacy-ID repair PUT) must only apply to an
-    // authenticated profile — so the refresh stays sequential me -> data while
+    // authenticated profile. Both GETs fire in the same tick so they overlap
+    // on the wire, while me is still awaited first: on a 401 the prefetched
+    // snapshot is discarded and the identity clears exactly as before.
     // `ready` no longer gates either call. Repair-PUT semantics in pullState
     // are unchanged.
     async boot() {
@@ -333,11 +344,18 @@ export const useStore = create((set, get) => {
         return
       }
       // Non-blocking refresh: first paint already happened from cache.
+      // Same-tick overlap: the snapshot request leaves together with /api/me
+      // but is only consumed after me succeeds (pullState, with its repair PUT).
       set({ ready: true })
+      const meRequest = api('/api/me')
+      const dataRequest = api('/api/data')
+      // A failed identity must never surface an unhandled rejection from the
+      // snapshot it orphaned; the happy path consumes it via pullState below.
+      dataRequest.catch(() => {})
       try {
-        const me = await api('/api/me')
+        const me = await meRequest
         get().setUser(me.user)
-        await get().pullState()
+        await get().pullState(dataRequest)
         // Re-stamp the reminder's timezone on every load — keeps it correct if you're travelling,
         // without needing to revisit Settings.
         const tz = localTZ()

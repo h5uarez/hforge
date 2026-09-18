@@ -16,6 +16,7 @@
 import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
 import Icon from './Icon.jsx'
 import { t } from '../lib/i18n.js'
+import { BASE_100 } from '../lib/constants.js'
 
 /* ============================ text ============================ */
 
@@ -131,7 +132,7 @@ export function Segmented({ options, value, onChange, className = '' }) {
 /* ============================ stepper ============================ */
 
 export function Stepper({ value, step = 1, onChange, onRawChange, onStep, decimal = true, className = '', label, unit }) {
-  const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
+  const set = v => onChange(Math.max(0, Math.round((v || 0) * BASE_100) / BASE_100))
   const inner = (
     <div className={'stp ' + className}>
       <button onClick={() => { const v = (+value || 0) - step; onStep && onStep(v); set(v) }} aria-label={t('Decrease') + (label ? ' ' + label : '')}><Icon name="minus" /></button>
@@ -152,10 +153,10 @@ export function Stepper({ value, step = 1, onChange, onRawChange, onStep, decima
 // Pointer-driven so the fill, track and thumb are all ours — no ::-webkit-*
 // pseudo-elements, which is the only way the control looks identical on every
 // platform and can pick up the accent colour.
-export function Slider({ value, min = 0, max = 100, step = 1, onChange, className = '' }) {
+export function Slider({ value, min = 0, max = BASE_100, step = 1, onChange, className = '' }) {
   const ref = useRef(null)
   const [drag, setDrag] = useState(false)
-  const pct = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
+  const pct = Math.min(BASE_100, Math.max(0, ((value - min) / (max - min)) * BASE_100))
 
   const posToValue = useCallback(clientX => {
     const el = ref.current

@@ -111,6 +111,10 @@ export function registerPwa({ onUpdate } = {}) {
     if (onUpdate) { try { onUpdate(worker) } catch { /* caller-owned */ } }
   }
   navigator.serviceWorker.register('sw.js').then(reg => {
+    // Navigation preload lets the browser fire the document request in parallel
+    // with worker startup; the worker races e.preloadResponse against fetch.
+    // Best effort only: unsupported browsers simply skip the round-trip saving.
+    try { reg.navigationPreload?.enable().catch(() => {}) } catch { /* unsupported */ }
     if (reg.waiting) notify(reg.waiting)
     reg.addEventListener('updatefound', () => {
       const next = reg.installing
