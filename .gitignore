@@ -19,3 +19,8 @@ data/
 data-local/
 .data/
 media/
+
+# OS and log files
+.DS_Store
+Thumbs.db
+*.log
