@@ -40,14 +40,17 @@ describe('SelectRow option search', () => {
 
   it('returns no options for an unmatched query and leaves search opt-in', () => {
     expect(filterSelectOptions(options, 'deadlift')).toEqual([])
-    expect(uiSource).toContain('searchable = false')
+    expect(uiSource).toContain('searchable = false, tall = false')
     expect(uiSource).toContain('searchable ? filterSelectOptions(options, query) : options')
+    expect(uiSource).toContain('tall ? { tall: true } : undefined')
     expect(uiSource).toContain("t('No options match your search')")
     expect(uiSource).toContain('role="status"')
-    expect(statsSource).toContain('onChange={setExId} searchable')
+    expect(statsSource).toContain('onChange={setExId} searchable tall')
     expect(routineSource).not.toContain('searchable')
+    expect(routineSource).not.toContain('tall')
     expect(settingsSource).not.toContain('searchable')
     expect(warmupSource).not.toContain('searchable')
+    expect(warmupSource).not.toContain('tall')
   })
 })
 
