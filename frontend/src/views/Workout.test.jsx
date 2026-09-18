@@ -237,9 +237,16 @@ describe('scrollable workout composition contracts', () => {
     expect(pickerMutationBlock?.[0]).toContain('}, false), closePicker)')
     const topWeightBlock = sheets.match(/function TopWeight[\s\S]*?export const workoutCompleteSheet/)
     expect(topWeightBlock?.[0]).toContain('else update(s => { s.active.cur = units[unitIdx + 1][0] }, false)')
-    const topWeightCommit = topWeightBlock?.[0].match(/const commit = advance =>[\s\S]*?close\(\)/)?.[0]
+    const topWeightCommit = topWeightBlock?.[0].match(/const save = advance =>[\s\S]*?close\(\)/)?.[0]
     expect(topWeightCommit).toContain('s.exWeights[entry.id] = { w: Math.max(n, cur ? cur.w : 0), d: todayISO() }')
     expect(topWeightCommit).toContain('}, false)')
+    // Skip closes WITHOUT saving: no topW write, but the unit still advances (or finishes).
+    expect(topWeightBlock?.[0]).toContain("t('Skip')")
+    expect(topWeightBlock?.[0]).not.toContain("t('Just close')")
+    const skipBlock = topWeightBlock?.[0].match(/const skip = \(\) =>[\s\S]*?\n  \}/)?.[0] || ''
+    expect(skipBlock).toContain('close()')
+    expect(skipBlock).not.toContain('.topW =')
+    expect(skipBlock).toContain('workoutCompleteSheet()')
   })
 
   it('keeps set completion anchored and lets sheets own completion focus', () => {
@@ -247,9 +254,14 @@ describe('scrollable workout composition contracts', () => {
     const ui = readFileSync(srcPath('components/ui.jsx'), 'utf8')
     const flashBlock = ui.match(/export function scheduleSetRowFlash[\s\S]*?export function Check/)
     // Checking a set must not run the exercise-card focus/scroll path; only the expected
-    // top-weight or whole-workout sheet may take focus after the state update.
+    // silent TopWeight commit or the exception/finish sheets may take focus after the update.
     expect(toggleBlock?.[0]).not.toContain('focusEntry(')
-    expect(toggleBlock?.[0]).toContain('if (askTop) topWeightSheet(idx)')
+    // Silent by default: ordinary completions auto-commit with no sheet; only the gate's
+    // exceptions (unlogged weight, PR, over-range) open the TopWeight sheet.
+    expect(toggleBlock?.[0]).toContain('topWeightPromptReason(live, prev, st.unit)')
+    expect(toggleBlock?.[0]).toContain('if (reason) topWeightSheet(idx, reason)')
+    expect(toggleBlock?.[0]).toContain('else silentTopWeightCommit(idx)')
+    expect(toggleBlock?.[0]).not.toContain('if (askTop) topWeightSheet(idx)')
     expect(toggleBlock?.[0]).toContain('else if (workoutDone) workoutCompleteSheet()')
     expect(flashBlock?.[0]).not.toContain('scrollIntoView')
     // Row keys remain index-stable while the done-run wrapper owns only the visual fusion.
@@ -642,7 +654,9 @@ describe('exercise options menu and reorder screen', () => {
   it('translates every new user-facing string to Spanish', () => {
     const spanish = readFileSync(srcPath('locales/es.js'), 'utf8')
     for (const key of ['Exercise options', 'Edit exercise', 'Exercise information', 'Reorder exercises', 'Reorder',
-      'Drag with the handle, or focus it and use the arrow keys to reorder.', 'Done', 'Delete exercise']) {
+      'Drag with the handle, or focus it and use the arrow keys to reorder.', 'Done', 'Delete exercise', 'Skip',
+      'We detected {0} max.', 'Some completed sets have no weight yet.',
+      'Above the usual {0} range — saved with the TopWeight range.']) {
       expect(spanish).toContain("'" + key + "'")
     }
   })

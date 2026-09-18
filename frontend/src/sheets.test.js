@@ -23,7 +23,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, shortRoutineName, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets } = await import('./sheets.jsx')
+const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, shortRoutineName, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets, TOP_WEIGHT_PROMPT, topWeightPromptReason, resolveTopWeightAction, silentTopWeightCommit } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
@@ -628,5 +628,153 @@ describe('shortRoutineName', () => {
   it('passes short values through untouched', () => {
     expect(shortRoutineName('Push')).toBe('Push')
     expect(shortRoutineName('')).toBe('')
+  })
+})
+
+describe('silent TopWeight gate', () => {
+  const setsOf = weights => weights.map(w => ({ w, r: 8, done: true }))
+  // Ordinary completion at the known best: no sheet, silent auto-max carries the value.
+  it('stays silent when the session max matches the previous best', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([60, 60]) }
+    expect(topWeightPromptReason(entry, 60, 'kg')).toBeNull()
+    expect(resolveTopWeightAction(entry, 60, 'kg')).toEqual({ type: 'silent', value: 60 })
+  })
+
+  it('stays silent below the previous best', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([50]) }
+    expect(topWeightPromptReason(entry, 80, 'kg')).toBeNull()
+  })
+
+  it('does not treat a first-ever load as a PR prompt', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([60]) }
+    expect(topWeightPromptReason(entry, 0, 'kg')).toBeNull()
+    expect(resolveTopWeightAction(entry, 0, 'kg')).toEqual({ type: 'silent', value: 60 })
+  })
+
+  it('prompts on a possible PR above the previous best', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([70, 65]) }
+    expect(topWeightPromptReason(entry, 60, 'kg')).toBe(TOP_WEIGHT_PROMPT.PR)
+    expect(resolveTopWeightAction(entry, 60, 'kg')).toMatchObject({ type: 'prompt', reason: TOP_WEIGHT_PROMPT.PR })
+  })
+
+  it('prompts for weight above the ordinary range, which the TopWeight range still accepts', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([200]) }
+    expect(topWeightPromptReason(entry, 200, 'kg')).toBe(TOP_WEIGHT_PROMPT.OVER_RANGE)
+    expect(savedTopWeight(200, 'kg', true)).toBe(200)
+    expect(weightBounds('kg').max).toBe(180)
+  })
+
+  it('prefers the over-range reason when a heavy set is also a PR', () => {
+    const entry = { id: ACTIVE_LIFT, sets: setsOf([200]) }
+    expect(topWeightPromptReason(entry, 60, 'kg')).toBe(TOP_WEIGHT_PROMPT.OVER_RANGE)
+  })
+
+  it('prompts when completed sets carry no weight against a known reference', () => {
+    const unweighed = { id: ACTIVE_LIFT, sets: [{ w: 0, r: 8, done: true }] }
+    expect(topWeightPromptReason(unweighed, 60, 'kg')).toBe(TOP_WEIGHT_PROMPT.UNLOGGED)
+    expect(topWeightPromptReason({ id: ACTIVE_LIFT, target: { weight: 40 }, sets: [{ w: 0, r: 8, done: true }] }, 0, 'kg'))
+      .toBe(TOP_WEIGHT_PROMPT.UNLOGGED)
+    expect(topWeightPromptReason({ id: ACTIVE_LIFT, topW: 50, sets: [{ w: 0, r: 8, done: true }] }, 0, 'kg'))
+      .toBe(TOP_WEIGHT_PROMPT.UNLOGGED)
+  })
+
+  it('stays silent on unweighed sets with no reference to compare against', () => {
+    const entry = { id: ACTIVE_LIFT, sets: [{ w: 0, r: 8, done: true }] }
+    expect(topWeightPromptReason(entry, 0, 'kg')).toBeNull()
+  })
+
+  it('ignores unfinished sets when detecting unlogged weight', () => {
+    const entry = { id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }, { w: 0, r: 8, done: false }] }
+    expect(topWeightPromptReason(entry, 60, 'kg')).toBeNull()
+  })
+
+  it('applies the pound ceiling in lb mode', () => {
+    expect(topWeightPromptReason({ id: ACTIVE_LIFT, sets: setsOf([400]) }, 400, 'lb')).toBe(TOP_WEIGHT_PROMPT.OVER_RANGE)
+    expect(topWeightPromptReason({ id: ACTIVE_LIFT, sets: setsOf([390]) }, 390, 'lb')).toBeNull()
+  })
+
+  it('falls back to the session target as the prompt default', () => {
+    const entry = { id: ACTIVE_LIFT, target: { weight: 50 }, sets: [{ w: 0, r: 8, done: true }] }
+    expect(resolveTopWeightAction(entry, 60, 'kg')).toMatchObject({ type: 'prompt', value: 0 })
+    // Nothing completed yet means nothing to record — silence with a zero auto-max.
+    const fresh = { id: ACTIVE_LIFT, target: { weight: 50 }, sets: [{ w: 50, r: 8, done: false }] }
+    expect(resolveTopWeightAction(fresh, 0, 'kg')).toEqual({ type: 'silent', value: 0 })
+  })
+})
+
+describe('silentTopWeightCommit', () => {
+  const installActive = (entries, opts = {}) => {
+    const S = {
+      unit: 'kg', exWeights: opts.exWeights || {}, workouts: [],
+      active: { id: 'a', d: '2026-09-18', start: 1, cur: opts.cur ?? 0, entries },
+    }
+    mocks.getState.mockReset()
+    mocks.openSheet.mockReset()
+    mocks.getState.mockReturnValue({ S, update: mut => { mut(S) } })
+    return S
+  }
+
+  it('records the session max and advances to the next unit without opening a sheet', () => {
+    const S = installActive([
+      { id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }] },
+      { id: 'other-lift', sets: [{ w: 20, r: 8, done: false }] },
+    ])
+
+    expect(silentTopWeightCommit(0)).toBe(true)
+
+    expect(S.active.entries[0].topW).toBe(60)
+    expect(S.exWeights[ACTIVE_LIFT].w).toBe(60)
+    expect(S.active.cur).toBe(1)
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+  })
+
+  it('opens the finish prompt on the last unit instead of advancing past the end', () => {
+    const S = installActive([{ id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }] }])
+
+    expect(silentTopWeightCommit(0)).toBe(true)
+
+    expect(S.active.entries[0].topW).toBe(60)
+    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
+  })
+
+  it('never lowers a heavier stored best', () => {
+    const S = installActive(
+      [
+        { id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }] },
+        { id: 'other-lift', sets: [{ w: 20, r: 8, done: false }] },
+      ],
+      { exWeights: { [ACTIVE_LIFT]: { w: 100, d: '2026-09-01' } } },
+    )
+
+    silentTopWeightCommit(0)
+
+    expect(S.active.entries[0].topW).toBe(60)
+    expect(S.exWeights[ACTIVE_LIFT].w).toBe(100)
+    expect(S.active.cur).toBe(1)
+  })
+
+  it('advances without writing a top weight when nothing was weighed', () => {
+    const S = installActive([
+      { id: ACTIVE_LIFT, sets: [{ w: 0, r: 8, done: true }] },
+      { id: 'other-lift', sets: [{ w: 20, r: 8, done: false }] },
+    ])
+
+    expect(silentTopWeightCommit(0)).toBe(true)
+
+    expect(S.active.entries[0].topW).toBeUndefined()
+    expect(S.exWeights[ACTIVE_LIFT]).toBeUndefined()
+    expect(S.active.cur).toBe(1)
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+  })
+
+  it('returns false when the entry is gone', () => {
+    const S = installActive([{ id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }] }])
+    expect(silentTopWeightCommit(5)).toBe(false)
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+  })
+
+  it('keeps the finish path merging done-set max with any recorded top weight', () => {
+    expect(sheetsSource).toContain('...e.sets.filter(x => projectSideSet(x).done).map(weightOfSet), e.topW || 0')
+    expect(sheetsSource).toContain('if (mx > 0) { const cur = s.exWeights[e.id]; if (!cur || mx > cur.w) s.exWeights[e.id] = { w: mx, d: w.d } }')
   })
 })
