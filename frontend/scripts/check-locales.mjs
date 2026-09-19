@@ -10,19 +10,16 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const frontendDir = dirname(scriptDir)
 const localesDir = join(frontendDir, 'src', 'locales')
-const sourceFiles = [
-  'src/views/Login.jsx', 'src/views/Settings.jsx', 'src/views/Home.jsx',
-  'src/views/RoutineEdit.jsx', 'src/views/Workout.jsx', 'src/views/Stats.jsx', 'src/views/Admin.jsx',
-  'src/components/ui.jsx', 'src/components/Home1RM.jsx', 'src/components/HomeWarmup.jsx', 'src/sheets.jsx',
-  'src/lib/push.js', 'src/lib/mobile.js', 'src/store/useUI.js'
-]
 
 // Values in these forms are intentionally not source-English UI keys:
 // brand text (Hforge), user/catalog values, units and side markers, generated
 // instruction content, and intentional English fallback text.
 export const documentedExclusions = [
+  'test sources under frontend/src (including *.test.js and *.test.jsx)',
+  'locale dictionaries under src/locales/',
   'brand text: Hforge',
   'user-owned and catalog-owned values rendered from state/data',
+  'catalog/data modules: src/lib/catalog.js, *-data.js, and exercise-names.es.js',
   'units and side markers: kg, lb, L, R',
   'generated exercise instructions in src/instr/',
   'intentional English instruction fallbacks when an instruction pack is absent',
@@ -30,6 +27,32 @@ export const documentedExclusions = [
   'push template emojis: removed per user requirement (professional tone) — the routine emoji (🏋️) remains only as user data, interpolated verbatim at the server call site',
   'brand token in notifications: Hforge'
 ]
+
+const isExcludedSource = relativePath => {
+  const path = relativePath.replaceAll('\\', '/')
+  return path.startsWith('src/locales/') || path.startsWith('src/instr/') ||
+    /(?:^|\/)[^/]+\.test\.(?:js|jsx)$/.test(path) ||
+    /^src\/lib\/(?:catalog|[^/]*-data|exercise-names\.es)\.js$/.test(path)
+}
+
+// Keep the source audit broad by default: every production JS/JSX module under src is checked,
+// rather than relying on a list that can silently go stale when a new view or component lands.
+// The exclusions above are deliberately path-based and documented because they contain data or
+// generated instructions, not user-facing source-English UI keys.
+export function productionSourceFiles(cwd = frontendDir) {
+  const root = join(cwd, 'src')
+  const files = []
+  const visit = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      const relativePath = relative(cwd, path)
+      if (entry.isDirectory()) visit(path)
+      else if (/\.(?:js|jsx)$/.test(entry.name) && !isExcludedSource(relativePath)) files.push(relativePath)
+    }
+  }
+  visit(root)
+  return files.sort()
+}
 
 const lineOf = (source, index) => source.slice(0, index).split('\n').length
 const literalValue = raw => raw.slice(1, -1)
@@ -77,6 +100,7 @@ export async function runChecks({ cwd = frontendDir, log = console } = {}) {
     if (missing.length || orphans.length) errors.push(`${lang}.js: missing ${missing.join(', ')}; only here ${orphans.join(', ')}`)
   }
   const spanishKeys = locales.get('es')
+  const sourceFiles = productionSourceFiles(cwd)
   if (!spanishKeys) errors.push('es.js: Spanish locale is required')
   else for (const file of sourceFiles) {
     const path = join(cwd, file)
@@ -107,7 +131,7 @@ export async function runChecks({ cwd = frontendDir, log = console } = {}) {
     for (const error of errors) log.error(`\n${error}`)
     throw new Error('Locale/source completeness checks failed')
   }
-  log.log(`${locales.size} locales, ${union.length} keys each — in sync; ${sourceFiles.length} source files checked for Spanish keys and raw accessibility literals.`)
+  log.log(`${locales.size} locales, ${union.length} keys each — in sync; ${sourceFiles.length} production source files checked for Spanish keys and raw accessibility literals.`)
   return { localeCount: locales.size, keyCount: union.length, sourceFileCount: sourceFiles.length }
 }
 
