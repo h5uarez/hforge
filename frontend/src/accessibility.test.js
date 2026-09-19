@@ -124,6 +124,15 @@ describe('mobile accessibility and layout contracts', () => {
     expect(css).toContain('.finish-compact::-webkit-scrollbar{display:none}')
   })
 
+  it('hides mobile root scrollbar chrome without disabling document scrolling', () => {
+    const css = source('index.css')
+    const mobileRootRule = css.match(/@media \(max-width:999px\)\{\s*html,body\{[^}]*\}\s*html::-[^{]+\{[^}]*\}\s*\}/)?.[0] || ''
+    expect(mobileRootRule).toContain('@media (max-width:999px)')
+    expect(mobileRootRule).toContain('html,body{scrollbar-width:none;-ms-overflow-style:none}')
+    expect(mobileRootRule).toContain('html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}')
+    expect(mobileRootRule).not.toMatch(/overflow(?:-[xy])?\s*:/)
+  })
+
   it('keeps exercise and workout note boxes independently discoverable and collapsible', () => {
     const sheets = source('sheets.jsx')
     const workout = source('views/Workout.jsx')
