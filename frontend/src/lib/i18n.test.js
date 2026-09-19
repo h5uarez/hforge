@@ -125,6 +125,17 @@ describe('Spanish translation and instruction contracts', () => {
 })
 
 describe('source completeness guard', () => {
+  it('discovers production UI modules without scanning tests, data, or instructions', async () => {
+    const { productionSourceFiles } = await import('../../scripts/check-locales.mjs')
+    const files = productionSourceFiles().map(file => file.replaceAll('\\', '/'))
+    expect(files).toContain('src/views/Library.jsx')
+    expect(files).toContain('src/lib/plan-share.js')
+    expect(files).toContain('src/components/ErrorBoundary.jsx')
+    expect(files).not.toContain('src/views/Workout.test.jsx')
+    expect(files).not.toContain('src/lib/catalog.js')
+    expect(files).not.toContain('src/instr/es.js')
+  })
+
   it('reports the missing source key with an actionable file and line', async () => {
     const { findMissingSourceKeys } = await import('../../scripts/check-locales.mjs')
     const issues = findMissingSourceKeys("const x = t('Missing source key')", new Set(), 'Fixture.jsx')
