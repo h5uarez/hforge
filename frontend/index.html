@@ -38,8 +38,9 @@
 <script>
 /* Pre-paint appearance: set data-theme/data-accent/data-default-accent before React
    boots so frame 1 paints with the persisted theme + palette + Default sub-accent
-   (no light flash). Mirror of the ACCENT_MIGRATION map in frontend/src/lib/format.js — kept in sync by the drift
-   guard in accessibility.test.js. PALETTE_BG mirrors the per-pair×mode --bg tokens
+   (no light flash). Mirror of the ACCENT_MIGRATION and DEFAULT_ACCENT_MIGRATION maps
+   in frontend/src/lib/format.js — kept in sync by the drift guard in accessibility.test.js.
+   PALETTE_BG mirrors the per-pair×mode --bg tokens
    in index.css (same drift guard covers html↔CSS↔App.jsx): theme-color follows
    the selected palette, while the splash itself is always pure black or white.
    Missing/corrupt storage falls back to light + default + blue. */
@@ -48,6 +49,7 @@
     var st = JSON.parse(localStorage.getItem('gym_state_v1') || 'null')
     var theme = st && (st.theme === 'light' || st.theme === 'dark') ? st.theme : 'light'
     var MIGRATE = {"lime":'ultraviolet',"sky":'cobalt',"orange":'ember',"violet":'ultraviolet',"pink":'dragonfruit',"red":'dragonfruit',"teal":'cobalt',"gold":'ember'}
+    var DACC_MIGRATE = {"orange":'yellow',"rose":'red'}
     var KNOWN = ['default','ultraviolet','dragonfruit','ghost','cobalt','ember']
     var rawAccent = st && st.accent
     var accent = KNOWN.indexOf(rawAccent) >= 0 ? rawAccent : (Object.prototype.hasOwnProperty.call(MIGRATE, rawAccent) ? MIGRATE[rawAccent] : 'default')
@@ -55,9 +57,9 @@
     // against the DEFAULT_ACCENTS registry in lib/format.js — never the MIGRATE map
     // above). Always written; the CSS overrides only match data-accent "default",
     // and every sub-accent shares the neutral Default bg, so PALETTE_BG is untouched.
-    var KNOWN_DACC = ['blue','teal','emerald','yellow','orange','red','rose','lilac']
+    var KNOWN_DACC = ['blue','teal','emerald','yellow','red','lilac']
     var rawDacc = st && st.defaultAccent
-    var dacc = KNOWN_DACC.indexOf(rawDacc) >= 0 ? rawDacc : 'blue'
+    var dacc = KNOWN_DACC.indexOf(rawDacc) >= 0 ? rawDacc : (Object.prototype.hasOwnProperty.call(DACC_MIGRATE, rawDacc) ? DACC_MIGRATE[rawDacc] : 'blue')
     var PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#10163A","light":"#E4E7FA"},"dragonfruit":{"dark":"#0C1F16","light":"#DCEFE2"},"ghost":{"dark":"#1A1E0C","light":"#E2E6CF"},"cobalt":{"dark":"#241016","light":"#FBE4EF"},"ember":{"dark":"#2E1510","light":"#F5E1C6"}}
     document.documentElement.dataset.theme = theme
     document.documentElement.dataset.accent = accent

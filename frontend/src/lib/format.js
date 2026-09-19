@@ -67,25 +67,27 @@ export const resolveAccent = a => hasOwn(ACCENTS, a) ? a : (hasOwn(ACCENT_MIGRAT
 // Eligible accents inside the neutral Default palette (HEX-immutable): each entry
 // carries its per-mode pair (light = dark ink on light field, dark = light field
 // with a tinted dark ink) so --on-acc always clears 4.5:1 against --acc in both
-// modes (measured 5.02-11.40 across the eight pairs).
+// modes (measured 4.93-11.40 across the six pairs).
 // This namespace is independent from ACCENTS/ACCENT_MIGRATION: keys may read like
-// legacy accent names (orange/teal) but only ever resolve through
+// legacy accent names (orange/rose) but only ever resolve through
 // resolveDefaultAccent, never through resolveAccent.
-// Red (#C81E1E/#FF8A80) is interactive-only, never status: danger keeps the fixed
-// --red token + danger styles, so a red button never reads as an error.
+// The wheel is Blue / Cyan / Green / Yellow / Red / Purple. Red is full-strength
+// in dark mode (#FF0000); light mode uses a deep red for white-on-accent contrast.
 // Yellow is amber-graded (#B45309 light, #FFD60A dark): pure yellow on white
 // cannot clear 4.5:1, so light mode carries the depth while dark mode carries
-// the glow. Lilac (#9333EA/#D8B4FE) SUBSTITUTES violet (hues 271° vs 263° — too
-// close to coexist in one row); the wheel keeps Blue/Teal/Emerald/Orange/Rose.
+// the glow. Stable storage keys teal, emerald and lilac carry the Cyan, Green and
+// Purple labels respectively.
 export const DEFAULT_ACCENTS = {
   blue: { light: '#0B69E3', dark: '#53A6FF', onLight: '#FFFFFF', onDark: '#04121F' },
   teal: { light: '#0E7490', dark: '#22D3EE', onLight: '#FFFFFF', onDark: '#03202A' },
   emerald: { light: '#047857', dark: '#34D399', onLight: '#FFFFFF', onDark: '#022016' },
   yellow: { light: '#B45309', dark: '#FFD60A', onLight: '#FFFFFF', onDark: '#2A2000' },
-  orange: { light: '#C2410C', dark: '#FB923C', onLight: '#FFFFFF', onDark: '#1F1002' },
-  red: { light: '#C81E1E', dark: '#FF8A80', onLight: '#FFFFFF', onDark: '#420D09' },
-  rose: { light: '#BE185D', dark: '#F472B6', onLight: '#FFFFFF', onDark: '#2A0A1A' },
+  red: { light: '#C81E1E', dark: '#FF0000', onLight: '#FFFFFF', onDark: '#210000' },
   lilac: { light: '#9333EA', dark: '#D8B4FE', onLight: '#FFFFFF', onDark: '#250A44' },
 }
-// Stored default-accent choice; unknown values fall back to blue.
-export const resolveDefaultAccent = a => hasOwn(DEFAULT_ACCENTS, a) ? a : 'blue'
+// Removed default-accent keys migrate in their own namespace so they never
+// consult or alter the unrelated 8-to-6 account-accent migration.
+export const DEFAULT_ACCENT_MIGRATION = { orange: 'yellow', rose: 'red' }
+// Stored default-accent choice; legacy removed values migrate, unknown values
+// fall back to blue.
+export const resolveDefaultAccent = a => hasOwn(DEFAULT_ACCENTS, a) ? a : (hasOwn(DEFAULT_ACCENT_MIGRATION, a) ? DEFAULT_ACCENT_MIGRATION[a] : 'blue')

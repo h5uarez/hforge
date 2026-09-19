@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { exOr, exerciseName } from '../lib/exercises.js'
+import { exOr, exerciseName, sentenceCaseExerciseName } from '../lib/exercises.js'
 import { removeSessionEntry, nextSet, FOCUS_REF_RETRY_LIMIT, focusRefRetryDecision, restoreFocusedEntry } from '../lib/session.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, syncSideSet, projectSideSet, plannedEffortForSet, previousSetValue, historyInputValue, parseTimedSeconds, NOTE_MAX, updateExerciseNote } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
@@ -10,8 +10,8 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t, sideLabel } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
-import Media, { prefetchWorkoutMedia } from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, topWeightSheet, silentTopWeightCommit, topWeightPromptReason, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, rebuildActiveEntry } from '../sheets.jsx'
+import Media, { prefetchWorkoutMedia, Thumb } from '../components/Media.jsx'
+import { startFlow, exercisePicker, exConfigSheet, topWeightSheet, silentTopWeightCommit, topWeightPromptReason, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, exerciseDetailSheet, rebuildActiveEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -61,8 +61,9 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', headingId = null, menuButton = null, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
+  const workoutCompactMode = useStore(s => s.S.workoutCompactMode !== false)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
   const ex = exOr(entry.id)
@@ -177,6 +178,16 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
   // Empty notes stay out of the way, while an existing note remains immediately readable. This
   // is local disclosure state and does not affect the note stored in the active workout.
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
+  // Compact top line: the full media box stays unmounted until the thumb toggle opens
+  // it, so a card starts at strip height. Local disclosure only — Media keeps its own
+  // minimizable/play-pause/mini state for when it is mounted.
+  const hasMedia = !!(ex.video || ex.gif || ex.img)
+  const [mediaOpen, setMediaOpen] = useState(false)
+  const displayName = sentenceCaseExerciseName(ex)
+  const longName = displayName.length > 24
+  const titleSize = workoutCompactMode ? (longName ? 16 : 17) : (longName ? 18 : 20)
+  const exerciseMediaLabel = t('Open video and instructions for {0}', displayName)
+  const openExerciseDetails = () => exerciseDetailSheet(ex, { hideAddToPlan: true })
   const perSide = isPerSide(cfg) && !cardio && !timed
   const gridClass = (col3 ? ' eff3' : '') + (perSide ? ' per-side' : '') + (!col2 ? ' no-col2' : '') + (timed ? ' timed' : '')
   const headClass = 'sethead' + gridClass
@@ -197,24 +208,36 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', onTog
     </button>
   </span>
   return <>
-    <Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />
-    {/* The title owns the full row: per-exercise edit/info/remove moved into the
-        card's options menu, so a long name ellipsizes instead of squeezing. */}
-    {heading === 'h3'
-      ? <h3 className="session-ex-title" style={{ fontSize: compact ? 17 : 20, margin: '0 0 6px', letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h3>
-      : <h2 className="session-ex-title" style={{ fontSize: compact ? 17 : 20, margin: '0 0 6px', letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{exerciseName(ex)}</h2>}
-    {entry.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{entry.target.planNote}</div>}
-    <div style={{ marginBottom: 10 }}>
-      <div className="row between" style={{ margin: '0 2px 6px' }}>
-        <label className="small dim" htmlFor={workoutNoteId} style={{ margin: 0 }}>{t('Workout note')}</label>
-        <button type="button" className="iconbtn" aria-label={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
-          title={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
-          aria-expanded={workoutNoteOpen} aria-controls={workoutNoteContentId}
-          onClick={() => setWorkoutNoteOpen(open => !open)}>
-          <Icon name={workoutNoteOpen ? 'chevronUp' : 'chevronDown'} />
-        </button>
-      </div>
+    {/* Compact top line: the circular exercise affordance, title and options share one
+        row. The progress header already communicates the workout position, so the
+        per-card exercise pager is intentionally omitted to keep the exercise name readable. */}
+    <div className="ex-top">
+      {(workoutCompactMode || hasMedia) && <button type="button"
+        className={'ex-thumbbtn' + (workoutCompactMode ? ' compact' : '')}
+        aria-haspopup={workoutCompactMode ? 'dialog' : undefined}
+        aria-expanded={workoutCompactMode ? undefined : mediaOpen}
+        aria-label={workoutCompactMode ? exerciseMediaLabel : t(mediaOpen ? 'Minimize' : 'Expand')}
+        title={workoutCompactMode ? exerciseMediaLabel : t(mediaOpen ? 'Minimize' : 'Expand')}
+        onClick={workoutCompactMode ? openExerciseDetails : () => setMediaOpen(open => !open)}><Thumb ex={ex} /></button>}
+      {heading === 'h3'
+        ? <h3 id={headingId || undefined} className={'session-ex-title ex-top-title' + (longName ? ' long' : '')} style={{ fontSize: titleSize, margin: 0, letterSpacing: '-.02em', lineHeight: longName ? 1.16 : 1.2 }}>{displayName}</h3>
+        : <h2 id={headingId || undefined} className={'session-ex-title ex-top-title' + (longName ? ' long' : '')} style={{ fontSize: titleSize, margin: 0, letterSpacing: '-.02em', lineHeight: longName ? 1.16 : 1.2 }}>{displayName}</h2>}
+      {menuButton}
+    </div>
+    {!workoutCompactMode && hasMedia && mediaOpen && <Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />}
+    {/* Plan note + workout note share one accessory row, collapsed until opened —
+        the toggle, chevron state and editable TextArea contract are unchanged. */}
+    <div className="ex-acc">
+      <button type="button" className="ex-acc-toggle"
+        aria-label={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
+        title={t(workoutNoteOpen ? 'Hide {0}' : 'Show {0}', t('Workout note'))}
+        aria-expanded={workoutNoteOpen} aria-controls={workoutNoteContentId}
+        onClick={() => setWorkoutNoteOpen(open => !open)}>
+        <span className="ex-acc-label">{t('Workout note')}{entry.target?.planNote ? ' · ' + t('Exercise note') : ''}</span>
+        <Icon name={workoutNoteOpen ? 'chevronUp' : 'chevronDown'} />
+      </button>
       <div id={workoutNoteContentId} hidden={!workoutNoteOpen}>
+        {entry.target?.planNote && <div className="exnote" role="note"><div className="small dim">{t('Exercise note')}</div>{entry.target.planNote}</div>}
         <TextArea id={workoutNoteId} rows={3} maxLength={NOTE_MAX} value={typeof entry.note === 'string' ? entry.note : ''}
           placeholder={t('Add a comment about this exercise')} aria-label={t('Workout note')}
           onChange={e => onNoteChange(e.target.value)} />
@@ -581,23 +604,29 @@ function ActiveWorkout() {
   const renderCard = (entryIdx, unitIndex, members) => {
     const entry = A.entries[entryIdx]
     const superset = members.length > 1
+    // One options-menu payload per unit: a single card fuses its kebab into the
+    // exercise top line, while a superset keeps it in the card head.
+    const menuFor = () => exerciseMenuSheet({
+      unitIndex, unitTotal: units.length,
+      members: members.map(idx => ({ entryIdx: idx, sid: A.entries[idx].sid, id: A.entries[idx].id })),
+      onEdit: editExercise,
+      onRemove: removeExercise,
+    })
+    const menuButton = <button type="button" className="iconbtn" aria-label={t('Exercise options')} onClick={menuFor}><Icon name="dots" /></button>
     return <article key={entry.sid} className={superset ? 'ss-card session-card' : 'card session-card'} tabIndex={0}
       ref={node => { if (node) cardRefs.current.set(entry.sid, node); else cardRefs.current.delete(entry.sid) }}
       aria-labelledby={'session-heading-' + entry.sid}>
-      <div className="row between session-card-head">
-        <h2 id={'session-heading-' + entry.sid}>{superset ? t('Superset {0} / {1}', unitIndex + 1, units.length) : t('Exercise {0} / {1}', unitIndex + 1, units.length)}</h2>
-        <button type="button" className="iconbtn" aria-label={t('Exercise options')} onClick={() => exerciseMenuSheet({
-          unitIndex, unitTotal: units.length,
-          members: members.map(idx => ({ entryIdx: idx, sid: A.entries[idx].sid, id: A.entries[idx].id })),
-          onEdit: editExercise,
-          onRemove: removeExercise,
-        })}><Icon name="dots" /></button>
-      </div>
+      {superset && <div className="row between session-card-head">
+        <h2 id={'session-heading-' + entry.sid}>{t('Superset {0} / {1}', unitIndex + 1, units.length)}</h2>
+        {menuButton}
+      </div>}
       {superset && <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>}
       {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
         {superset && k > 0 && <div className="ss-amp">+</div>}
         <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
           priority={unitIndex === 0 && k === 0}
+          headingId={superset ? null : 'session-heading-' + A.entries[idx].sid}
+          menuButton={superset ? null : menuButton}
           onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
       </div>)}
     </article>

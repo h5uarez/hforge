@@ -3,7 +3,7 @@ import {
   EXERCISE_ALIASES_ES, EXERCISE_NAMES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
 } from './exercise-names.es.js'
 import {
-  EXDB, EXIDX, HEVY_EXDB, exerciseMatchNames, exerciseMatches, exerciseName,
+  EXDB, EXIDX, HEVY_EXDB, exerciseMatchNames, exerciseMatches, exerciseName, sentenceCaseExerciseName,
   exerciseNameAudit, registerCustom,
 } from './exercises.js'
 import { LEGACY_EXDB } from './catalog.js'
@@ -187,6 +187,18 @@ describe('Spain-Spanish exercise names', () => {
     const custom = { id: '0652', n: 'Dominada de Marta', custom: true }
     expect(exerciseName(custom, 'es')).toBe('Dominada de Marta')
     expect(exerciseMatchNames(custom)).toEqual(['Dominada de Marta'])
+  })
+
+  it('sentence-cases display labels without changing canonical names', () => {
+    const catalog = byId(visibleId('0025'))
+    const custom = { id: 'sentence-case-custom', n: 'Press Banca Con Pausa', custom: true }
+    const accented = { id: 'sentence-case-accented', n: '  (ÁNGELES DE CABLE)', custom: true }
+
+    expect(sentenceCaseExerciseName(catalog, 'es')).toBe('Press de banca (barra)')
+    expect(sentenceCaseExerciseName(custom, 'es')).toBe('Press banca con pausa')
+    expect(sentenceCaseExerciseName(accented, 'es')).toBe('  (Ángeles de cable)')
+    expect(exerciseName(custom, 'es')).toBe('Press Banca Con Pausa')
+    expect(exerciseMatchNames(custom)).toEqual(['Press Banca Con Pausa'])
   })
 
   it('searches localized, accentless Spanish, canonical English and safe aliases', () => {

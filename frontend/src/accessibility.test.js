@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { ACCENTS, ACCENT_MIGRATION, DEFAULT_ACCENTS, resolveAccent, resolveDefaultAccent } from './lib/format.js'
+import { ACCENTS, ACCENT_MIGRATION, DEFAULT_ACCENTS, DEFAULT_ACCENT_MIGRATION, resolveAccent, resolveDefaultAccent } from './lib/format.js'
 
 const source = name => readFileSync(resolve(process.cwd(), 'src', name), 'utf8')
 
@@ -552,12 +552,18 @@ describe('accent palette system (theme-palette-redesign)', () => {
     const map = html.match(/var MIGRATE\s*=\s*(\{[^}]+\})/)
     expect(map).toBeTruthy()
     expect(JSON.parse(map[1].replace(/'/g, '"'))).toEqual(ACCENT_MIGRATION)
+    const daccMap = html.match(/var DACC_MIGRATE\s*=\s*(\{[^}]+\})/)
+    expect(daccMap).toBeTruthy()
+    expect(JSON.parse(daccMap[1].replace(/'/g, '"'))).toEqual(DEFAULT_ACCENT_MIGRATION)
+    expect(html).toContain("var KNOWN_DACC = ['blue','teal','emerald','yellow','red','lilac']")
     expect(html).toContain("localStorage.getItem('gym_state_v1')")
     expect(html).toContain("st.theme === 'light' || st.theme === 'dark'")
     expect(html).toContain("Object.prototype.hasOwnProperty.call(MIGRATE, rawAccent)")
+    expect(html).toContain("Object.prototype.hasOwnProperty.call(DACC_MIGRATE, rawDacc)")
     expect(html).toContain("document.documentElement.dataset.theme = 'light'")
     expect(html).toContain("document.documentElement.dataset.accent = 'default'")
     expect(html).toContain("? MIGRATE[rawAccent] : 'default'")
+    expect(html).toContain("? DACC_MIGRATE[rawDacc] : 'blue'")
     expect(html).toContain("|| PALETTE_BG.default.light")
     expect(html).toContain('<meta name="theme-color" content="#ffffff">')
     expect(html).toContain('splash-light.svg')
@@ -590,7 +596,10 @@ describe('accent palette system (theme-palette-redesign)', () => {
       expect(m).toBeTruthy()
       return m[1]
     }
-    expect(Object.keys(DEFAULT_ACCENTS).sort()).toEqual(['blue', 'emerald', 'lilac', 'orange', 'red', 'rose', 'teal', 'yellow'])
+    expect(Object.keys(DEFAULT_ACCENTS).sort()).toEqual(['blue', 'emerald', 'lilac', 'red', 'teal', 'yellow'])
+    for (const key of ['orange', 'rose']) {
+      expect(css).not.toContain(`data-default-accent="${key}"`)
+    }
     // CSS uses #fff shorthand for white registry hexes — expand before comparing.
     const normHex = h => {
       const m = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(h)
@@ -623,10 +632,13 @@ describe('accent palette system (theme-palette-redesign)', () => {
 
   it('resolves the default sub-accent without touching palette plumbing', () => {
     expect(resolveDefaultAccent('teal')).toBe('teal')
-    expect(resolveDefaultAccent('orange')).toBe('orange')
+    expect(resolveDefaultAccent('red')).toBe('red')
+    expect(DEFAULT_ACCENT_MIGRATION).toEqual({ orange: 'yellow', rose: 'red' })
+    expect(resolveDefaultAccent('orange')).toBe('yellow')
+    expect(resolveDefaultAccent('rose')).toBe('red')
     expect(resolveDefaultAccent('magenta')).toBe('blue')
     expect(resolveDefaultAccent(undefined)).toBe('blue')
-    // the sub-accent namespace never consults the legacy 8→6 palette migration
+    // the sub-accent namespace never consults the unrelated 8→6 palette migration
     expect(resolveDefaultAccent('lime')).toBe('blue')
     const store = source('store/useStore.js')
     expect(store).toContain("defaultAccent: 'blue'")
@@ -639,6 +651,8 @@ describe('accent palette system (theme-palette-redesign)', () => {
     const settings = source('views/Settings.jsx')
     expect(settings).toContain("if (resolveAccent(S.accent) !== 'default') return null")
     expect(settings).toContain('<DefaultAccentSubRow S={S} update={update} />')
+    expect(settings).toContain("const DEFAULT_ACCENT_ORDER = ['blue', 'teal', 'emerald', 'yellow', 'red', 'lilac']")
+    expect(settings).toContain("const DEFAULT_ACCENT_LABEL = { blue: 'Blue', teal: 'Cyan', emerald: 'Green', yellow: 'Yellow', red: 'Red', lilac: 'Purple' }")
     expect(settings).toContain('aria-pressed={on}')
     // quarantine: series on the dedicated token, grid/labels/goal unchanged
     const chart = source('components/LineChart.jsx')

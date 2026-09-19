@@ -41,6 +41,16 @@ export function exerciseName(ex, lang = getLang()) {
   return EXERCISE_NAMES_ES[ex.id] || ex.n
 }
 
+/** Sentence-case display label; canonical names remain unchanged for data and search. */
+export function sentenceCaseExerciseName(ex, lang = getLang()) {
+  const name = String(exerciseName(ex, lang) ?? '')
+  const locale = typeof lang === 'string' && lang.trim() ? lang : undefined
+  const lower = name.toLocaleLowerCase(locale)
+  const first = lower.match(/[\p{L}\p{N}]/u)
+  if (!first || first.index === undefined) return lower
+  return lower.slice(0, first.index) + first[0].toLocaleUpperCase(locale) + lower.slice(first.index + first[0].length)
+}
+
 /** Canonical, localized and curated alternative names used by search and import. */
 export function exerciseMatchNames(ex) {
   if (!ex) return []

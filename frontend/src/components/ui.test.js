@@ -6,6 +6,7 @@ const uiSource = readFileSync(new URL('./ui.jsx', import.meta.url), 'utf8')
 const statsSource = readFileSync(new URL('../views/Stats.jsx', import.meta.url), 'utf8')
 const routineSource = readFileSync(new URL('../views/RoutineEdit.jsx', import.meta.url), 'utf8')
 const settingsSource = readFileSync(new URL('../views/Settings.jsx', import.meta.url), 'utf8')
+const cssSource = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
 const warmupSource = readFileSync(new URL('./HomeWarmup.jsx', import.meta.url), 'utf8')
 
 describe('NumberField drafts', () => {
@@ -93,5 +94,19 @@ describe('Directional document scroll state', () => {
 
     state = nextScrollState(state.baselineY, -8, state.direction)
     expect(state).toEqual({ baselineY: 0, direction: 'up', compact: false })
+  })
+})
+
+describe('Workout view setting contract', () => {
+  it('uses an extended-first selector and a scoped full-width mobile layout', () => {
+    expect(settingsSource).toContain('className="workout-view-row"')
+    expect(settingsSource).toContain("title={t('Workout view')}")
+    expect(settingsSource).toContain("subtitle={t('Choose how exercises are shown while training.')}")
+    expect(settingsSource).toContain("{ value: 'extended', label: t('Extended') }")
+    expect(settingsSource).toContain("{ value: 'compact', label: t('Compact') }")
+    expect(settingsSource).toContain("value={S.workoutCompactMode ? 'compact' : 'extended'}")
+    expect(settingsSource).toContain("s.workoutCompactMode = v === 'compact'")
+    expect(cssSource).toContain('.workout-view-row .seg-inline{flex:1 1 100%;min-width:0;width:auto}')
+    expect(cssSource).toContain('.workout-view-row .lrow-t{white-space:normal')
   })
 })

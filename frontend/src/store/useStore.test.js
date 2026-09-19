@@ -174,6 +174,31 @@ describe('workoutMediaEnabled compatibility', () => {
   })
 })
 
+describe('workoutCompactMode compatibility', () => {
+  it('defaults new state to extended and persists an explicit compact choice', () => {
+    expect(DEF.workoutCompactMode).toBe(false)
+    expect(useStore.getState().S.workoutCompactMode).toBe(false)
+
+    useStore.getState().update(s => { s.workoutCompactMode = true }, false)
+
+    expect(useStore.getState().S.workoutCompactMode).toBe(true)
+    expect(JSON.parse(storage.get(KEY)).workoutCompactMode).toBe(true)
+  })
+
+  it('restores explicit compact choices and normalizes absent or malformed values to extended', async () => {
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], workoutCompactMode: true }))
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+    expect(restored.getState().S.workoutCompactMode).toBe(true)
+
+    restored.getState().replaceState({ routines: [], workouts: [], workoutCompactMode: 'true' })
+    expect(restored.getState().S.workoutCompactMode).toBe(false)
+
+    restored.getState().replaceState({ routines: [], workouts: [] })
+    expect(restored.getState().S.workoutCompactMode).toBe(false)
+  })
+})
+
 describe('active-session persistence recovery', () => {
   it('keeps a failed active draft available for retry and leaves plans unchanged', () => {
     const routines = [{ id: 'r1', ex: [{ id: 'squat' }] }]

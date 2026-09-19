@@ -133,6 +133,13 @@ export default function Settings() {
         <Switch aria-label={t('Bodyweight check before workouts')} checked={S.bodyweightCheckEnabled !== false}
           onChange={v => update(s => { s.bodyweightCheckEnabled = !!v })} />
       </Row>
+      <Row className="workout-view-row" icon="dumbbell" iconTint="var(--acc)" title={t('Workout view')}
+        subtitle={t('Choose how exercises are shown while training.')}>
+        <Segmented className="seg-inline"
+          options={[{ value: 'extended', label: t('Extended') }, { value: 'compact', label: t('Compact') }]}
+          value={S.workoutCompactMode ? 'compact' : 'extended'}
+          onChange={v => update(s => { s.workoutCompactMode = v === 'compact' })} />
+      </Row>
       <Row icon="target" iconTint="var(--blue)" title={t('Show 1RM calculator')}
         subtitle={t('Estimate one-rep max on the Home screen.')}>
         <Switch aria-label={t('Show 1RM calculator')} checked={S.home1rmCardEnabled !== false}
@@ -251,12 +258,12 @@ const PALETTE_LABEL = {
 // Eligible accents inside the neutral Default palette. Rendered ONLY while the
 // Default palette is resolved — any other palette returns null (not hidden), so
 // the row never occupies layout, tab order, or the accessibility tree there.
-// Eight wrap pills (dot + name) below the palette strip: flex-wrap owns 320px with
-// no x-scroll (3 per row → 3 rows), every pill is a real 44px target, and
+// Six wrap pills (dot + name) below the palette strip: flex-wrap owns 320px with
+// no x-scroll (3 per row → 2 rows), every pill is a real 44px target, and
 // everything but the data-driven dot paint resolves from tokens (see .dacc-row
-// in index.css). Rainbow order; Lilac substitutes Violet (see DEFAULT_ACCENTS).
-const DEFAULT_ACCENT_ORDER = ['blue', 'teal', 'emerald', 'yellow', 'orange', 'red', 'rose', 'lilac']
-const DEFAULT_ACCENT_LABEL = { blue: 'Blue', teal: 'Teal', emerald: 'Emerald', yellow: 'Yellow', orange: 'Orange', red: 'Red', rose: 'Rose', lilac: 'Lilac' }
+// in index.css). Wheel order: Blue, Cyan, Green, Yellow, Red, Purple.
+const DEFAULT_ACCENT_ORDER = ['blue', 'teal', 'emerald', 'yellow', 'red', 'lilac']
+const DEFAULT_ACCENT_LABEL = { blue: 'Blue', teal: 'Cyan', emerald: 'Green', yellow: 'Yellow', red: 'Red', lilac: 'Purple' }
 function DefaultAccentSubRow({ S, update }) {
   if (resolveAccent(S.accent) !== 'default') return null
   const cur = resolveDefaultAccent(S.defaultAccent)

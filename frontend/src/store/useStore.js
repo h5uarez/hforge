@@ -23,7 +23,7 @@ export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'es',
   theme: 'light', accent: 'default', defaultAccent: 'blue', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
-  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true,
+  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true, workoutCompactMode: false,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
@@ -35,8 +35,7 @@ export const DEF = {
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
-// Backups and server/mobile restores predate these compatibility preferences. Only an explicit
-// false disables them; malformed or absent values retain the historical enabled behavior.
+// Backups and server/mobile restores predate these compatibility preferences.
 const normalizeState = state => {
   const next = normalizeExerciseIds(Object.assign(clone(DEF), state || {}))
   next.theme = next.theme === 'dark' || next.theme === 'light' ? next.theme : DEF.theme
@@ -47,6 +46,9 @@ const normalizeState = state => {
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
+  // Compact presentation is opt-in. A strict boolean check preserves explicit compact choices
+  // in older backups while making absent and malformed values resolve to the extended view.
+  next.workoutCompactMode = state?.workoutCompactMode === true
   next.warmupConfig = { ...DEF.warmupConfig, ...(state?.warmupConfig || {}) }
   delete next.blocks
   delete next.activeBlock
