@@ -221,6 +221,10 @@ body{
   touch-action:manipulation;
   font-variant-numeric:tabular-nums;
 }
+@media (max-width:999px){
+  html,body{scrollbar-width:none;-ms-overflow-style:none}
+  html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
+}
 /* tabular figures everywhere a number is read at a glance (timer, loads, reps,
    chart labels): body already sets it globally, this keeps it explicit on the
    components that must never lose it to a later font shorthand */
