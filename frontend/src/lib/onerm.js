@@ -1,5 +1,6 @@
 // Estimated one-rep max (issue #18).
 import { projectSideSet, weightOfSet } from './history.js'
+import { chartTimestamp, workoutChartPoint } from './workout-time.js'
 //
 // Deliberately knows nothing about the exercise database: an estimate needs a weight AND a
 // rep count, and only reps-mode sets carry both. Cardio sets ({min, speed}) and timed sets
@@ -94,8 +95,8 @@ export function e1rmSeries(S, exId, formula = DEFAULT_FORMULA) {
   const workouts = (S.workouts || []).map((workout, index) => ({ workout, index })).sort((a, b) => {
     const day = String(a.workout.d || '').localeCompare(String(b.workout.d || ''))
     if (day) return day
-    const at = Number.isSafeInteger(a.workout.start) && a.workout.start > 0 ? a.workout.start : null
-    const bt = Number.isSafeInteger(b.workout.start) && b.workout.start > 0 ? b.workout.start : null
+    const at = chartTimestamp(a.workout.start, a.workout.d)
+    const bt = chartTimestamp(b.workout.start, b.workout.d)
     return (at == null ? 1 : bt == null ? -1 : at - bt) || a.index - b.index
   }).map(item => item.workout)
   workouts.forEach(w => {
@@ -106,7 +107,7 @@ export function e1rmSeries(S, exId, formula = DEFAULT_FORMULA) {
       const candidate = bestSetOf(entry, formula)
       return candidate && (!winner || candidate.est > winner.est) ? candidate : winner
     }, null)
-    if (best) pts.push({ t: w.start, d: w.d, y: best.est, w: best.w, r: best.r })
+    if (best) pts.push(workoutChartPoint(w, best.est, { w: best.w, r: best.r }))
   })
   return pts
 }

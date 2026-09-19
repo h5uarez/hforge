@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { estimate1RM, estimateRMTable, estimateWithEffort, bestSetOf, e1rmSeries, best1RM, is1RMRecord, REP_CAP, FORMULAS } from './onerm.js'
 import { rirOf } from './effort.js'
+import { chartTimestamp, parseWorkoutDateTime } from './workout-time.js'
 
 describe('estimate1RM', () => {
   it('returns the load unchanged for a single rep', () => {
@@ -199,6 +200,20 @@ describe('e1rmSeries / best1RM', () => {
 
   it('reports the all-time best with the set behind it', () => {
     expect(best1RM(S, 'bench')).toEqual({ est: 105, w: 90, r: 5, d: '2026-01-15', t: 3 })
+  })
+
+  it('uses the ISO workout date when start is missing while preserving valid starts', () => {
+    const dateOnly = '2026-02-01'
+    const dated = '2026-02-02'
+    const validStart = parseWorkoutDateTime(`${dated}T09:30:00`)
+    const points = e1rmSeries({ workouts: [
+      { d: dateOnly, entries: [{ id: 'bench', sets: [{ w: 80, r: 5, done: true }] }] },
+      { d: dated, start: validStart, entries: [{ id: 'bench', sets: [{ w: 85, r: 5, done: true }] }] },
+    ] }, 'bench')
+
+    expect(points[0].t).toBe(chartTimestamp(undefined, dateOnly))
+    expect(points[1].t).toBe(validStart)
+    expect(points.every(point => Number.isFinite(point.t))).toBe(true)
   })
 
   it('has nothing to say about cardio or an unknown exercise', () => {
