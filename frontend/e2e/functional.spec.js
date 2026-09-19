@@ -147,7 +147,8 @@ test('active workout imports a selected routine through the rendered picker', as
   await confirm.getByRole('button', { name: 'Add exercises', exact: true }).click()
 
   await expect(page.getByText('3 exercises added to this workout', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Exercise 3 / 5', exact: true })).toBeVisible()
+  await expect(page.locator('.session-card')).toHaveCount(5)
+  await expect(page.getByRole('heading', { name: 'Barbell bent over row', exact: true })).toBeVisible()
   await assertNoHorizontalOverflow(page)
 })
 
@@ -163,7 +164,7 @@ test('starting a routine keeps fresh exercise weights at the routine values', as
   await expect(checkIn.getByRole('heading', { name: 'Quick check-in', exact: true })).toBeVisible()
   await checkIn.getByRole('button', { name: 'Start without weighing in', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: 'Exercise 1 / 3', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Barbell bench press', exact: true })).toBeVisible()
   const weights = page.locator('input[aria-label^="Sets "][aria-label$="Weight (kg)"]')
   await expect(weights).toHaveCount(10)
   expect(await weights.evaluateAll(inputs => inputs.map(input => input.value))).toEqual(Array(10).fill('0'))
@@ -321,6 +322,6 @@ test('historical time editing cannot add exercises or mutate protected state', a
 test('active workout stays within a narrow mobile viewport', async ({ page, openApp }) => {
   await page.setViewportSize({ width: 320, height: 568 })
   await openApp({ route: '/workout', state: 'active' })
-  await expect(page.getByRole('heading', { name: 'Exercise 1 / 2', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Barbell bench press', exact: true })).toBeVisible()
   await assertNoHorizontalOverflow(page)
 })
