@@ -19,7 +19,7 @@
 // building a DOM.
 
 import { EXDB, EXIDX, exerciseMatchNames } from './exercises.js'
-import { canonicalExerciseId } from './exercise-ids.js'
+import { canonicalExerciseId, normalizeExerciseIds } from './exercise-ids.js'
 import { uid } from './format.js'
 import { parseWhen, toMinutes, toKm } from './import-values.js'
 export { parseWhen } from './import-values.js'
@@ -573,4 +573,23 @@ export function mergeImport(S, parsed) {
     if (mx > 0) { const cur = S.exWeights[e.id]; if (!cur || w.d >= cur.d) S.exWeights[e.id] = { w: mx, d: w.d } }
   }))
   return { added: fresh.length, skipped }
+}
+
+/** Merge the historical collections from a full backup without replacing profile data. */
+export function mergeBackupImport(S, backup) {
+  const existingCustomIds = new Set((S.customEx || []).map(exercise => exercise.id))
+  const workouts = normalizeExerciseIds({
+    workouts: Array.isArray(backup?.workouts) ? backup.workouts : [],
+  }).workouts
+  const mergedWorkouts = mergeImport(S, {
+    kind: 'workouts',
+    workouts,
+    customEx: (Array.isArray(backup?.customEx) ? backup.customEx : [])
+      .filter(exercise => exercise && !existingCustomIds.has(exercise.id)),
+  })
+  const bodyweight = mergeImport(S, {
+    kind: 'bodyweight',
+    bodyweight: Array.isArray(backup?.bodyweight) ? backup.bodyweight : [],
+  })
+  return { added: mergedWorkouts.added + bodyweight.added, skipped: mergedWorkouts.skipped + bodyweight.skipped }
 }

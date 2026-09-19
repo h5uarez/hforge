@@ -12,6 +12,7 @@ import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, syncReminder } from '../lib/mobile.js'
 import { appVersion } from '../lib/pwa.js'
 import { backupFilename, deliverExport, serializeBackup } from '../lib/export.js'
+import { mergeBackupImport } from '../lib/import-csv.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { WarmupSettingsForm } from '../components/HomeWarmup.jsx'
@@ -40,7 +41,7 @@ export default function Settings() {
       try {
         const data = JSON.parse(rd.result)
         if (!data.workouts || !data.routines) throw new Error('not an Hforge backup')
-        confirmSheet({ title: t('Import backup?'), message: t('This replaces all current data with the backup file.'), confirmText: t('Import'), danger: true, onConfirm: () => { replaceState(Object.assign(JSON.parse(JSON.stringify(DEF)), data), true); toast(t('Backup imported')) } })
+        confirmSheet({ title: t('Import backup?'), message: t('Adds historical workouts and weigh-ins without replacing current data.'), confirmText: t('Import'), danger: true, onConfirm: () => { update(s => { mergeBackupImport(s, data) }); toast(t('Backup imported')) } })
       } catch (e) { toast(t('Import failed: {0}', e.message)) }
     }
     rd.readAsText(f)

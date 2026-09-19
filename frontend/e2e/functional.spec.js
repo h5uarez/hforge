@@ -174,12 +174,12 @@ test('starting a routine keeps fresh exercise weights at the routine values', as
   await assertNoHorizontalOverflow(page)
 })
 
-test('imports a backup through the file chooser and replaces local data', async ({ page, openApp }) => {
+test('imports a backup through the file chooser without replacing local data', async ({ page, openApp }) => {
   await openApp({ route: '/settings', state: 'rich' })
   const imported = JSON.parse(JSON.stringify(richState))
   imported.routines = [imported.routines[0]]
   imported.week = { 1: imported.routines[0].id }
-  imported.workouts = [imported.workouts[0]]
+  imported.workouts = [imported.workouts[0], { ...imported.workouts[1], id: 'historical-import', d: '2025-01-01' }]
   imported.bodyweight = imported.bodyweight.slice(0, 1)
   imported.active = null
 
@@ -198,7 +198,7 @@ test('imports a backup through the file chooser and replaces local data', async 
 
   await page.goto('/#/history')
   await expect(page.getByRole('heading', { name: 'History', exact: true })).toBeVisible()
-  await expect(page.getByText('1 workouts', { exact: true })).toBeVisible()
+  await expect(page.getByText('13 workouts', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Push Day/ }).first()).toBeVisible()
 })
 

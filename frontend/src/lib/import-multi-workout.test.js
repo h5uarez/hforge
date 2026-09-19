@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { parseWorkoutCSV, mergeImport, classifyImportWorkouts, workoutSignature } from './import-csv.js'
+import { parseWorkoutCSV, mergeImport, mergeBackupImport, classifyImportWorkouts, workoutSignature } from './import-csv.js'
 import { createWorkoutBackup, serializeBackup } from './export.js'
+import { normalizeExerciseIds } from './exercise-ids.js'
 
 // Tarea 11 — multi-workout same day: 0/1/2/N sessions on one date coexist and no
 // import path silently discards one. Headers as the real exports write them.
@@ -165,8 +166,45 @@ describe('export and backup round-trips keep every same-day workout', () => {
     const S = twoADay()
     const back = JSON.parse(serializeBackup(S))
     expect(back.workouts.filter(w => w.d === '2026-01-12')).toHaveLength(2)
-    // restoring over defaults (what Settings does) keeps both sessions intact
+    // Full backup serialisation keeps both sessions intact for additive restore.
     const restored = Object.assign({ unit: 'kg', workouts: [], routines: [] }, back)
     expect(restored.workouts.filter(w => w.d === '2026-01-12')).toHaveLength(2)
+  })
+})
+
+describe('full backup merge is additive', () => {
+  it('preserves current data, adds historical records, and keeps current collisions', () => {
+    const currentWorkout = normalizeExerciseIds({ workouts: [workout({ id: 'current', d: '2026-02-01' })] }).workouts[0]
+    const oldWorkout = workout({ id: 'old', d: '2026-01-01', name: 'Pull', entries: [entry('0032', [{ w: 100, r: 5, done: true }])] })
+    const normalizedOldWorkout = normalizeExerciseIds({ workouts: [oldWorkout] }).workouts[0]
+    const S = {
+      ...blankState(), unit: 'lb', lang: 'en', theme: 'dark', routines: [{ id: 'current-routine', name: 'Current plan' }],
+      week: { 1: 'current-routine' }, workouts: [currentWorkout],
+      bodyweight: [{ d: '2026-02-01', w: 90, t: 1 }],
+    }
+    const backup = {
+      unit: 'kg', theme: 'light', routines: [{ id: 'old-routine', name: 'Old plan' }],
+      workouts: [{ ...currentWorkout, id: 'backup-copy' }, oldWorkout],
+      bodyweight: [{ d: '2026-02-01', w: 80, t: 2 }, { d: '2026-01-01', w: 82, t: 3 }],
+      customEx: [],
+    }
+
+    expect(mergeBackupImport(S, backup)).toEqual({ added: 2, skipped: 2 })
+    expect(S.unit).toBe('lb')
+    expect(S.lang).toBe('en')
+    expect(S.theme).toBe('dark')
+    expect(S.routines).toEqual([{ id: 'current-routine', name: 'Current plan' }])
+    expect(S.week).toEqual({ 1: 'current-routine' })
+    expect(S.workouts).toHaveLength(2)
+    expect(S.workouts.find(w => w.id === 'current')).toEqual(currentWorkout)
+    expect(S.workouts.find(w => w.id === 'old')).toEqual(normalizedOldWorkout)
+    expect(S.bodyweight).toEqual([
+      { d: '2026-01-01', w: 82, t: 3 },
+      { d: '2026-02-01', w: 90, t: 1 },
+    ])
+
+    expect(mergeBackupImport(S, JSON.parse(JSON.stringify(backup)))).toEqual({ added: 0, skipped: 4 })
+    expect(S.workouts).toHaveLength(2)
+    expect(S.bodyweight).toHaveLength(2)
   })
 })
