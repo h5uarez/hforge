@@ -1439,9 +1439,11 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   /* no min-height: a confirm is two buttons, not a 320px void — the sheet sizes
      to its content and caps at 90dvh */
   max-height:90vh;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;-ms-overflow-style:none;
   animation:sheetup var(--med) var(--ease);
   overscroll-behavior:contain;touch-action:pan-y;will-change:transform;
 }
+.sheet::-webkit-scrollbar{display:none}
 .sheet.leaving{animation:sheetdown 160ms var(--ease-exit) forwards}
 @keyframes sheetdown{from{transform:none}to{transform:translateY(40px);opacity:0}}
 .sheet.sheet-tall{height:75vh;height:75dvh}
@@ -1778,7 +1780,8 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
    Scoped overrides so the celebration fits a small phone viewport without
    pushing the primary button off-screen. Global .tiles/.tile/.bodymap rules
    above stay untouched. */
-.finish-compact{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain}
+.finish-compact{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+.finish-compact::-webkit-scrollbar{display:none}
 .finish-compact .tiles{gap:8px;margin-bottom:8px}
 .finish-compact .tile{padding:10px}
 .finish-compact .tile .v{font-size:1rem;margin-top:3px}

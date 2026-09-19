@@ -108,6 +108,22 @@ describe('mobile accessibility and layout contracts', () => {
     expect(tabs).not.toContain('useScrolled')
   })
 
+  it('hides scrollbar chrome only on the real internal vertical scrollports', () => {
+    const css = source('index.css')
+    const sheetRule = css.match(/\.sheet\{([^}]*)\}/)?.[1] || ''
+    const finishRule = css.match(/\.finish-compact\{([^}]*)\}/)?.[1] || ''
+    expect(sheetRule).toContain('overflow-y:auto')
+    expect(sheetRule).toContain('-webkit-overflow-scrolling:touch')
+    expect(sheetRule).toContain('scrollbar-width:none')
+    expect(sheetRule).toContain('-ms-overflow-style:none')
+    expect(css).toContain('.sheet::-webkit-scrollbar{display:none}')
+    expect(finishRule).toContain('overflow-y:auto')
+    expect(finishRule).toContain('-webkit-overflow-scrolling:touch')
+    expect(finishRule).toContain('scrollbar-width:none')
+    expect(finishRule).toContain('-ms-overflow-style:none')
+    expect(css).toContain('.finish-compact::-webkit-scrollbar{display:none}')
+  })
+
   it('keeps exercise and workout note boxes independently discoverable and collapsible', () => {
     const sheets = source('sheets.jsx')
     const workout = source('views/Workout.jsx')
