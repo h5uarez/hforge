@@ -23,7 +23,7 @@ vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
-const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, shortRoutineName, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets, TOP_WEIGHT_PROMPT, topWeightPromptReason, resolveTopWeightAction, silentTopWeightCommit } = await import('./sheets.jsx')
+const { commitPickerSelection, commitUnitMove, reorderTargetIndex, validTimedSeconds, clampTimedSeconds, shortRoutineName, weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight, startFlow, rebuildActiveEntry, ACTIVE_ENTRY_EDIT_REJECTED, buildWorkoutEntry, buildImportedWorkoutEntries, historicalEntryNote, historicalCompletedSets, TOP_WEIGHT_PROMPT, topWeightPromptReason, resolveTopWeightAction, silentTopWeightCommit } = await import('./sheets.jsx')
 const { parseTimedSeconds, timedSecondsInput, defaultConfig, buildSets } = await import('./lib/history.js')
 const { cloneHistoryValue, historyTargetBaseline } = await import('./lib/history-edit.js')
 
@@ -143,6 +143,29 @@ describe('Historical workout detail presentation', () => {
 })
 
 describe('active workout routine imports', () => {
+  it('keeps generic routine reps when programmed effort seeds planned targets', () => {
+    const routine = { id: 'progressed-explicit-reps', prog: 'double' }
+    const cfg = {
+      id: ACTIVE_LIFT, mode: 'reps', sets: 3, reps: 6, weight: 60,
+      programmedEffort: [{ metric: 'rir', value: 2 }, { metric: 'rir', value: 2 }, { metric: 'rir', value: 2 }],
+    }
+    const S = {
+      unit: 'kg', effort: 'rir', exWeights: {},
+      workouts: [{ d: '2026-01-01', entries: [{
+        id: ACTIVE_LIFT,
+        target: { mode: 'reps', sets: 3, reps: 6, weight: 60 },
+        sets: [{ w: 60, r: 1, done: true }, { w: 60, r: 3, done: true }, { w: 60, r: 3, done: true }],
+      }] }],
+    }
+
+    const entry = buildWorkoutEntry(S, cfg, routine)
+
+    expect(cfg).not.toHaveProperty('repsBySet')
+    expect(entry.plan).toMatchObject({ policy: 'double', kind: 'hold', reps: 4 })
+    expect(entry.sets.map(set => set.r)).toEqual([6, 6, 6])
+    expect(entry.sets.every(set => set.plannedEffort?.metric === 'rir')).toBe(true)
+  })
+
   it('imports the complete source in order with fresh snapshots and remapped supersets', () => {
     const source = {
       id: 'source-routine', name: 'Source routine', prog: 'off',

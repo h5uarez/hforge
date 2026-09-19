@@ -175,27 +175,37 @@ describe('workoutMediaEnabled compatibility', () => {
 })
 
 describe('workoutCompactMode compatibility', () => {
-  it('defaults new state to extended and persists an explicit compact choice', () => {
-    expect(DEF.workoutCompactMode).toBe(false)
-    expect(useStore.getState().S.workoutCompactMode).toBe(false)
+  it('always defaults and persists the compact presentation', () => {
+    expect(DEF.workoutCompactMode).toBe(true)
+    expect(useStore.getState().S.workoutCompactMode).toBe(true)
 
-    useStore.getState().update(s => { s.workoutCompactMode = true }, false)
+    useStore.getState().update(s => { s.workoutCompactMode = false }, false)
 
     expect(useStore.getState().S.workoutCompactMode).toBe(true)
     expect(JSON.parse(storage.get(KEY)).workoutCompactMode).toBe(true)
   })
 
-  it('restores explicit compact choices and normalizes absent or malformed values to extended', async () => {
-    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], workoutCompactMode: true }))
+  it.each([false, 'true', null, undefined])('normalizes legacy workout view value %j to compact', value => {
+    useStore.getState().replaceState({ routines: [], workouts: [], workoutCompactMode: value })
+    expect(useStore.getState().S.workoutCompactMode).toBe(true)
+    expect(JSON.parse(storage.get(KEY)).workoutCompactMode).toBe(true)
+  })
+
+  it('restores false, absent, and malformed persisted values as compact', async () => {
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], workoutCompactMode: false }))
+    vi.resetModules()
+    const { useStore: legacyFalse } = await import('./useStore.js')
+    expect(legacyFalse.getState().S.workoutCompactMode).toBe(true)
+
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [], workoutCompactMode: 'extended' }))
     vi.resetModules()
     const { useStore: restored } = await import('./useStore.js')
     expect(restored.getState().S.workoutCompactMode).toBe(true)
 
-    restored.getState().replaceState({ routines: [], workouts: [], workoutCompactMode: 'true' })
-    expect(restored.getState().S.workoutCompactMode).toBe(false)
-
-    restored.getState().replaceState({ routines: [], workouts: [] })
-    expect(restored.getState().S.workoutCompactMode).toBe(false)
+    storage.set(KEY, JSON.stringify({ routines: [], workouts: [] }))
+    vi.resetModules()
+    const { useStore: absent } = await import('./useStore.js')
+    expect(absent.getState().S.workoutCompactMode).toBe(true)
   })
 })
 

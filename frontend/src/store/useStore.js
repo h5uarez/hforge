@@ -23,7 +23,7 @@ export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'es',
   theme: 'light', accent: 'default', defaultAccent: 'blue', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
-  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true, workoutCompactMode: false,
+  exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true, workoutCompactMode: true,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
@@ -46,9 +46,9 @@ const normalizeState = state => {
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
-  // Compact presentation is opt-in. A strict boolean check preserves explicit compact choices
-  // in older backups while making absent and malformed values resolve to the extended view.
-  next.workoutCompactMode = state?.workoutCompactMode === true
+  // Compact presentation is the only supported workout view. Keep the legacy field normalized
+  // to true so false, malformed, and absent values in old backups cannot restore an old layout.
+  next.workoutCompactMode = true
   next.warmupConfig = { ...DEF.warmupConfig, ...(state?.warmupConfig || {}) }
   delete next.blocks
   delete next.activeBlock
