@@ -57,6 +57,23 @@ export function classifyWorkoutTimestamps(start, end) {
   return { kind: 'timestamped', start, end, d: localDateKey(start), duration: end - start }
 }
 
+// Charts need one numeric x value even for legacy date-only workouts. Keep a real start time
+// unchanged; otherwise place the point at local noon on its ISO calendar date so it stays on the
+// right day without inventing a midnight workout time.
+export function chartTimestamp(start, isoDate) {
+  if (safeTimestamp(start) && new Date(start).getTime() === start) return start
+  return parseWorkoutDateTime(`${String(isoDate ?? '').trim()}T12:00:00`)
+}
+
+export function workoutChartPoint(workout, y, fields = {}) {
+  return {
+    ...fields,
+    t: chartTimestamp(workout?.start, workout?.d),
+    y,
+    d: workout?.d,
+  }
+}
+
 export function shiftWorkoutTimestamps(start, end, fromDate, toDate) {
   const classification = classifyWorkoutTimestamps(start, end)
   if (classification.kind !== 'timestamped') return classification

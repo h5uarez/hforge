@@ -13,6 +13,7 @@ import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
 import { loadOfWorkouts, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { e1rmSeries, best1RM } from '../lib/onerm.js'
 import { projectSideSet, weightOfSet } from '../lib/history.js'
+import { workoutChartPoint } from '../lib/workout-time.js'
 import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
@@ -170,7 +171,7 @@ export default function Stats() {
   if (curEx) {
     S.workouts.forEach(w => {
       const en = w.entries.find(e => e.id === curEx)
-      if (en) { const sets = en.sets.map(projectSideSet).filter(s => s.done); const mx = Math.max(0, ...sets.map(metric), curCardio || curTimed ? 0 : (en.topW || 0)); if (mx > 0) { exPts.push({ t: w.start, y: mx, d: w.d, sets, target: en.target }); if (mx > exBest) exBest = mx } }
+      if (en) { const sets = en.sets.map(projectSideSet).filter(s => s.done); const mx = Math.max(0, ...sets.map(metric), curCardio || curTimed ? 0 : (en.topW || 0)); if (mx > 0) { exPts.push(workoutChartPoint(w, mx, { sets, target: en.target })); if (mx > exBest) exBest = mx } }
     })
     exList = exPts.slice(-5).reverse()
   }

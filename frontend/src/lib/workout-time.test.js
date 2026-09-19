@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatWorkoutDateTime, localDateKey, parseWorkoutDateTime,
   parseWorkoutTimestampEdit, validateWorkoutTimestamps, classifyWorkoutTimestamps,
-  shiftWorkoutTimestamps, normalizeWorkoutDateEdit,
+  shiftWorkoutTimestamps, normalizeWorkoutDateEdit, chartTimestamp, workoutChartPoint,
 } from './workout-time.js'
 
 describe('completed workout timestamp editing', () => {
@@ -62,5 +62,19 @@ describe('completed workout timestamp editing', () => {
   it('edits legacy dates without inventing start or end fields', () => {
     const edited = normalizeWorkoutDateEdit({ d: '2026-01-01', start: 0, end: 0 }, '2026-01-02')
     expect(edited).toEqual({ d: '2026-01-02' })
+  })
+})
+
+describe('chart workout timestamps', () => {
+  it('preserves valid starts and derives a local-noon fallback for date-only workouts', () => {
+    const date = '2026-02-14'
+    const valid = parseWorkoutDateTime(`${date}T09:30:00`)
+    const fallback = parseWorkoutDateTime(`${date}T12:00:00`)
+
+    expect(chartTimestamp(valid, date)).toBe(valid)
+    expect(chartTimestamp(undefined, date)).toBe(fallback)
+    expect(chartTimestamp(NaN, date)).toBe(fallback)
+    expect(chartTimestamp(0, date)).toBe(fallback)
+    expect(workoutChartPoint({ d: date }, 80)).toEqual({ t: fallback, y: 80, d: date })
   })
 })

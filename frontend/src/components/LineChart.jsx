@@ -4,6 +4,12 @@ import { t } from '../lib/i18n.js'
 
 const W = 340   // viewBox width; the svg stretches to its container, height comes from `h`
 
+export function sanitizeChartPoints(points) {
+  return (Array.isArray(points) ? points : [])
+    .filter(point => point && Number.isFinite(point.t) && Number.isFinite(point.y))
+    .map(point => ({ ...point, m: Number.isFinite(point.m) ? point.m : null }))
+}
+
 // points: [{ t: ms, y: num, d?: iso, m?: 0..1, note?: str }] sorted by t.
 //   m    marks the point — a second reading carried by the same dot (bigger and more solid =
 //        more of it). Used for effort on the weight curve, where the two belong on one line:
@@ -40,11 +46,12 @@ export default function LineChart({ points, h = 150, unit = '', color = 'var(--c
     tip.style.top = (cy < th + 14 ? Math.min(ch - th - M, cy + 14) : M) + 'px'
   })
 
-  if (!points || points.length === 0) return <div className="empty small">{t('No data yet')}</div>
+  const safePoints = sanitizeChartPoints(points)
+  if (safePoints.length === 0) return <div className="empty small">{t('No data yet')}</div>
   const H = h
   const P = { l: axes ? 34 : 8, r: 12, t: 10, b: axes ? 22 : 8 }
-  const single = points.length === 1
-  const pts = single ? [points[0], points[0]] : points
+  const single = safePoints.length === 1
+  const pts = single ? [safePoints[0], safePoints[0]] : safePoints
   const ys = pts.map(p => p.y)
   let ymin = Math.min(...ys), ymax = Math.max(...ys)
   if (goal != null && isFinite(goal)) { ymin = Math.min(ymin, goal); ymax = Math.max(ymax, goal) }
@@ -94,8 +101,8 @@ export default function LineChart({ points, h = 150, unit = '', color = 'var(--c
   const poly = pts.map(p => X(p.t).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ')
   const last = pts[pts.length - 1]
   const gid = 'g' + Math.round(t0 % 1e7) + '_' + H
-  const hoverPts = (single ? [points[0]] : points).map(p => ({ x: X(p.t), y: Y(p.y), iso: p.d || isoOf(new Date(p.t)), v: p.y, note: p.note }))
-  const marked = points.some(p => p.m != null)
+  const hoverPts = (single ? [safePoints[0]] : safePoints).map(p => ({ x: X(p.t), y: Y(p.y), iso: p.d || isoOf(new Date(p.t)), v: p.y, note: p.note }))
+  const marked = safePoints.some(p => p.m != null)
 
   const onMove = e => {
     const c = e.touches ? e.touches[0] : e
