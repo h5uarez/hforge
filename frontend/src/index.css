@@ -167,31 +167,28 @@
 :root[data-theme="light"][data-accent="ghost"],.pal-prev[data-accent="ghost"][data-theme="light"]{--acc:#4D7C0F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#E2E6CF;--bg-el:#EFF2E2;--surface:#F2F5E7;--surface-2:#D6DCBC;--surface-3:#C2C9A4;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
 :root[data-theme="light"][data-accent="cobalt"],.pal-prev[data-accent="cobalt"][data-theme="light"]{--acc:#B4128F;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#FBE4EF;--bg-el:#FDF0F6;--surface:#FDF2F7;--surface-2:#F3C9DD;--surface-3:#E9A9C7;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
 :root[data-theme="light"][data-accent="ember"],.pal-prev[data-accent="ember"][data-theme="light"]{--acc:#A31621;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff;--bg:#F5E1C6;--bg-el:#F9EBD9;--surface:#F8E8D4;--surface-2:#EAD0A8;--surface-3:#DCBE96;--label:#000000;--label-2:rgba(60,60,67,.80);--label-3:rgba(60,60,67,.77);--label-4:rgba(60,60,67,.16);--sep:rgba(60,60,67,.29);--sep-op:rgba(60,60,67,.20)}
-/* Default-neutral sub-accents (registry in lib/format.js DEFAULT_ACCENTS, 8 eligible
+/* Default-neutral sub-accents (registry in lib/format.js DEFAULT_ACCENTS, 6 eligible
    inside Default): each rule ONLY rewrites --acc/--acc-2/--on-acc. --bg/--bg-el/
    --surface/-2/-3/--label 1-4/--sep/--sep-op stay exactly the neutral Default shell
    above, so PALETTE_BG is untouched (one bg per mode for every sub-accent) and the
    12 pair×mode locks above stay byte-identical. --acc-soft/--acc-line derive from
    --acc via color-mix, and :focus-visible already keys off var(--acc), so no extra
-   focus token is needed. All eight pairs clear 4.5:1 in both modes (dark inks are
+   focus token is needed. All six pairs clear 4.5:1 in both modes (dark inks are
    tinted, never pure black, to hold the ratio on the light dark-mode fields).
-   Red is interactive-only (danger keeps the fixed --red token); yellow is
-   amber-graded for light-mode contrast; lilac substitutes violet. */
+   Red is full-strength in dark mode (#FF0000); yellow is amber-graded for
+   light-mode contrast. Stable keys teal, emerald and lilac are labeled Cyan,
+   Green and Purple in Settings. */
 :root[data-accent="default"][data-default-accent="blue"]{--acc:#53A6FF;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#04121F}
 :root[data-accent="default"][data-default-accent="teal"]{--acc:#22D3EE;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#03202A}
 :root[data-accent="default"][data-default-accent="emerald"]{--acc:#34D399;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#022016}
 :root[data-accent="default"][data-default-accent="yellow"]{--acc:#FFD60A;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#2A2000}
-:root[data-accent="default"][data-default-accent="orange"]{--acc:#FB923C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#1F1002}
-:root[data-accent="default"][data-default-accent="red"]{--acc:#FF8A80;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#420D09}
-:root[data-accent="default"][data-default-accent="rose"]{--acc:#F472B6;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#2A0A1A}
+:root[data-accent="default"][data-default-accent="red"]{--acc:#FF0000;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#210000}
 :root[data-accent="default"][data-default-accent="lilac"]{--acc:#D8B4FE;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#250A44}
 :root[data-theme="light"][data-accent="default"][data-default-accent="blue"]{--acc:#0B69E3;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 :root[data-theme="light"][data-accent="default"][data-default-accent="teal"]{--acc:#0E7490;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 :root[data-theme="light"][data-accent="default"][data-default-accent="emerald"]{--acc:#047857;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 :root[data-theme="light"][data-accent="default"][data-default-accent="yellow"]{--acc:#B45309;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
-:root[data-theme="light"][data-accent="default"][data-default-accent="orange"]{--acc:#C2410C;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 :root[data-theme="light"][data-accent="default"][data-default-accent="red"]{--acc:#C81E1E;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
-:root[data-theme="light"][data-accent="default"][data-default-accent="rose"]{--acc:#BE185D;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 :root[data-theme="light"][data-accent="default"][data-default-accent="lilac"]{--acc:#9333EA;--acc-2:color-mix(in srgb,var(--acc) 82%,#000);--on-acc:#fff}
 /* Accent icons sitting directly on a bare surface use --acc-2 where --acc fails
    the 3:1 icon bar on that theme's worst surface (dark #1c1c1e, light #ececef):
@@ -698,6 +695,14 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .sect-b .seg-inline{width:200px;min-width:0}
 .seg button .icn{flex:none}
 .seg button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* Workout view is a deliberate two-line setting: the explanation gets the full
+   text measure and the two-option selector stays comfortably tappable below it. */
+.workout-view-row{flex-wrap:wrap;align-items:flex-start;row-gap:8px}
+.workout-view-row .lrow-m{flex:1 1 140px;min-width:0}
+.workout-view-row .lrow-t{white-space:normal;overflow:visible;text-overflow:clip}
+.workout-view-row .seg-inline{flex:1 1 100%;min-width:0;width:auto}
+.workout-view-row .seg-inline button{min-width:0}
 
 /* --- warmup settings sheet (WarmupSettingsForm only) ---
    At 360 px the row title ("Experiencia", "Modo peso muerto") and the inline
@@ -2045,3 +2050,39 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .history-field{display:flex;flex-direction:column;gap:5px;min-width:0;color:var(--label-2);font-size:13px}
 .history-field input,.history-field select{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--sep);border-radius:var(--r-sm);background:var(--surface-2);color:var(--label);font:inherit;padding:9px 10px}
 .history-field input[aria-invalid="true"],.history-field select[aria-invalid="true"]{border-color:var(--red);outline:2px solid color-mix(in srgb,var(--red) 25%,transparent);outline-offset:1px}
+
+/* --------------------------------------- training-compact redesign -------
+   Redistribution only, mobile-first base rules (no new breakpoints): every
+   override below wins by source order so the pinned grid/contract rules above
+   stay byte-identical. New tracks are minmax(0,1fr), new children min-width:0,
+   titles ellipsis — so 320/360 cannot x-scroll. Palette, store logic, TabBar,
+   locales and history hints untouched. Stepper/check hit targets already ride
+   on centred 44x44 slop above; only painted chrome shrinks here. */
+.workout-session .session-card{padding:10px}
+.workout-session .session-card .card{padding:10px}
+/* single-line 10px uppercase column header; header tracks still mirror the rows
+   via the shared --set-grid-template above */
+.setgrid-scroll .sethead{font-size:10px;line-height:1.2}
+/* bilateral rows 7px -> 4px vertical (per-side L/R sub-rows keep their 8px);
+   horizontal insets stay on the fluid clamp above */
+.setgrid-scroll .setrow:not(.per-side){padding-top:4px;padding-bottom:4px}
+/* compact top line: 52px thumb toggle + resilient title + nowrap pager + kebab */
+.workout-session .ex-top{display:flex;align-items:center;gap:8px;min-width:0;margin:0 0 6px}
+.workout-session .ex-thumbbtn{width:52px;height:52px;flex:none;padding:0;border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.workout-session .ex-thumbbtn .thumb{width:52px;height:52px;border-radius:10px}
+.workout-session .ex-thumbbtn.compact{width:52px;min-width:44px;height:52px;min-height:44px;aspect-ratio:1;border-radius:50%}
+.workout-session .ex-thumbbtn.compact .thumb{border-radius:50%}
+.workout-session .ex-thumbbtn.compact:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.workout-session .ex-thumbbtn:active{transform:scale(.95)}
+.workout-session .ex-top-title{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;white-space:normal}
+.workout-session .ex-pager{flex:none;white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--acc);background:var(--acc-soft);border-radius:99px;padding:4px 9px}
+/* fused accessory row: plan note + workout note behind one chevron toggle */
+.workout-session .ex-acc{margin:0 0 8px;min-width:0}
+.workout-session .ex-acc-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;min-height:44px;padding:6px 2px;color:var(--label-2);font-size:13px;line-height:1.38}
+.workout-session .ex-acc-toggle:active{color:var(--label)}
+.workout-session .ex-acc-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.workout-session .ex-acc-toggle .icn{flex:none;font-size:15px}
+.workout-session .ex-acc .exnote{margin-bottom:8px;padding:10px 12px}
+/* set actions stay one compact row: two small buttons share the line */
+.workout-session .set-actions{justify-content:space-between;gap:6px;flex-wrap:nowrap}
+.workout-session .set-actions .btn{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

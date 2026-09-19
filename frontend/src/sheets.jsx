@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName, exOr } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName, sentenceCaseExerciseName, exOr } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, topWeightInitialValue, currentSessionHeaviestWeight, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
@@ -416,7 +416,7 @@ function ExerciseDetail({ ex, close, hideAddToPlan }) {
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
   return <>
-    <h3 className="capitalize">{exerciseName(ex)}</h3>
+    <h3>{sentenceCaseExerciseName(ex)}</h3>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
       <span className="tag acc">{t(ex.bp)}</span>
@@ -464,19 +464,19 @@ export const exerciseDetailSheet = (ex, { hideAddToPlan } = {}) => ui().openShee
 function ExerciseMenu({ unitIndex, unitTotal, members, onEdit, onRemove, close }) {
   const single = members.length === 1
   const title = single
-    ? exerciseName(exOr(members[0].id))
+    ? sentenceCaseExerciseName(exOr(members[0].id))
     : t('Superset {0} / {1}', unitIndex + 1, unitTotal)
   const openEdit = entryIdx => { close(); onEdit(entryIdx) }
   const openInfo = id => { close(); exerciseDetailSheet(exOr(id), { hideAddToPlan: true }) }
   const openReorder = () => { close(); reorderExercisesSheet() }
   const askRemove = entryIdx => { close(); onRemove(entryIdx) }
   return <>
-    <h3 className="capitalize">{title}</h3>
+    <h3>{title}</h3>
     <div className="list">
       {members.map(m => <button key={'edit-' + m.sid} type="button" className="item" onClick={() => openEdit(m.entryIdx)}>
         <span className="lrow-i"><Icon name="pencil" /></span>
         <div className="grow">
-          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Edit exercise') : exerciseName(exOr(m.id))}</div>
+          <div className="tt">{single ? t('Edit exercise') : sentenceCaseExerciseName(exOr(m.id))}</div>
           {!single && <div className="ss">{t('Edit exercise')}</div>}
         </div>
         <Icon name="chevronRight" className="chev" aria-hidden="true" />
@@ -484,7 +484,7 @@ function ExerciseMenu({ unitIndex, unitTotal, members, onEdit, onRemove, close }
       {members.map(m => <button key={'info-' + m.sid} type="button" className="item" onClick={() => openInfo(m.id)}>
         <span className="lrow-i"><Icon name="info" /></span>
         <div className="grow">
-          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Exercise information') : exerciseName(exOr(m.id))}</div>
+          <div className="tt">{single ? t('Exercise information') : sentenceCaseExerciseName(exOr(m.id))}</div>
           {!single && <div className="ss">{t('Exercise information')}</div>}
         </div>
         <Icon name="chevronRight" className="chev" aria-hidden="true" />
@@ -497,7 +497,7 @@ function ExerciseMenu({ unitIndex, unitTotal, members, onEdit, onRemove, close }
       {members.map(m => <button key={'del-' + m.sid} type="button" className="item danger" onClick={() => askRemove(m.entryIdx)}>
         <span className="lrow-i"><Icon name="trash" /></span>
         <div className="grow">
-          <div className={'tt' + (single ? '' : ' capitalize')}>{single ? t('Delete exercise') : exerciseName(exOr(m.id))}</div>
+          <div className="tt">{single ? t('Delete exercise') : sentenceCaseExerciseName(exOr(m.id))}</div>
           {!single && <div className="ss">{t('Delete exercise')}</div>}
         </div>
       </button>)}

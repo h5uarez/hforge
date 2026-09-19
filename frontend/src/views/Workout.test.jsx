@@ -557,8 +557,9 @@ describe('exercise options menu and reorder screen', () => {
     expect(source).toContain('onEdit: editExercise')
     expect(source).toContain('onRemove: removeExercise')
     expect(source).toContain('unitTotal: units.length')
-    // the counter stays next to the menu button
-    expect(source).toContain("t('Exercise {0} / {1}', unitIndex + 1, units.length)")
+    // The global workout header already exposes progress; the per-card counter
+    // is intentionally absent so long exercise names get the available width.
+    expect(source).not.toContain("t('Exercise {0} / {1}', unitIndex + 1, units.length)")
     expect(source).toContain("t('Superset {0} / {1}', unitIndex + 1, units.length)")
   })
 
@@ -574,6 +575,14 @@ describe('exercise options menu and reorder screen', () => {
     expect(source).not.toContain('session-remove')
     const css = readFileSync(srcPath('index.css'), 'utf8')
     expect(css).toContain('.session-ex-title{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}')
+  })
+
+  it('uses sentence-case exercise labels for the title and circle affordance', () => {
+    expect(source).toContain('const displayName = sentenceCaseExerciseName(ex)')
+    expect(source).toContain('const exerciseMediaLabel = t(\'Open video and instructions for {0}\', displayName)')
+    expect(source).not.toContain("textTransform: 'capitalize'")
+    expect(sheets).toContain('<h3>{sentenceCaseExerciseName(ex)}</h3>')
+    expect(sheets).toContain('? sentenceCaseExerciseName(exOr(members[0].id))')
   })
 
   it('opens each menu action after closing the menu first', () => {
