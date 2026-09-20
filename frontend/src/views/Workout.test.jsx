@@ -485,7 +485,7 @@ describe('scrollable workout composition contracts', () => {
     expect(source).not.toContain('>R</span>')
   })
 
-  it('scopes the muted placeholder treatment to weight fields in every set layout', () => {
+  it('scopes the muted placeholder treatment to weight and reps fields in every set layout', () => {
     const css = readFileSync(srcPath('index.css'), 'utf8')
     const cellBlock = source.match(/const cell = [\s\S]*?\/\/ Effort steps/)?.[0] || ''
     expect(source).toContain("const loadCol = { f: 'w', step: 2.5")
@@ -499,10 +499,10 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain("nullable={col.opt || col.f === 'r'}")
     expect(source).toContain('className="history-hint weight-history-hint"')
     expect(cellBlock).toContain('value={value}')
-    expect(css).toContain('.stp .num.weight-input::placeholder,.stp .history-hint.weight-history-hint{color:var(--label-4);opacity:1}')
+    expect(css).toContain('.stp .num.weight-input::placeholder,.stp .num.reps-input::placeholder,.stp .history-hint.weight-history-hint{color:var(--label-4);opacity:1}')
     expect(css).toContain('.stp .num::placeholder{color:var(--label-3);opacity:1}')
     expect(css).toContain('.stp .num.reps-input{color:var(--label)}')
-    expect(css).not.toContain('.stp .num.reps-input::placeholder')
+    expect(css).toContain('.stp .num.reps-input::placeholder')
     expect(css).not.toContain('.stp .history-hint.reps-history-hint')
     expect(css).not.toContain('.stp .num.effort-input::placeholder')
   })

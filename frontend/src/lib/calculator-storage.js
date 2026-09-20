@@ -3,6 +3,7 @@ import { canonicalExerciseId } from './exercise-ids.js'
 
 export const HOME_1RM_STORAGE_KEY = 'hforge_home_1rm_v1'
 export const HOME_WARMUP_STORAGE_KEY = 'hforge_home_warmup_v1'
+export const STATS_PROGRESS_STORAGE_KEY = 'hforge_stats_progress_v1'
 
 const ONE_RM_TIERS = new Set(['HIGH', 'MEDIUM', 'unreliable'])
 const WARMUP_EXERCISE_IDS = new Set(WARMUP_OPTIONS.map(option => option.id))
@@ -62,6 +63,18 @@ export function sanitizeHome1RMState(value) {
     reps: Math.min(10, integerNonNegative(value.reps)),
     rir: nullableBounded(value.rir, 0, 5),
     res: validOneRMResult(value.res) ? value.res : null,
+  }
+}
+
+const STATS_PROGRESS_RANGES = new Set([30, 90, 365, 0])
+const STATS_PROGRESS_METRICS = new Set(['top', 'e1rm', 'effort'])
+
+export function sanitizeStatsProgressState(value) {
+  if (!isRecord(value)) return null
+  return {
+    range: STATS_PROGRESS_RANGES.has(value.range) ? value.range : 90,
+    exId: typeof value.exId === 'string' ? value.exId : null,
+    exMetric: STATS_PROGRESS_METRICS.has(value.exMetric) ? value.exMetric : 'top',
   }
 }
 
