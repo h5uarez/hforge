@@ -10,7 +10,7 @@
    banner the user confirmed), so an old client is never swapped for new assets
    mid-workout. Auth/data (/api/) and non-GET requests are never cached. */
 // Bump together with frontend releases so old clients detect the new worker.
-const SW_VERSION = 'hforge-pwa-v1.11.7'
+const SW_VERSION = 'hforge-pwa-v1.11.8'
 const SHELL_CACHE = SW_VERSION + '-shell'
 const RUNTIME_CACHE = SW_VERSION + '-rt'
 const MEDIA_CACHE = SW_VERSION + '-media'

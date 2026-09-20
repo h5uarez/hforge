@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   HOME_1RM_STORAGE_KEY,
   HOME_WARMUP_STORAGE_KEY,
+  STATS_PROGRESS_STORAGE_KEY,
   loadCalculatorState,
   saveCalculatorState,
   sanitizeHome1RMState,
   sanitizeHomeWarmupState,
+  sanitizeStatsProgressState,
 } from './calculator-storage.js'
 
 const originalStorage = globalThis.localStorage
@@ -75,5 +77,23 @@ describe('calculator storage', () => {
       open: true, exerciseId: '79D0BB3A', kg: 80, reps: 5, addedKg: 0, rir: 5,
       res: { sets: [{ kg: 20, reps: 10, pct: 20, label: 'Empty bar', restSec: 60 }], topLine: '80 × 5' },
     })
+  })
+
+  it('sanitizes the stats progress selection and falls back on invalid values', () => {
+    expect(sanitizeStatsProgressState({
+      range: 30, exId: '79D0BB3A', exMetric: 'e1rm',
+    })).toEqual({ range: 30, exId: '79D0BB3A', exMetric: 'e1rm' })
+
+    expect(sanitizeStatsProgressState({
+      range: 7, exId: 42, exMetric: 'nope',
+    })).toEqual({ range: 90, exId: null, exMetric: 'top' })
+
+    expect(sanitizeStatsProgressState(null)).toBe(null)
+    expect(sanitizeStatsProgressState('stored')).toBe(null)
+
+    installStorage()
+    const progress = { range: 365, exId: null, exMetric: 'effort' }
+    expect(saveCalculatorState(STATS_PROGRESS_STORAGE_KEY, progress)).toBe(true)
+    expect(loadCalculatorState(STATS_PROGRESS_STORAGE_KEY, null, sanitizeStatsProgressState)).toEqual(progress)
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { EXIDX, exerciseName } from '../lib/exercises.js'
@@ -19,6 +19,9 @@ import {
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
 import { Button, Segmented, SelectRow, useScrolled } from '../components/ui.jsx'
+import {
+  STATS_PROGRESS_STORAGE_KEY, loadCalculatorState, saveCalculatorState, sanitizeStatsProgressState,
+} from '../lib/calculator-storage.js'
 
 const sentenceCaseFirst = value => String(value ?? '').replace(/\p{L}/u, char => char.toUpperCase())
 
@@ -137,9 +140,15 @@ function EffortCard({ S }) {
 export default function Stats() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
-  const [range, setRange] = useState(90)
-  const [exId, setExId] = useState(null)
-  const [exMetric, setExMetric] = useState('top')
+  const [initialProgress] = useState(() => loadCalculatorState(STATS_PROGRESS_STORAGE_KEY,
+    { range: 90, exId: null, exMetric: 'top' }, sanitizeStatsProgressState))
+  const [range, setRange] = useState(initialProgress.range)
+  const [exId, setExId] = useState(initialProgress.exId)
+  const [exMetric, setExMetric] = useState(initialProgress.exMetric)
+
+  useEffect(() => {
+    saveCalculatorState(STATS_PROGRESS_STORAGE_KEY, { range, exId, exMetric })
+  }, [range, exId, exMetric])
   const now = Date.now()
   const anyEffort = hasEffort(S)
   const kind = displayScale(S)
