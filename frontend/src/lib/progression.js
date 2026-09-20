@@ -263,15 +263,20 @@ export function nextPrescription(S, cfg, routine) {
 
 /**
  * Apply a prescription to freshly built sets. Only the fields the policy actually decided
- * are touched, and only on sets that have not been logged yet.
+ * are touched, and only on sets that have not been logged yet. Per-set reps are already seeded
+ * from the routine by buildSets, so they take precedence over a scalar policy rep suggestion;
+ * a valid planned-effort snapshot also marks the persisted generic-reps shape as routine-owned.
  */
-export function applyPrescription(sets, p) {
+export function applyPrescription(sets, p, cfg = null) {
   if (!p || p.kind === 'off' || p.kind === 'first') return sets
+  const hasExplicitRepTargets = Array.isArray(cfg?.repsBySet) && cfg.repsBySet.length > 0
   const out = sets.map(s => {
     if (s.done) return s
     const o = { ...s }
     if (p.weight != null) o.w = p.weight
-    if (p.reps != null) o.r = p.reps
+    const target = s.plannedEffort
+    const hasValidPlannedEffort = target && (target.metric === 'rir' || target.metric === 'rpe') && Number.isFinite(target.value)
+    if (p.reps != null && !hasExplicitRepTargets && !hasValidPlannedEffort) o.r = p.reps
     if (p.sec != null) o.sec = p.sec
     return o
   })

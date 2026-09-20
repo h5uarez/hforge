@@ -74,7 +74,7 @@ export function buildWorkoutEntry(S, cfg, routine, previous) {
   const planNote = normalizeNote(target.planNote)
   if (planNote === undefined) delete target.planNote
   else target.planNote = planNote
-  return { ...base, id, target, plan, sets: applyPrescription(buildSets(S, full), plan) }
+  return { ...base, id, target, plan, sets: applyPrescription(buildSets(S, full), plan, full) }
 }
 
 // Routine configs can contain arrays of per-set prescriptions. Clone recursively before changing

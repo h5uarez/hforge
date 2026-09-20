@@ -134,13 +134,6 @@ export default function Settings() {
         <Switch aria-label={t('Bodyweight check before workouts')} checked={S.bodyweightCheckEnabled !== false}
           onChange={v => update(s => { s.bodyweightCheckEnabled = !!v })} />
       </Row>
-      <Row className="workout-view-row" icon="dumbbell" iconTint="var(--acc)" title={t('Workout view')}
-        subtitle={t('Choose how exercises are shown while training.')}>
-        <Segmented className="seg-inline"
-          options={[{ value: 'extended', label: t('Extended') }, { value: 'compact', label: t('Compact') }]}
-          value={S.workoutCompactMode ? 'compact' : 'extended'}
-          onChange={v => update(s => { s.workoutCompactMode = v === 'compact' })} />
-      </Row>
       <Row icon="target" iconTint="var(--blue)" title={t('Show 1RM calculator')}
         subtitle={t('Estimate one-rep max on the Home screen.')}>
         <Switch aria-label={t('Show 1RM calculator')} checked={S.home1rmCardEnabled !== false}

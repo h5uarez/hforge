@@ -551,6 +551,14 @@ describe('applyPrescription', () => {
     expect(applyPrescription(sets, { kind: 'up', weight: 42.5, reps: 8 })[1]).toEqual({ w: 42.5, r: 8, done: false })
   })
 
+  it('preserves routine-seeded reps for per-set targets and valid planned effort', () => {
+    const policy = { kind: 'hold', weight: 62.5, reps: 4 }
+    expect(applyPrescription([{ w: 60, r: 6, done: false }], policy, { repsBySet: [6] }))
+      .toEqual([{ w: 62.5, r: 6, done: false }])
+    expect(applyPrescription([{ w: 60, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } }], policy))
+      .toEqual([{ w: 62.5, r: 6, done: false, plannedEffort: { metric: 'rpe', value: 8 } }])
+  })
+
   it('touches nothing for "off" or a first session', () => {
     expect(applyPrescription(sets, { kind: 'off' })).toBe(sets)
     expect(applyPrescription(sets, { kind: 'first' })).toBe(sets)

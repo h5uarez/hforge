@@ -10,7 +10,7 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t, sideLabel } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
-import Media, { prefetchWorkoutMedia, Thumb } from '../components/Media.jsx'
+import { prefetchWorkoutMedia, Thumb } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, topWeightSheet, silentTopWeightCommit, topWeightPromptReason, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, exerciseDetailSheet, rebuildActiveEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
@@ -61,9 +61,8 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise row (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', headingId = null, menuButton = null, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, sid, heading = 'h2', headingId = null, menuButton = null, onToggle, onField, onNoteChange, onAddSet, onRemoveSet, onStartTimed }) {
   const S = useStore(s => s.S)
-  const workoutCompactMode = useStore(s => s.S.workoutCompactMode !== false)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
   const ex = exOr(entry.id)
@@ -178,14 +177,11 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', headi
   // Empty notes stay out of the way, while an existing note remains immediately readable. This
   // is local disclosure state and does not affect the note stored in the active workout.
   const [workoutNoteOpen, setWorkoutNoteOpen] = useState(() => typeof entry.note === 'string' && entry.note.trim().length > 0)
-  // Compact top line: the full media box stays unmounted until the thumb toggle opens
-  // it, so a card starts at strip height. Local disclosure only — Media keeps its own
-  // minimizable/play-pause/mini state for when it is mounted.
-  const hasMedia = !!(ex.video || ex.gif || ex.img)
-  const [mediaOpen, setMediaOpen] = useState(false)
+  // Compact presentation is fixed: the thumbnail opens the exercise details sheet, while the
+  // full media box stays out of the workout card until the user explicitly opens that detail.
   const displayName = sentenceCaseExerciseName(ex)
   const longName = displayName.length > 24
-  const titleSize = workoutCompactMode ? (longName ? 16 : 17) : (longName ? 18 : 20)
+  const titleSize = longName ? 16 : 17
   const exerciseMediaLabel = t('Open video and instructions for {0}', displayName)
   const openExerciseDetails = () => exerciseDetailSheet(ex, { hideAddToPlan: true })
   const perSide = isPerSide(cfg) && !cardio && !timed
@@ -212,19 +208,16 @@ function ExerciseBlock({ entryIdx, sid, compact, priority, heading = 'h2', headi
         row. The progress header already communicates the workout position, so the
         per-card exercise pager is intentionally omitted to keep the exercise name readable. */}
     <div className="ex-top">
-      {(workoutCompactMode || hasMedia) && <button type="button"
-        className={'ex-thumbbtn' + (workoutCompactMode ? ' compact' : '')}
-        aria-haspopup={workoutCompactMode ? 'dialog' : undefined}
-        aria-expanded={workoutCompactMode ? undefined : mediaOpen}
-        aria-label={workoutCompactMode ? exerciseMediaLabel : t(mediaOpen ? 'Minimize' : 'Expand')}
-        title={workoutCompactMode ? exerciseMediaLabel : t(mediaOpen ? 'Minimize' : 'Expand')}
-        onClick={workoutCompactMode ? openExerciseDetails : () => setMediaOpen(open => !open)}><Thumb ex={ex} /></button>}
+      <button type="button" className="ex-thumbbtn compact"
+        aria-haspopup="dialog"
+        aria-label={exerciseMediaLabel}
+        title={exerciseMediaLabel}
+        onClick={openExerciseDetails}><Thumb ex={ex} /></button>
       {heading === 'h3'
         ? <h3 id={headingId || undefined} className={'session-ex-title ex-top-title' + (longName ? ' long' : '')} style={{ fontSize: titleSize, margin: 0, letterSpacing: '-.02em', lineHeight: longName ? 1.16 : 1.2 }}>{displayName}</h3>
         : <h2 id={headingId || undefined} className={'session-ex-title ex-top-title' + (longName ? ' long' : '')} style={{ fontSize: titleSize, margin: 0, letterSpacing: '-.02em', lineHeight: longName ? 1.16 : 1.2 }}>{displayName}</h2>}
       {menuButton}
     </div>
-    {!workoutCompactMode && hasMedia && mediaOpen && <Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />}
     {/* Plan note + workout note share one accessory row, collapsed until opened —
         the toggle, chevron state and editable TextArea contract are unchanged. */}
     <div className="ex-acc">
@@ -623,8 +616,7 @@ function ActiveWorkout() {
       {superset && <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>}
       {members.map((idx, k) => <div key={A.entries[idx].sid} className={superset ? 'ss-ex' : undefined}>
         {superset && k > 0 && <div className="ss-amp">+</div>}
-        <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'} compact={superset}
-          priority={unitIndex === 0 && k === 0}
+        <ExerciseBlock entryIdx={idx} sid={A.entries[idx].sid} heading={superset ? 'h3' : 'h2'}
           headingId={superset ? null : 'session-heading-' + A.entries[idx].sid}
           menuButton={superset ? null : menuButton}
           onToggle={(i, side) => toggle(idx, i, side)} onField={(i, f, v, side) => setField(idx, i, f, v, side)} onNoteChange={value => setNote(idx, value)} onAddSet={() => { addSet(idx); focusEntry(A.entries[idx].sid) }} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />

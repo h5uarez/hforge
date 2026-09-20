@@ -700,14 +700,6 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .seg button .icn{flex:none}
 .seg button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 
-/* Workout view is a deliberate two-line setting: the explanation gets the full
-   text measure and the two-option selector stays comfortably tappable below it. */
-.workout-view-row{flex-wrap:wrap;align-items:flex-start;row-gap:8px}
-.workout-view-row .lrow-m{flex:1 1 140px;min-width:0}
-.workout-view-row .lrow-t{white-space:normal;overflow:visible;text-overflow:clip}
-.workout-view-row .seg-inline{flex:1 1 100%;min-width:0;width:auto}
-.workout-view-row .seg-inline button{min-width:0}
-
 /* --- warmup settings sheet (WarmupSettingsForm only) ---
    At 360 px the row title ("Experiencia", "Modo peso muerto") and the inline
    segmented control fight for one line and the title ellipsises ("Exper...").

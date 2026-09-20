@@ -26,8 +26,11 @@ describe('scrollable workout composition contracts', () => {
     expect(source).toContain('A.entries[idx].sid')
   })
 
-  it('keeps media and notes independently disclosed with persisted density', () => {
-    expect(source).toContain('minimizable')
+  it('keeps compact exercise details and notes independently disclosed', () => {
+    expect(source).toContain('exerciseDetailSheet(ex, { hideAddToPlan: true })')
+    expect(source).toContain('className="ex-thumbbtn compact"')
+    expect(source).not.toContain('workoutCompactMode')
+    expect(source).not.toContain('mediaOpen')
     expect(source).toContain('workoutNoteOpen')
     expect(source).toContain("typeof entry.note === 'string' && entry.note.trim().length > 0")
     expect(source).toContain('aria-controls={workoutNoteContentId}')
@@ -63,7 +66,8 @@ describe('scrollable workout composition contracts', () => {
   })
 
   it('scopes the persisted animation preference to active workout media', () => {
-    expect(source).toContain('<Media ex={ex} key={entry.id} compact={compact} minimizable priority={priority} />')
+    expect(source).not.toContain('<Media ex={ex} key={entry.id}')
+    expect(source).toContain('<Thumb ex={ex} />')
     expect(media).toContain('const workoutScoped = !!minimizable')
     expect(media).toContain('const workoutMediaEnabled = useStore(s => workoutScoped ? s.S.workoutMediaEnabled !== false : true)')
     expect(media).toContain('setPlaying(workoutMediaEnabled && !reduced)')
