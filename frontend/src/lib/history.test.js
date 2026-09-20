@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, previousSetValue, historyInputValue, currentSessionHeaviestWeight, topWeightInitialValue, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
+import { NOTE_MAX, normalizeExerciseNote, normalizeNote, copyNoteFields, copyHistoryEntry, keepHistoryEntry, updateExerciseNote, modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, lastEntryFor, previousSetValue, historyInputValue, currentSessionHeaviestWeight, topWeightInitialValue, projectSideSet, weightOfSet, setIsDone, exLine, workoutVolume, setsDone, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, repsForSet, configuredRepsForSet, effectiveRoutineId, validateProgrammedTargets, plannedEffortForSet, normalizeTargets, normalizeRepsBySet, resolveTarget } from './history.js'
 import { setLang } from './i18n.js'
 import { EXDB } from './exercises.js'
 import { attachOccurrenceIdentity, removeOccurrence, reorderOccurrences, validateHistoryEntry, normalizeHistoryEntry, sortHistory, explicitHistoryAddition, historyTargetBaseline } from './history-edit.js'
@@ -551,6 +551,21 @@ describe('normalizeRepsBySet', () => {
   })
 })
 
+describe('configuredRepsForSet', () => {
+  it('returns exact per-set targets before the generic routine target', () => {
+    expect(configuredRepsForSet({ reps: 6, repsBySet: [8, 10] }, 0)).toBe(8)
+    expect(configuredRepsForSet({ reps: 6, repsBySet: [8, 10] }, 1)).toBe(10)
+    expect(configuredRepsForSet({ reps: 6, repsBySet: [8, 10] }, 4)).toBe(6)
+  })
+
+  it('leaves implicit defaults distinguishable from an explicit target', () => {
+    const cfg = { sets: 2 }
+    expect(configuredRepsForSet(cfg, 0)).toBeUndefined()
+    expect(repsForSet(cfg, 0)).toBe(10)
+    expect(configuredRepsForSet({ reps: 0, repsBySet: [null] }, 0)).toBeUndefined()
+  })
+})
+
 /* ---------- bodyweight and per side (issues #31/#32/#33) ---------- */
 
 describe('isBw', () => {
@@ -664,6 +679,35 @@ describe('buildSets', () => {
       .toEqual([{ w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }, { w: 50, r: 8, done: false }])
   })
 
+  it('uses the previous completed reps when the routine has no rep target', () => {
+    const S = { exWeights: {}, workouts: [{ d: '2026-08-22', entries: [{ id: LIFT, sets: [
+      { w: 60, r: 7, done: true }, { w: 60, r: 11, done: true },
+    ] }] }] }
+    expect(buildSets(S, { id: LIFT, mode: 'reps', sets: 2, weight: 50 }))
+      .toEqual([{ w: 50, r: 7, done: false }, { w: 50, r: 11, done: false }])
+  })
+
+  it('keeps an explicit routine target ahead of previous reps', () => {
+    const S = { exWeights: {}, workouts: [{ d: '2026-08-22', entries: [{ id: LIFT, sets: [
+      { w: 60, r: 7, done: true }, { w: 60, r: 11, done: true },
+    ] }] }] }
+    expect(buildSets(S, { id: LIFT, mode: 'reps', sets: 2, reps: 6, weight: 50 }))
+      .toEqual([{ w: 50, r: 6, done: false }, { w: 50, r: 6, done: false }])
+  })
+
+  it('keeps exact per-set targets ahead of previous reps', () => {
+    const S = { exWeights: {}, workouts: [{ d: '2026-08-22', entries: [{ id: LIFT, sets: [
+      { w: 60, r: 7, done: true }, { w: 60, r: 11, done: true },
+    ] }] }] }
+    expect(buildSets(S, { id: LIFT, mode: 'reps', sets: 2, reps: 6, repsBySet: [8, 10], weight: 50 }))
+      .toEqual([{ w: 50, r: 8, done: false }, { w: 50, r: 10, done: false }])
+  })
+
+  it('keeps the safe ten-rep fallback when there is no target or history', () => {
+    expect(buildSets(emptyS, { id: LIFT, mode: 'reps', sets: 2, weight: 50 }))
+      .toEqual([{ w: 50, r: 10, done: false }, { w: 50, r: 10, done: false }])
+  })
+
   it('starts bodyweight loads empty without copying historical loads or actual reps', () => {
     const S = {
       workouts: [{
@@ -773,6 +817,15 @@ describe('buildSets', () => {
     expect(sets).toMatchObject([
       { r: 8, left: { r: 4 }, right: { r: 4 } },
       { r: 10, left: { r: 5 }, right: { r: 5 } },
+    ])
+  })
+
+  it('uses the previous unilateral total and projects it to each side', () => {
+    const S = { exWeights: {}, workouts: [{ d: '2026-08-22', entries: [{ id: '0739', sets: [
+      { w: 20, r: 18, done: true },
+    ] }] }] }
+    expect(buildSets(S, { id: '0739', mode: 'reps', sets: 1, weight: 20, side: true })).toMatchObject([
+      { r: 18, left: { r: 9 }, right: { r: 9 } },
     ])
   })
 
