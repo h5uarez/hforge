@@ -292,6 +292,14 @@ export function repsForSet(cfg, idx) {
   return effectiveRepsBySet(cfg)[idx] ?? (normalizeRepTarget(cfg?.reps) ?? 10)
 }
 
+// Return only a rep target that the routine explicitly configured for this set. An absent or
+// invalid target is deliberately undefined so callers can choose a historical or safe fallback
+// without mistaking repsForSet's implicit 10-rep default for a prescription.
+export function configuredRepsForSet(cfg, idx) {
+  const exact = Array.isArray(cfg?.repsBySet) ? normalizeRepTarget(cfg.repsBySet[idx]) : null
+  return exact ?? normalizeRepTarget(cfg?.reps) ?? undefined
+}
+
 export function repsBySetText(cfg) {
   const values = effectiveRepsBySet(cfg)
   return hasRepsBySet(cfg) ? values.map(fmtNum).join('/') : fmtNum(values[0] ?? 0)
@@ -429,9 +437,9 @@ export function lastEntryFor(S, exId) {
   return null
 }
 
-// Visual-only history hint for a newly built workout. The current set remains the controlled
-// value; callers can render this as a native placeholder or a separate visual hint. Side-aware
-// history is preferred, while legacy aggregate reps split evenly for the two visible side fields.
+// Read a previous completed value by set position. Workout uses weight as a visual-only hint,
+// while unconfigured rep sessions also use the value to seed their controlled starting state.
+// Side-aware history is preferred, while legacy aggregate reps split evenly for visible side fields.
 export function previousSetValue(last, index, field, side) {
   if (field !== 'w' && field !== 'r') return undefined
   const sets = Array.isArray(last?.sets) ? last.sets : []
@@ -506,9 +514,10 @@ export function buildSets(S, cfg) {
     // last completed set. Historical values remain available through Last time and statistics;
     // explicit progression is applied below by buildWorkoutEntry.
     const w = cfg.weight || 0
-    const reps = repsForSet(cfg, i)
-    // Start ordinary rep sets from this session's target; explicit progression policies may
-    // adjust that target later in applyPrescription.
+    const configuredReps = configuredRepsForSet(cfg, i)
+    const reps = configuredReps ?? previousSetValue(last, i, 'r') ?? repsForSet(cfg, i)
+    // Start from the explicit routine target, otherwise the previous completed reps, and finally
+    // the safe repsForSet fallback. Explicit progression policies may adjust that target later.
     const set = isPerSide(cfg)
       ? { left: { w, r: sideReps(reps), done: false }, right: { w, r: sideReps(reps), done: false }, w, r: reps, done: false }
       : { w, r: reps, done: false }

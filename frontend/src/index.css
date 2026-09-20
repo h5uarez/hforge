@@ -1090,7 +1090,6 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 }
 .stp .num::placeholder{color:var(--label-3);opacity:1}
 .stp .num.reps-input{color:var(--label)}
-.stp .num.reps-input::placeholder,.stp .history-hint.reps-history-hint{color:var(--label);opacity:1}
 .stp .num.weight-input::placeholder,.stp .history-hint.weight-history-hint{color:var(--label-4);opacity:1}
 /* (No ≤430px effort sub-row: bilateral W/R/eff and per-side L/R sides each stay
    on their own single row at every width — single-row contract. The compact
