@@ -11,7 +11,7 @@ import { t, sideLabel } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { touchActiveRecord } from '../lib/inactivity.js'
 import { prefetchWorkoutMedia, Thumb } from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, topWeightSheet, silentTopWeightCommit, topWeightPromptReason, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, exerciseDetailSheet, rebuildActiveEntry } from '../sheets.jsx'
+import { startFlow, exercisePicker, exConfigSheet, silentTopWeightCommit, finishWorkout, workoutCompleteSheet, confirmSheet, commitPickerSelection, buildWorkoutEntry, buildImportedWorkoutEntries, exerciseMenuSheet, exerciseDetailSheet, rebuildActiveEntry } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, TextArea } from '../components/ui.jsx'
 import { glyphOf } from '../lib/glyphs.js'
@@ -535,7 +535,7 @@ function ActiveWorkout() {
     const m = modeAt(idx)
     const cardioEntry = m === 'cardio'
     const isLastUnit = unitIdx >= units.length - 1
-    let askTop = false, exJustDone = false, workoutDone = false
+    let autoCommitWeight = false, exJustDone = false, workoutDone = false
     mutEntry(idx, e => {
       if (side && e.sets[i].left && e.sets[i].right) {
         e.sets[i][side].done = !e.sets[i][side].done
@@ -555,21 +555,17 @@ function ActiveWorkout() {
           const p = projectSideSet(x)
           return p.w > 0 || x.left?.w > 0 || x.right?.w > 0
         }))
-        if (e.sets.every(x => projectSideSet(x).done)) { exJustDone = true; if (loaded && !e.asked) { e.asked = true; askTop = true } }
+        if (e.sets.every(x => projectSideSet(x).done)) {
+          exJustDone = true
+          // Keep completion one-shot for the active session: toggling a processed set off and
+          // on again must not re-commit the weight or reopen the final workout sheet.
+          if (loaded && !e.asked) { e.asked = true; autoCommitWeight = true }
+        }
       }
     })
-    // Silent by default: a plain completion records the session max and advances with
-    // no sheet at all. The TopWeight sheet opens only on an exception (unlogged weight
-    // against a known reference, a possible PR, or a load above the ordinary range).
-    // Cardio/timed or already-confirmed: go straight to the prompt.
-    if (askTop) {
-      const st = useStore.getState().S
-      const live = st.active?.entries?.[idx]
-      const prev = live ? Math.max((st.exWeights[live.id] || {}).w || 0, bestWeightFor(st, live.id)) : 0
-      const reason = live ? topWeightPromptReason(live, prev, st.unit) : null
-      if (reason) topWeightSheet(idx, reason)
-      else silentTopWeightCommit(idx)   // chains into the finish/continue prompt on the last unit
-    }
+    // Completing a weighted exercise always records its heaviest completed set and advances
+    // silently. Heavy loads and possible PRs are ordinary completed-session data, not prompts.
+    if (autoCommitWeight) silentTopWeightCommit(idx)   // chains into the finish/continue prompt on the last unit
     else if (workoutDone) workoutCompleteSheet()
     else if (exJustDone && cardioEntry) useUI.getState().toast(t('Cardio logged'))
     else if (exJustDone && m === 'time') useUI.getState().toast(t('Hold logged'))
