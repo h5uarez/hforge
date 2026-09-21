@@ -751,6 +751,40 @@ describe('silentTopWeightCommit', () => {
     expect(mocks.openSheet).not.toHaveBeenCalled()
   })
 
+  it('records a 195 kg completed load above the ordinary bound without opening a sheet', () => {
+    const S = installActive(
+      [
+        { id: ACTIVE_LIFT, sets: [{ w: 195, r: 1, done: true }] },
+        { id: 'other-lift', sets: [{ w: 20, r: 8, done: false }] },
+      ],
+      { exWeights: { [ACTIVE_LIFT]: { w: 180, d: '2026-09-01' } } },
+    )
+
+    expect(silentTopWeightCommit(0)).toBe(true)
+
+    expect(S.active.entries[0].topW).toBe(195)
+    expect(S.exWeights[ACTIVE_LIFT].w).toBe(195)
+    expect(S.active.cur).toBe(1)
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+  })
+
+  it('records a heavier-than-best completed load without opening a sheet', () => {
+    const S = installActive(
+      [
+        { id: ACTIVE_LIFT, sets: [{ w: 75, r: 5, done: true }] },
+        { id: 'other-lift', sets: [{ w: 20, r: 8, done: false }] },
+      ],
+      { exWeights: { [ACTIVE_LIFT]: { w: 60, d: '2026-09-01' } } },
+    )
+
+    expect(silentTopWeightCommit(0)).toBe(true)
+
+    expect(S.active.entries[0].topW).toBe(75)
+    expect(S.exWeights[ACTIVE_LIFT].w).toBe(75)
+    expect(S.active.cur).toBe(1)
+    expect(mocks.openSheet).not.toHaveBeenCalled()
+  })
+
   it('opens the finish prompt on the last unit instead of advancing past the end', () => {
     const S = installActive([{ id: ACTIVE_LIFT, sets: [{ w: 60, r: 8, done: true }] }])
 

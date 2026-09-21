@@ -1632,11 +1632,10 @@ export function beginWorkout(routineId, bw) {
   useUI.getState().stopRest()
   nav('/workout')
 }
-/* ============================ silent TopWeight ============================ */
-// Completing an exercise no longer interrupts the session by default. The gate below
-// decides whether the TopWeight sheet is worth showing at all: null means "record the
-// session max silently and move on", any reason means "ask, because something needs a
-// human eye". The sheet is the exception, never the rule.
+/* ============================ TopWeight compatibility helpers ============================ */
+// Active workout completion uses silentTopWeightCommit directly. These helpers retain the
+// legacy explicit-confirmation rules for the isolated TopWeight sheet and are not part of the
+// completion path.
 export const TOP_WEIGHT_PROMPT = { UNLOGGED: 'unlogged-weight', PR: 'pr', OVER_RANGE: 'over-range' }
 export function topWeightPromptReason(entry, prevBest, unit) {
   const maxSet = currentSessionHeaviestWeight(entry) ?? 0
