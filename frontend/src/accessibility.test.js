@@ -571,6 +571,8 @@ describe('accent palette system (theme-palette-redesign)', () => {
   it('keeps the pre-paint migration map in sync with ACCENT_MIGRATION', () => {
     const app = source('App.jsx')
     expect(html).toContain('html,body{background:var(--boot-bg,#ffffff)}')
+    expect(html).toContain('#splash{position:fixed;inset:0;width:100%;height:auto;')
+    expect(html).toContain('#splash img{position:absolute;inset:0;width:100%;height:100%;max-width:none;')
     expect(html).toContain("document.documentElement.style.setProperty('--boot-bg', bg)")
     expect(html).not.toContain('html[data-theme="dark"] body{background:#000000}')
     expect(app).toContain("de.style.setProperty('--boot-bg', bg)")
