@@ -1,5 +1,4 @@
-import { workoutVolume, setIsDone, weightOfSet, projectSideSet } from './history.js'
-import { bestSetOf } from './onerm.js'
+import { workoutVolume, setIsDone, weightOfSet } from './history.js'
 import { sortHistory } from './history-edit.js'
 
 const clone = value => structuredClone(value)
@@ -20,7 +19,6 @@ export function rebuildHistory(state) {
     for (const entry of workout.entries || []) {
       let max = 0
       for (const raw of entry.sets || []) {
-        const set = projectSideSet(raw)
         if (setIsDone(raw)) max = Math.max(max, weightOfSet(raw))
       }
       if (!max) continue

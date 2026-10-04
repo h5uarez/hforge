@@ -1,5 +1,5 @@
 /* hforge-api — passkey (WebAuthn) auth + per-user state storage for Hforge
-   No framework, JSON-file storage, signed session cookies.               */
+   No framework, SQLite storage, signed session cookies.                   */
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -44,9 +44,9 @@ const secretFile = path.join(DATA, 'secret');
 if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
 const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
-// Phase 1 SQLite store (parity with the former db.json + state-<uid>.json files). secret and
-// vapid.json stay on the filesystem. Unknown state fields are preserved verbatim inside the
-// user_states.document JSON column.
+// SQLite store imports legacy db.json + state-<uid>.json files on first boot of a fresh database.
+// secret and vapid.json stay on the filesystem. Unknown state fields are preserved verbatim inside
+// the user_states.document JSON column.
 const store = createDatabase(DATA);
 const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
 const publicUser = user => ({ id: user.id, name: user.name, admin: isAdmin(user) });
@@ -561,7 +561,7 @@ const routes = {
   },
 
   /* ---------- admin dashboard ---------- */
-  // One row per user, cheap enough for a personal instance (reads each state file once).
+  // One row per user, cheap enough for a personal instance (reads each stored state once).
   'GET /api/admin/users': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const users = store.listUsers().map(u => {
