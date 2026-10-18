@@ -8,7 +8,6 @@ import {
 } from './exercises.js'
 import { LEGACY_EXDB } from './catalog.js'
 import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES } from './hevy-compatibility.js'
-import { matchExercise } from './import-csv.js'
 import { planPrintHTML } from './plan-share.js'
 import { setLang } from './i18n.js'
 import { auditExerciseNames } from '../../scripts/audit-exercise-names.mjs'
@@ -90,9 +89,6 @@ describe('Spain-Spanish exercise names', () => {
       expect(legacy, appId).toBeDefined()
       for (const label of [legacy.n, LEGACY_EXERCISE_DISPLAY_ALIASES_ES[appId]]) {
         expect(exerciseMatches(byId(hevyId), label), `${appId}: ${label}`).toBe(true)
-        // "hip thrust" is also the canonical source name of a distinct unqualified Hevy row;
-        // the explicit barbell alias remains the deterministic way to select this mapped row.
-        if (label !== 'hip thrust') expect(matchExercise(label), `${appId}: ${label}`).toBe(hevyId)
       }
     }
   })
@@ -120,11 +116,8 @@ describe('Spain-Spanish exercise names', () => {
       expect(ex.video, addition.id).toBe(addition.video)
       expect(ex.st.length, addition.id).toBeGreaterThan(0)
       expect(exerciseMatches(ex, addition.es), addition.id).toBe(true)
-      expect(matchExercise(addition.en), addition.en).toBe(visibleId(addition.id))
-      expect(matchExercise(addition.es), addition.es).toBe(visibleId(addition.id))
       for (const alias of addition.aliases) {
         expect(exerciseMatches(ex, alias), alias).toBe(true)
-        expect(matchExercise(alias), alias).toBe(visibleId(addition.id))
       }
     }
   })
@@ -142,25 +135,21 @@ describe('Spain-Spanish exercise names', () => {
       expect(ex.st.length, addition.id).toBeGreaterThan(0)
       for (const alias of addition.aliases) {
         expect(exerciseMatches(ex, alias), alias).toBe(true)
-        expect(matchExercise(alias), alias).toBe(visibleId(addition.id))
       }
     }
   })
 
-  it('removes sled wording from plate-loaded machines while preserving imports', () => {
+  it('removes sled wording from plate-loaded machines while preserving search aliases', () => {
     for (const record of SLED_MACHINE_RECORDS) {
       const ex = byId(record.id)
       expect(ex, record.id).toBeDefined()
       expect(ex.n, record.id).toBe(record.en)
       expect(exerciseName(ex, 'es'), record.id).toBe(record.es)
       expect(exerciseMatches(ex, record.en), record.en).toBe(true)
-      expect(matchExercise(record.en), record.en).toBe(record.id)
       expect(exerciseMatches(ex, record.es), record.es).toBe(true)
-      expect(matchExercise(record.es), record.es).toBe(record.id)
       expect(EXERCISE_ALIASES_ES[record.id], record.id).toEqual(expect.arrayContaining(record.legacyAliases))
       for (const alias of record.legacyAliases) {
         expect(exerciseMatches(ex, alias), alias).toBe(true)
-        expect(matchExercise(alias), alias).toBe(record.id)
       }
     }
   })
@@ -169,10 +158,8 @@ describe('Spain-Spanish exercise names', () => {
     expect(Object.values(EXERCISE_NAMES_ES).some(name => /en trineo/i.test(name))).toBe(false)
   })
 
-  it('maps the generic hip thrust alias to the barbell record', () => {
-    expect(matchExercise('hip thrust')).toBe('92B8C7E1')
+  it('finds the barbell hip thrust by its explicit alias', () => {
     expect(exerciseMatches(byId(visibleId('5218')), 'hip thrust barra')).toBe(true)
-    expect(matchExercise('hip thrust barra')).toBe(visibleId('5218'))
   })
 
   it('keeps existing powerlifting records singular instead of duplicating them', () => {
@@ -210,17 +197,6 @@ describe('Spain-Spanish exercise names', () => {
     expect(exerciseMatches(byId(visibleId('0237')), 'jalón de brazos rectos con cuerda')).toBe(true)
   })
 
-  it('keeps English imports and adds unambiguous Spanish matching', () => {
-    expect(matchExercise('Barbell Deadlift')).toBe(visibleId('0032'))
-    expect(matchExercise('Bench Press (Barbell)')).toBe(visibleId('0025'))
-    expect(matchExercise('Peso muerto')).toBe(visibleId('0032'))
-    expect(matchExercise('Elevación lateral')).toBe(visibleId('0334'))
-    expect(matchExercise('Jalon al pecho')).toBe(visibleId('0198'))
-    expect(matchExercise('pullover con cuerda')).toBe(visibleId('0237'))
-    expect(matchExercise('jalón de brazos rectos con cuerda')).toBe(visibleId('0237'))
-    expect(matchExercise('pullover tumbado con cuerda')).toBe('0184')
-  })
-
   it('recognizes the safe routine vocabulary without creating catalog records', () => {
     const aliases = [
       ['BP', '0025'],
@@ -249,29 +225,8 @@ describe('Spain-Spanish exercise names', () => {
     ]
     for (const [label, id] of aliases) {
       expect(exerciseMatches(byId(visibleId(id)), label), label).toBe(true)
-      expect(matchExercise(label), label).toBe(visibleId(id))
     }
-    expect(matchExercise('RDL')).toBe(visibleId('0085'))
     expect(EXDB).toHaveLength(482)
-  })
-
-  it('leaves ambiguous and missing routine variants unresolved', () => {
-    const unresolved = [
-      'Press inclinado multipower/máquina',
-      'Press inclinado máquina',
-      'Remo pecho apoyado',
-      'Crunch abdominal',
-      'Curl declinado con mancuernas',
-      'Bulgarian squat asistido',
-      'Crunch en máquina o polea',
-      'Extensión de tríceps',
-      'Patada de glúteo en polea',
-      'Hiperextensión enfocada a glúteo',
-      'Jalón al pecho agarre',
-      'Curl bíceps en polea con cuerda o agarres independientes',
-      'Curl martillo con mancuerna o cuerda',
-    ]
-    for (const label of unresolved) expect(matchExercise(label), label).toBeNull()
   })
 
   it('enforces complete coverage, documented anglicisms and collision policy', () => {

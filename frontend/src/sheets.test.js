@@ -32,6 +32,50 @@ const sheetsSource = readFileSync(resolve(process.cwd(), 'src/sheets.jsx'), 'utf
 
 const activeState = () => ({ unit: 'kg', exWeights: {}, workouts: [], routines: [], active: null })
 
+describe('Home weekly workout day', () => {
+  it('opens the recorded workout instead of the routine picker without changing state', async () => {
+    const { workoutDaySheet } = await import('./sheets.jsx')
+    const w = { id: 'past', d: '2026-10-13', name: 'Recorded session', entries: [] }
+    const state = { workouts: [w], active: { id: 'ongoing' }, dayPlan: {} }
+    const before = JSON.stringify(state)
+    mocks.getState.mockReturnValue({ S: state })
+    mocks.openSheet.mockClear()
+    workoutDaySheet(w.d)
+    const content = mocks.openSheet.mock.calls[0][0](vi.fn())
+    expect(content.props.w).toBe(w)
+    expect(JSON.stringify(state)).toBe(before)
+  })
+
+  it('offers every session on a multi-workout day and opens the selected record', async () => {
+    const { workoutDaySheet } = await import('./sheets.jsx')
+    const workouts = ['Morning', 'Evening'].map((name, i) => ({ id: String(i), d: '2026-10-13', name, entries: [] }))
+    mocks.getState.mockReturnValue({ S: { workouts } })
+    mocks.openSheet.mockClear()
+    workoutDaySheet('2026-10-13')
+    const close = vi.fn()
+    const content = mocks.openSheet.mock.calls[0][0](close)
+    const rows = content.props.children[1].props.children
+    expect(rows.map(row => row.props.w)).toEqual(workouts)
+    rows[1].props.onClick()
+    expect(close).toHaveBeenCalledOnce()
+    const detail = mocks.openSheet.mock.calls[1][0](vi.fn())
+    expect(detail.props.w).toBe(workouts[1])
+  })
+
+  it('keeps the routine picker for days without records', async () => {
+    const { workoutDaySheet } = await import('./sheets.jsx')
+    mocks.getState.mockReturnValue({ S: { workouts: [] } })
+    mocks.openSheet.mockClear()
+    workoutDaySheet('2026-10-14')
+    expect(mocks.openSheet.mock.calls[0][0](vi.fn()).props.iso).toBe('2026-10-14')
+  })
+
+  it('wires weekly day clicks to the history-aware sheet', () => {
+    const home = readFileSync(resolve(process.cwd(), 'src/views/Home.jsx'), 'utf8')
+    expect(home).toContain('onClick={() => workoutDaySheet(iso)}')
+  })
+})
+
 // These pure formatting contracts use English punctuation; the app's first-run locale is Spanish.
 beforeAll(() => setLang('en'))
 

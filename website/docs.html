@@ -41,7 +41,6 @@
     <a href="#android">Android</a>
     <a href="#iphone">iPhone</a>
     <a href="#selfhost">Self-hosting</a>
-    <a href="#import">Import your history</a>
     <a href="#backup">Backups</a>
     <a href="#build">Build it yourself</a>
     <a href="#faq">FAQ</a>
@@ -89,20 +88,6 @@ docker compose up -d</code></pre>
     domain — a two-line change in <code>.env</code>. The full guide, including reverse-proxy
     examples and the invite-only/admin options, is in
     <a href="https://github.com/h5uarez/hforge/blob/main/docs/SELF_HOSTING.md" rel="noopener">docs/SELF_HOSTING.md</a>.</div>
-
-  <h2 id="import">Import your training history</h2>
-  <p>Coming from another tracker? <b>Settings → Data → Import from another app</b> reads:</p>
-  <ul>
-    <li><b>FitNotes</b> (both the Android and the FitNotes 2 iOS export)</li>
-    <li><b>Strong</b> and <b>Hevy</b> (CSV exports — session lengths carry over, so the
-        activity heatmap fills in properly)</li>
-    <li><b>Apple Health</b> (body-weight history from the XML export)</li>
-    <li>…and anything else with date, exercise-name and weight/reps columns</li>
-  </ul>
-  <p>Exercise names are matched against the 1,324-exercise library; anything genuinely
-     ambiguous becomes one of your own custom exercises instead of being guessed at. A summary
-     shows exactly what will happen before anything is written, and importing is idempotent —
-     running it twice never duplicates a workout.</p>
 
   <h2 id="backup">Backups</h2>
   <p><b>Settings → Data → Export backup (JSON)</b> writes your entire log — plan, workouts,
