@@ -3,7 +3,7 @@ import { EXDB, LEGACY_EXDB } from '../src/lib/catalog.js'
 import {
   EXERCISE_NAMES_ES, EXERCISE_ALIASES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
   EXERCISE_NAME_LOW_CONFIDENCE_ES,
-} from '../src/lib/exercise-names.es.js'
+} from '../src/lib/exercise-labels.js'
 import { HEVY_COMPATIBILITY, LEGACY_EXERCISE_DISPLAY_ALIASES_ES } from '../src/lib/hevy-compatibility.js'
 import { LEGACY_TO_HEVY } from '../src/lib/exercise-ids.js'
 

@@ -2,6 +2,7 @@ import { EXDB as LEGACY_EXDB } from './exercises-data.js'
 import { HEVY_EXDB, HEVY_CATALOG_META } from './hevy-exercises-data.js'
 import { HEVY_COMPATIBILITY, HEVY_COMPATIBILITY_POLICY } from './hevy-compatibility.js'
 import { HEVY_TO_LEGACY, LEGACY_TO_HEVY } from './exercise-ids.js'
+import { buildPowerliftingVariants } from './powerlifting-variants-data.js'
 
 // The legacy catalog is ordered first so existing library visual/layout behavior remains stable.
 // A reviewed Hevy row replaces the matching legacy row, but the visible identity is now the Hevy
@@ -24,9 +25,10 @@ const mergeReviewedRow = legacy => {
   }
 }
 
-export const EXDB = [
+const baseCatalog = [
   ...LEGACY_EXDB.map(mergeReviewedRow),
   ...HEVY_EXDB.filter(ex => !Object.hasOwn(HEVY_TO_LEGACY, ex.hevyId)),
 ]
+export const EXDB = [...baseCatalog, ...buildPowerliftingVariants(baseCatalog)]
 
 export { HEVY_EXDB, HEVY_CATALOG_META, HEVY_COMPATIBILITY, HEVY_COMPATIBILITY_POLICY, LEGACY_EXDB }

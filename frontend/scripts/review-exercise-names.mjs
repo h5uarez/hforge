@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url'
 import { EXDB } from '../src/lib/catalog.js'
-import { EXERCISE_NAMES_ES } from '../src/lib/exercise-names.es.js'
+import { EXERCISE_NAMES_ES } from '../src/lib/exercise-labels.js'
 
 const FAMILY_ORDER = [
   'strength-barbell-dumbbell',

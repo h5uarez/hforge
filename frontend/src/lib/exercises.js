@@ -3,7 +3,8 @@ import { getLang, t } from './i18n.js'
 import {
   EXERCISE_NAMES_ES, EXERCISE_ALIASES_ES, EXERCISE_NAME_ANGLICISMS_ES,
   EXERCISE_NAME_COLLISIONS_ES,
-} from './exercise-names.es.js'
+} from './exercise-labels.js'
+import { hydrateCustomExercises } from './exercise-variants.js'
 
 export { EXDB, HEVY_EXDB, HEVY_CATALOG_META }
 export const EXIDX = {}
@@ -25,10 +26,10 @@ let customIds = []
 export function registerCustom(list) {
   customIds.forEach(id => delete EXIDX[id])
   customIds = (list || []).map(e => e.id)
-  ;(list || []).forEach(e => { EXIDX[e.id] = e })
+  ;hydrateCustomExercises(list || []).forEach(e => { EXIDX[e.id] = e })
 }
 // Full searchable catalogue — customs first so your own exercises are easy to find.
-export const allExercises = st => [...(st.customEx || []), ...EXDB]
+export const allExercises = st => [...hydrateCustomExercises(st.customEx || []).filter(ex => !ex.archived), ...EXDB]
 
 const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()

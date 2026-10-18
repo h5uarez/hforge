@@ -24,6 +24,8 @@ import { newSessionSid, moveSessionUnit, remapCur } from './lib/session.js'
 import { touchActiveRecord } from './lib/inactivity.js'
 import { formatWorkoutDateTime, parseWorkoutDateTime, localDateKey, validateWorkoutTimestamps } from './lib/workout-time.js'
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
+import VariantFields, { initialVariantSelection, conditionFromSelection } from './components/VariantFields.jsx'
+import { createOrReuseVariant } from './lib/exercise-variants.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -679,7 +681,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
     <h3>{existing ? t('Edit custom exercise') : t('Create your own exercise')}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Name it and pick a body part — it behaves like any other exercise, just without an animation.')}</div>
     <input className="input" placeholder={t('Exercise name')} value={n} onChange={e => setN(e.target.value)} />
-    <div className="chips" style={{ margin: '12px 0' }}>
+    <div className="chips" style={{ margin: '12px 0' }} hidden={!!existing?.variant}>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => setBp(b)}>{t(b)}</button>)}
     </div>
     {bp === 'cardio' && <div className="small dim row" style={{ marginBottom: 10, gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
@@ -687,13 +689,29 @@ function CustomExForm({ existing, prefill, onDone, close }) {
       value={desc} onChange={e => setDesc(e.target.value)} />
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Create exercise')}</Button>
-    {existing && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={() => { close(); deleteCustomEx(existing) }}>{t('Delete exercise')}</Button></>}
+    {existing && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={() => { close(); deleteCustomEx(existing) }}>{t(existing.variant ? 'Archive variant' : 'Delete exercise')}</Button></>}
   </>
 }
 export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} onDone={onDone} close={close} />)
 
 export function deleteCustomEx(ex, afterDelete) {
   if (S().active?.entries.some(e => e.id === ex.id)) { toast(t('Finish your current workout first')); return }
+  if (ex.variant) {
+    confirmSheet({
+      title: t('Archive variant'),
+      message: t('Hide this variant from the catalog. Existing routines, records and workouts stay unchanged.'),
+      confirmText: t('Archive variant'),
+      onConfirm: () => {
+        update(s => { const c = s.customEx.find(x => x.id === ex.id); if (c) c.archived = true })
+        afterDelete?.()
+      },
+    })
+    return
+  }
+  if ((S().customEx || []).some(c => c.baseId === ex.id)) {
+    toast(t('This exercise is the base of a variant and cannot be deleted.'))
+    return
+  }
   confirmSheet({
     title: t('Delete “{0}”?', ex.n),
     message: t('It will be removed from your routines. Already-logged workouts keep their sets.'),
@@ -907,8 +925,10 @@ function PerSetPrescriptionField({ generic, perSide, setCount, repsValue, onReps
   </>
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel }) {
+function ExConfig({ ex, existing, onSave: commitConfig, onDelete, close, routine, submitLabel, allowVariants }) {
   const st = useStore(s => s.S)
+  const base = exOr(ex.baseId || ex.id)
+  const [variantSelection, setVariantSelection] = useState(() => initialVariantSelection(ex))
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
   const [timedSecondsRaw, setTimedSecondsRaw] = useState(() => timedSecondsInput(existing, ex.id))
@@ -957,6 +977,24 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel 
       toast(t('Enter a valid whole number of seconds'))
       return
     }
+    let selectedId = ex.id
+    if (allowVariants && !cardio) {
+      try {
+        if (!variantSelection.enabled) selectedId = base.id
+        else if (variantSelection.selected === 'new') {
+          const condition = conditionFromSelection(variantSelection)
+          update(s => { selectedId = createOrReuseVariant(s, base.id, condition, variantSelection.name) })
+        } else {
+          const selected = allExercises(st).find(e => e.id === variantSelection.selected && e.baseId === base.id)
+          if (!selected) throw new Error('Select a variant')
+          selectedId = selected.id
+        }
+      } catch {
+        toast(t('Check the variant condition, position and numeric values.'))
+        return
+      }
+    }
+    const onSave = payload => commitConfig({ ...payload, ...(selectedId !== ex.id ? { id: selectedId } : {}) })
     close()
     const sets = Math.max(1, Math.round(c.sets) || (cardio ? 1 : 3))
     const planNote = normalizeNote(c.planNote)
@@ -1010,6 +1048,8 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel 
       <span className="tag">{t(ex.tg || ex.bp)}</span><span className="tag">{t(ex.eq)}</span>
     </div>
     {ex.desc && <div className="exnote">{ex.desc}</div>}
+    {ex.variant && <div className="small dim" style={{ marginBottom: 14 }}>{t('Independent variant history')}</div>}
+    {allowVariants && !cardio && !base.missing && <VariantFields base={base} state={st} value={variantSelection} onChange={setVariantSelection} />}
     {!cardio && <div style={{ marginBottom: 14 }}>
       <Segmented className="seg-range" value={mode} onChange={setMode}
         options={[{ value: 'reps', label: t('Reps') }, { value: 'time', label: t('Time') }]} />
@@ -1099,7 +1139,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, submitLabel 
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
-export const exConfigSheet = (ex, existing, onSave, onDelete, routine, { submitLabel } = {}) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} submitLabel={submitLabel} close={close} />)
+export const exConfigSheet = (ex, existing, onSave, onDelete, routine, { submitLabel, allowVariants = true } = {}) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} submitLabel={submitLabel} allowVariants={allowVariants} close={close} />)
 
 /* ============================ glyph picker ============================ */
 // Grouped by what the glyph means for a training day, so picking one is a scan
