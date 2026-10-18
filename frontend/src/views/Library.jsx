@@ -8,6 +8,10 @@ import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, SearchField } from '../components/ui.jsx'
+import { buildTrainerCatalog } from '../lib/trainer-catalog.js'
+import { deliverExport } from '../lib/export.js'
+import { getLang } from '../lib/i18n.js'
+import { useUI } from '../store/useUI.js'
 
 export default function Library() {
   const S = useStore(s => s.S)
@@ -25,6 +29,10 @@ export default function Library() {
 
   return <>
     <div className="hdr"><div><h1>{t('Exercises')}</h1><div className="sub">{t('{0} exercises with animations', EXDB.length)}</div></div></div>
+    <Button size="sm" variant="tinted" onClick={async () => {
+      try { await deliverExport(JSON.stringify(buildTrainerCatalog(S, getLang()), null, 2), 'hforge-trainer-catalog.json') }
+      catch { useUI.getState().toast(t('Could not export the catalog')) }
+    }}>{t('Export catalog for your trainer')}</Button>
     <div className="library-search">
       <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(40) }} onClear={() => { setQ(''); setShown(40) }}
         placeholder={t('Search…')} aria-label={t('Search…')} />

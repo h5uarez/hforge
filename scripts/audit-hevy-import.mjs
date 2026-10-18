@@ -11,7 +11,8 @@ import { HEVY_CATALOG_META } from '../frontend/src/lib/hevy-exercises-data.js'
 import { HEVY_COMPATIBILITY } from '../frontend/src/lib/hevy-compatibility.js'
 import { LEGACY_TO_HEVY } from '../frontend/src/lib/exercise-ids.js'
 import { HEVY_MEDIA_MANIFEST, HEVY_MEDIA_SUMMARY } from '../frontend/src/lib/hevy-media-manifest.js'
-import { EXERCISE_NAMES_ES } from '../frontend/src/lib/exercise-names.es.js'
+import { EXERCISE_NAMES_ES } from '../frontend/src/lib/exercise-labels.js'
+import { POWERLIFTING_VARIANTS } from '../frontend/src/lib/powerlifting-variants-data.js'
 import { default as SPANISH_INSTRUCTIONS } from '../frontend/src/instr/es.js'
 import { isUnavailableInstruction, parseInstructionSteps } from './build-instructions.mjs'
 
@@ -56,7 +57,7 @@ function audit() {
   check(HEVY_EXDB.every(ex => ex.id === ex.hevyId), 'generated Hevy rows still use legacy IDs')
   check(Object.keys(HEVY_COMPATIBILITY).length === 38, 'compatibility map does not contain 38 reviewed records')
   check(new Set(EXDB.map(ex => ex.id)).size === EXDB.length, 'duplicate visible catalog IDs')
-  check(EXDB.length === 465, `visible catalog records: ${EXDB.length}`)
+  check(EXDB.length === 465 + POWERLIFTING_VARIANTS.length, `visible catalog records: ${EXDB.length}`)
   check(Object.entries(HEVY_COMPATIBILITY).every(([hevyId, entry]) =>
     EXDB.some(ex => ex.id === hevyId) && !EXDB.some(ex => ex.id === entry.appId)), 'mapped legacy rows remain visible')
   check(LEGACY_EXDB.filter(ex => !LEGACY_TO_HEVY[ex.id]).every(ex => EXDB.some(row => row.id === ex.id)), 'unmapped legacy rows are missing')

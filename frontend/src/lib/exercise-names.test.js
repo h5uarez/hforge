@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   EXERCISE_ALIASES_ES, EXERCISE_NAMES_ES, EXERCISE_NAME_ANGLICISMS_ES, EXERCISE_NAME_COLLISIONS_ES,
-} from './exercise-names.es.js'
+} from './exercise-labels.js'
 import {
   EXDB, EXIDX, HEVY_EXDB, exerciseMatchNames, exerciseMatches, exerciseName, sentenceCaseExerciseName,
   exerciseNameAudit, registerCustom,
@@ -40,7 +40,7 @@ afterEach(async () => {
 describe('Spain-Spanish exercise names', () => {
   it('keeps every catalog id unique and canonical English names untouched', () => {
     expect(HEVY_EXDB).toHaveLength(451)
-    expect(EXDB).toHaveLength(465)
+    expect(EXDB).toHaveLength(482)
     expect(new Set(HEVY_EXDB.map(ex => ex.hevyId)).size).toBe(451)
     expect(HEVY_EXDB.every(ex => ex.id === ex.hevyId)).toBe(true)
     expect(new Set(EXDB.map(ex => ex.id)).size).toBe(EXDB.length)
@@ -252,7 +252,7 @@ describe('Spain-Spanish exercise names', () => {
       expect(matchExercise(label), label).toBe(visibleId(id))
     }
     expect(matchExercise('RDL')).toBe(visibleId('0085'))
-    expect(EXDB).toHaveLength(465)
+    expect(EXDB).toHaveLength(482)
   })
 
   it('leaves ambiguous and missing routine variants unresolved', () => {

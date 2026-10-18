@@ -445,7 +445,7 @@ function ActiveWorkout() {
           touchActiveRecord(s.active)
         }
       }, false)
-    }, null, routine)
+    }, null, routine, { allowVariants: false })
   }
   const removeExercise = idx => {
     const entry = A.entries[idx]
