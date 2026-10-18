@@ -358,7 +358,7 @@ test('routine variant selection preserves historical and active exercise identit
   await assertNoHorizontalOverflow(page)
 })
 
-test('personal variants validate conditions, reuse their ID and export a private-data-free trainer catalog', async ({ page, openApp }) => {
+test('personal variants validate conditions and reuse their ID without a trainer catalog export', async ({ page, openApp }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await openApp({ route: '/plan/r/routine-push', state: 'rich' })
   await page.getByText('Bench Press (Barbell)', { exact: true }).click()
@@ -384,17 +384,12 @@ test('personal variants validate conditions, reuse their ID and export a private
   expect(variant).toMatchObject({ baseId: '79D0BB3A', variant: { kind: 'pause', durationSec: 4, position: 'chest' } })
   expect(saved.routines.find(r => r.id === 'routine-push').ex[0].id).toBe(variant.id)
   await page.locator('#tabbar').getByRole('button', { name: 'Exercises', exact: true }).click()
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export catalog for your trainer', exact: true }).click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toBe('hforge-trainer-catalog.json')
-  const stream = await download.createReadStream()
-  let json = ''
-  for await (const chunk of stream) json += chunk.toString()
-  const catalog = JSON.parse(json)
-  expect(catalog.exercises.find(ex => ex.id === variant.id)).toMatchObject({ baseId: '79D0BB3A', variant: variant.variant })
-  expect(catalog.exercises.some(ex => ex.id === 'hf-bp-pause-2s')).toBe(true)
-  expect(catalog).not.toHaveProperty('workouts')
-  expect(catalog).not.toHaveProperty('exWeights')
-  expect(catalog).not.toHaveProperty('settings')
+  await expect(page.getByRole('heading', { name: 'Exercises', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Export catalog for your trainer', exact: true })).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Search…', exact: true }).fill('Bench pause four seconds')
+  await expect(page.getByText('Bench pause four seconds', { exact: true })).toBeVisible()
+  await assertNoHorizontalOverflow(page)
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
+  expect(after.customEx).toEqual(saved.customEx)
+  expect(after.workouts).toEqual(saved.workouts)
 })

@@ -24,8 +24,6 @@ export default {
   'Archive variant': 'Archivar variante',
   'Hide this variant from the catalog. Existing routines, records and workouts stay unchanged.': 'Oculta esta variante del catálogo. Las rutinas, marcas y entrenamientos existentes no cambian.',
   'This exercise is the base of a variant and cannot be deleted.': 'Este ejercicio es la base de una variante y no se puede eliminar.',
-  'Export catalog for your trainer': 'Exportar catálogo para tu entrenador',
-  'Could not export the catalog': 'No se pudo exportar el catálogo',
   'Define variants in customEx and reference their exercise ID.': 'Define las variantes en customEx y utiliza su ID de ejercicio.',
   'Confirm': 'Confirmar', 'Close': 'Cerrar',
   'Cancel': 'Cancelar',
