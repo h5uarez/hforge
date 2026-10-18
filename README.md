@@ -22,7 +22,7 @@ o en tu teléfono, y no requiere suscripción. Sin anuncios ni telemetría: tus 
 - Progresiones lineal, Greyskull LP, doble progresión y estimación de 1RM.
 - Seguimiento de peso corporal, metas, esfuerzo y marcas personales.
 - Catálogo de más de 1.300 ejercicios con filtros y ejercicios propios.
-- Importación desde FitNotes, Strong, Hevy y Apple Health, más copia JSON.
+- Importación y exportación de copias de seguridad JSON de Hforge.
 - 12 idiomas, temas claro/oscuro y modo invitado o perfiles con passkey.
 
 ## Galería

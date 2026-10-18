@@ -12,8 +12,8 @@ import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, syncReminder } from '../lib/mobile.js'
 import { appVersion } from '../lib/pwa.js'
 import { backupFilename, deliverExport, serializeBackup } from '../lib/export.js'
-import { mergeBackupImport } from '../lib/import-csv.js'
-import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
+import { mergeBackupImport } from '../lib/backup-import.js'
+import { loadStarterPlan, confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { WarmupSettingsForm } from '../components/HomeWarmup.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
@@ -25,7 +25,6 @@ export default function Settings() {
   const { update, replaceState, setUser, pullState, pushState, signOut, signOutAll, resetDemo, renameUser } = useStore()
   const toast = useUI(s => s.toast)
   const fileRef = useRef(null)
-  const importRef = useRef(null)
   const wakeOK = wakeLockSupported()
 
   const doExport = async () => {
@@ -221,17 +220,11 @@ export default function Settings() {
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
       <Row icon="sparkles" iconTint="var(--acc)" title={t('Load starter plan (PPL)')} accessory="chevron" onClick={loadStarterPlan} />
-      <Row icon="shuffle" iconTint="var(--teal)" title={t('Import from another app')}
-        subtitle={t('FitNotes, Strong, Hevy — or body weight from Apple Health')}
-        accessory="chevron" onClick={() => importRef.current.click()} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
       <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
       <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { replaceState(Object.assign(JSON.parse(JSON.stringify(DEF)), { lang: getLang() }), true); nav('/home'); toast(t('All data reset')) } })} />
     </Section>
     <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={doImport} />
-    {/* Reset after reading so picking the same file twice still fires onChange. */}
-    <input ref={importRef} type="file" accept=".csv,.xml,text/csv,text/xml" style={{ display: 'none' }}
-      onChange={ev => { const f = ev.target.files[0]; if (f) importFromApp(f); ev.target.value = '' }} />
 
     <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
       <AppVersion />
