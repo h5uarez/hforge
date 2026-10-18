@@ -6,8 +6,7 @@ Each execution has its own exercise ID. A two-second paused bench is not the sam
 
 1. Open an exercise's routine settings and enable **Variant / specific execution**.
 2. Choose an existing execution or create one with an explicit condition. Selecting an equivalent condition reuses its ID, including curated variants.
-3. In **Exercises**, choose **Export catalog for your trainer** and give that JSON to your trainer. Export it again after adding personal variants.
-4. The trainer generates an `hforge_plan: 1` JSON using the exact IDs. Import the plan normally.
+3. Plans use `hforge_plan: 1` JSON with exact exercise IDs and personal variant definitions as described below. Import the plan normally.
 
 Existing catalog IDs remain unchanged, including front/box/high-bar/low-bar/paused squat, close/wide/feet-up bench and sumo/Romanian deadlift. A generic paused squat does not imply a particular pause duration. Larsen press (unsupported extended legs) is deliberately distinct from feet-up bench.
 
@@ -77,4 +76,4 @@ Condition text is limited to 120 characters. Extra condition keys, invalid numbe
 - Archive personal variants to hide them from selection without removing routines, records or history. Creating/importing the same condition restores its existing ID.
 - You cannot delete a custom base while variants depend on it. Partial backups include custom base dependencies.
 - An active exercise's identity cannot be changed through its settings after it has been added. Select the execution in the routine beforehand or add it as a separate active exercise; logged sets are never silently relabeled.
-- Trainer catalog exports contain exercise definitions only, not your workouts, weights or profile settings. Sharing a plan includes referenced personal definitions, not your training history.
+- Sharing a plan includes referenced personal definitions, not your training history.

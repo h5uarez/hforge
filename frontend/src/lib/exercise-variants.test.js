@@ -4,7 +4,6 @@ import { buildPlanBundle, mergePlan, parsePlan } from './plan-share.js'
 import { bestWeightFor, lastEntryFor } from './history.js'
 import { createWorkoutBackup, serializeBackup } from './export.js'
 import { createOrReuseVariant, normalizeVariant } from './exercise-variants.js'
-import { buildTrainerCatalog } from './trainer-catalog.js'
 import { best1RM, is1RMRecord } from './onerm.js'
 import { nextPrescription } from './progression.js'
 
@@ -116,17 +115,6 @@ describe('exercise variant public contracts', () => {
     expect(state.customEx[0].archived).toBe(false)
     expect(JSON.stringify(state.workouts)).toBe(history)
     expect(createOrReuseVariant(state, bench, pause)).toBe('hf-bp-pause-2s')
-  })
-
-  it('exports only trainer catalog data and supports importing a plan generated from it', () => {
-    const personal = { ...definition, variant: { ...pause, durationSec: 4 }, custom: true }
-    const catalog = buildTrainerCatalog({ customEx: [personal], workouts: [{ private: true }], exWeights: { [bench]: { w: 100 } } }, 'es')
-    expect(catalog.exercises.find(ex => ex.id === 'hf-bp-pause-2s')).toMatchObject({ baseId: bench, variant: pause })
-    expect(JSON.stringify(catalog)).not.toContain('private')
-    expect(catalog).not.toHaveProperty('exWeights')
-    const target = empty()
-    mergePlan(target, parsePlan(plan(catalog.customEx)))
-    expect(target.customEx[0].variant.durationSec).toBe(4)
   })
 
   it('keeps pause and complete tempo prescriptions semantically distinct', () => {
