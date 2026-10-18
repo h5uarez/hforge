@@ -349,8 +349,10 @@ test('routine variant selection preserves historical and active exercise identit
   await expect(page.getByText('Bench Press · 2-second chest pause', { exact: true })).toBeVisible()
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
   expect(saved.routines.find(r => r.id === 'routine-push').ex[0]).toMatchObject({ id: 'hf-bp-pause-2s', sets: 4, reps: 8, weight: 0 })
-  expect(saved.active).toEqual(before.active)
-  expect(saved.workouts.map(w => w.entries)).toEqual(before.workouts.map(w => w.entries))
+  // The shared fixture contains legacy IDs; persistence already canonicalized them before
+  // variants existed. Compare the same identities, not the old serialization vocabulary.
+  expect(saved.active).toEqual(normalizeExerciseIds(before).active)
+  expect(saved.workouts.map(w => w.entries)).toEqual(normalizeExerciseIds(before).workouts.map(w => w.entries))
   await page.reload()
   await expect(page.getByText('Bench Press · 2-second chest pause', { exact: true })).toBeVisible()
   await assertNoHorizontalOverflow(page)
