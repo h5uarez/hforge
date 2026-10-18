@@ -2084,3 +2084,14 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 /* set actions stay one compact row: two small buttons share the line */
 .workout-session .set-actions{justify-content:space-between;gap:6px;flex-wrap:nowrap}
 .workout-session .set-actions .btn{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Variant settings disclose only the condition being configured. */
+.variant-fields{min-width:0;margin:0 0 18px;padding:12px;border:1px solid var(--sep);border-radius:12px}
+.variant-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;overflow-wrap:anywhere}
+.variant-toggle input{flex:none;width:20px;height:20px;accent-color:var(--acc)}
+.variant-content{display:grid;gap:12px;min-width:0}
+.variant-content p{margin:0;overflow-wrap:anywhere}
+.variant-field{display:grid;gap:6px;min-width:0}
+.variant-field .input{min-width:0;max-width:100%;width:100%;min-height:44px}
+.variant-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media(min-width:600px){.variant-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

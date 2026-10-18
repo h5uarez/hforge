@@ -8,11 +8,17 @@
 //  2. A clean, printable page (Save as PDF) where a single exercise never splits across
 //     a page break — each exercise, and each routine that fits, stays in one place.
 
-import { EXIDX, isBodyweightEq, exerciseName } from './exercises.js'
+import { EXDB, EXIDX, isBodyweightEq, exerciseName } from './exercises.js'
 import { modeOf, fmtSec, isBw, isPerSide, sideReps, normalizeNote, normalizeRepsBySet, repsBySetText, effectiveRepsBySet, hasRepsBySet } from './history.js'
 import { uid, todayISO, DAYN, fmtNum, exCount } from './format.js'
 import { t } from './i18n.js'
 import { canonicalExerciseId } from './exercise-ids.js'
+import { referencedCustomExercises, validateCustomVariants, variantKey } from './exercise-variants.js'
+
+const cleanCustom = c => ({
+  id: c.id, n: c.n, bp: c.bp, ...(c.desc ? { desc: c.desc } : {}),
+  ...(c.variant ? { baseId: c.baseId, variant: c.variant } : {}),
+})
 
 const PLAN_FMT = 1
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]   // Mon-first, matching the Plan screen
@@ -78,9 +84,7 @@ export function buildPlanBundle(S, name) {
     id: r.id, name: r.name, emoji: r.emoji, ...(r.prog ? { prog: r.prog } : {}), ex: (r.ex || []).map(e => cleanEx(e, resolveId))
   }))
   const usedIds = new Set(routines.flatMap(r => r.ex.map(e => e.id)))
-  const customEx = (S.customEx || [])
-    .filter(c => usedIds.has(c.id))
-    .map(c => ({ id: c.id, n: c.n, bp: c.bp, ...(c.desc ? { desc: c.desc } : {}) }))
+  const customEx = referencedCustomExercises(S.customEx || [], usedIds).map(cleanCustom)
   const week = {}
   WEEK_ORDER.forEach(d => { if (S.week?.[d]) week[d] = S.week[d] })
   // Plan-file format marker.
@@ -101,7 +105,7 @@ export function parsePlan(raw) {
   if (!data || !data.hforge_plan || !Array.isArray(data.routines)) {
     throw new Error(t('this isn’t an Hforge plan file'))
   }
-  const customEx = (Array.isArray(data.customEx) ? data.customEx : []).filter(c => c && c.id)
+  const customEx = validateCustomVariants((Array.isArray(data.customEx) ? data.customEx : []).filter(c => c && c.id))
   const known = new Set(customEx.map(c => c.id))
   const resolveId = id => known.has(id) ? id : canonicalExerciseId(id)
   let dropped = 0
@@ -110,6 +114,9 @@ export function parsePlan(raw) {
     // Re-clean imported exercises so a hand-edited file cannot smuggle a session `note` into
     // a routine or retain unrelated fields. Old files remain valid because cleanEx is additive.
     ex: r.ex.map(e => e && typeof e === 'object' ? { ...e, id: resolveId(e.id) } : e).filter(e => {
+      if (e && (Object.hasOwn(e, 'variant') || Object.hasOwn(e, 'baseId'))) {
+        throw new Error(t('Define variants in customEx and reference their exercise ID.'))
+      }
       const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
       if (!ok) dropped++
       return ok
@@ -135,17 +142,29 @@ export function parsePlan(raw) {
  *    leaves empty become rest days — a half-overwritten week would silently mix two plans)
  */
 export function mergePlan(s, bundle, { schedule } = {}) {
-  s.customEx = s.customEx || []
-  const exIdMap = {}
+  // Prepare every definition first: invalid conditions must leave the entire profile unchanged.
+  const incoming = validateCustomVariants(bundle.customEx || [])
+  const customs = [...(s.customEx || [])]
+  const exIdMap = Object.create(null)
   const customIds = new Set((bundle.customEx || []).map(c => c.id))
   const resolveId = id => customIds.has(id) ? id : canonicalExerciseId(id)
-  ;(bundle.customEx || []).forEach(c => {
-    const same = s.customEx.find(x => (x.n || '').toLowerCase() === (c.n || '').toLowerCase() && x.bp === c.bp)
+  incoming.filter(c => !c.variant).forEach(c => {
+    const same = customs.find(x => !x.variant && (x.n || '').toLowerCase() === (c.n || '').toLowerCase() && x.bp === c.bp)
     if (same) { exIdMap[c.id] = same.id; return }
     const nid = uid()
     exIdMap[c.id] = nid
-    s.customEx.push({ id: nid, n: c.n, bp: c.bp, ...(c.desc ? { desc: c.desc } : {}) })
+    customs.push({ ...cleanCustom(c), id: nid })
   })
+  incoming.filter(c => c.variant).forEach(c => {
+    const clean = { ...cleanCustom(c), baseId: exIdMap[c.baseId] || resolveId(c.baseId) }
+    const key = variantKey(clean)
+    const same = [...EXDB, ...customs].find(ex => variantKey(ex) === key)
+    const nid = same?.id || 'v' + uid()
+    exIdMap[c.id] = nid
+    if (same?.archived) customs[customs.indexOf(same)] = { ...same, archived: false }
+    if (!same) customs.push({ ...clean, id: nid, custom: true })
+  })
+  s.customEx = customs
   const ridMap = {}
   bundle.routines.forEach(r => {
     const nid = uid()

@@ -1,5 +1,6 @@
 import { MOBILE, shareExport } from './mobile.js'
 import { normalizeExerciseIds } from './exercise-ids.js'
+import { referencedCustomExercises } from './exercise-variants.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
 
@@ -37,7 +38,7 @@ export function createWorkoutBackup(state, selectedDates) {
     ...workouts.flatMap(workout => (workout.entries || []).map(entry => entry.id)),
     ...routines.flatMap(routine => (routine.ex || []).map(entry => entry.id)),
   ].filter(id => id !== undefined && id !== null))
-  const customEx = clone(source.customEx || []).filter(exercise => customIds.has(exercise.id))
+  const customEx = referencedCustomExercises(clone(source.customEx || []), customIds)
 
   return normalizeExerciseIds({ unit: source.unit, routines, workouts, customEx })
 }
