@@ -405,7 +405,8 @@ test('grouped catalog finds variants through their base and adds the chosen exec
   await expect(page.getByText(variantName, { exact: true })).toHaveCount(0)
   await expect(page.locator('.list img.thumb')).toHaveAttribute('src', 'img/79D0BB3A.jpg')
   await page.locator('#tabbar').getByRole('button', { name: 'Resume', exact: true }).click()
-  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
+  // The synthetic seed still uses legacy IDs until the next persisted update.
+  const before = normalizeExerciseIds(await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1'))))
   await page.getByRole('button', { name: 'Add exercise', exact: true }).click()
   const picker = page.getByRole('dialog').last()
   await picker.getByRole('button', { name: /Chosen/ }).click()
@@ -418,7 +419,7 @@ test('grouped catalog finds variants through their base and adds the chosen exec
   await editor.getByRole('button', { name: 'Add exercise', exact: true }).click()
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
   expect(saved.active.entries.at(-1).id).toBe('hf-bp-pause-2s')
-  expect(saved.active.entries.slice(0, -1)).toEqual(normalizeExerciseIds(before).active.entries)
+  expect(saved.active.entries.slice(0, -1)).toEqual(before.active.entries)
   expect(saved.workouts).toEqual(before.workouts)
   expect(saved.routines).toEqual(before.routines)
   await assertNoHorizontalOverflow(page)
