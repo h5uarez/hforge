@@ -405,8 +405,13 @@ test('grouped catalog finds variants through their base and adds the chosen exec
   await expect(page.getByText(variantName, { exact: true })).toHaveCount(0)
   await expect(page.locator('.list img.thumb')).toHaveAttribute('src', 'img/79D0BB3A.jpg')
   await page.locator('#tabbar').getByRole('button', { name: 'Resume', exact: true }).click()
-  // The synthetic seed still uses legacy IDs until the next persisted update.
-  const before = normalizeExerciseIds(await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1'))))
+  // Initialize derived records and canonical IDs through the existing persistence path
+  // before taking the snapshot; the raw synthetic seed has intentionally empty PRs.
+  const before = await page.evaluate(async () => {
+    const { useStore } = await import('/src/store/useStore.js')
+    useStore.getState().update(() => {}, false)
+    return JSON.parse(localStorage.getItem('gym_state_v1'))
+  })
   await page.getByRole('button', { name: 'Add exercise', exact: true }).click()
   const picker = page.getByRole('dialog').last()
   await picker.getByRole('button', { name: /Chosen/ }).click()
