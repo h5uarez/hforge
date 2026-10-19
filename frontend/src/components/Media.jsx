@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EXIDX, imgSrc, gifSrc, videoSrc, exerciseName } from '../lib/exercises.js'
 import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
+import { exerciseMedia } from '../lib/visual-exercises.js'
 import Icon from './Icon.jsx'
 
 // Big autoplaying animation; tap toggles play/pause. `compact` shrinks it (superset cards).
@@ -52,8 +53,9 @@ export function prefetchWorkoutMedia(entries, limit = 3) {
     scheduleIdle(() => {
       try {
         list.forEach(item => {
-          const ex = item?.video || item?.img ? item : EXIDX[item?.id]
-          if (!ex) return
+          const selected = item?.video || item?.img ? item : EXIDX[item?.id]
+          if (!selected) return
+          const ex = exerciseMedia(selected)
           if (ex.img) {
             try {
               const im = new Image()
@@ -78,7 +80,9 @@ export function prefetchWorkoutMedia(entries, limit = 3) {
     })
   } catch { /* prefetch never blocks navigation */ }
 }
-export default function Media({ ex, id, compact, minimizable, priority }) {
+export default function Media({ ex: selected, id, compact, minimizable, priority, baseReference = false }) {
+  const ex = exerciseMedia(selected)
+  const reference = baseReference || ex !== selected
   const workoutScoped = !!minimizable
   // Sheets, library cards, and exercise details keep their existing local playback behavior.
   // Only the active workout subscribes to the persisted animation preference.
@@ -145,14 +149,18 @@ export default function Media({ ex, id, compact, minimizable, priority }) {
   }
   const cls = 'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '')
   const mediaStyle = mediaRatio ? { '--media-ratio': String(mediaRatio) } : undefined
+  const referenceLabel = reference && <p className="small dim">{t('Base exercise reference — the variant condition is not demonstrated.')}</p>
   // Same pattern as Thumb: a failed asset collapses to the glyph placeholder
   // (same box, same sizes — see .exmedia-x), never a broken-image icon.
-  if (err && !ex.gif) return (
+  if (err && !ex.gif) return (<>
+    {referenceLabel}
     <div className={cls} id={id} style={mediaStyle}>
       <div className="exmedia-x" role="img" aria-label={exerciseName(ex)}><Icon name="dumbbell" /></div>
     </div>
+    </>
   )
-  return (
+  return (<>
+    {referenceLabel}
     <div ref={box} className={cls + (ready ? ' is-ready' : ' is-loading')} id={id} style={mediaStyle} onClick={togglePlaying}>
       {hasVideo && !err ? <>
         {/* Poster-first: the eager poster (blurred until first frame) paints instantly
@@ -184,10 +192,12 @@ export default function Media({ ex, id, compact, minimizable, priority }) {
         </button>
       )}
     </div>
+    </>
   )
 }
 
-export function Thumb({ ex }) {
+export function Thumb({ ex: selected }) {
+  const ex = exerciseMedia(selected)
   const [err, onErr] = useMediaErr()
   // No media entry, or the backend media failed to load (offline/demo without
   // the asset server): a styled glyph placeholder on surface-2, never a broken

@@ -1,6 +1,7 @@
 // Spanish UI strings. Keys are the English source strings (see lib/i18n.js).
 export default {
   'Exercise variant': 'Variante del ejercicio',
+  'Base exercise reference — the variant condition is not demonstrated.': 'Referencia del ejercicio base: no muestra la condición específica de la variante.',
   'Variant / specific execution': 'Variante / ejecución específica',
   'Independent history, records and progression. Reuse the same variant in other routines.': 'Historial, marcas y progresión independientes. Reutiliza la misma variante en otras rutinas.',
   'Choose a variant': 'Elegir una variante',

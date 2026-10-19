@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore.js'
-import { EXDB, BODYPARTS, allExercises, equipmentOf, exerciseMatches, exerciseName } from '../lib/exercises.js'
+import { EXDB, BODYPARTS, equipmentOf, exerciseName } from '../lib/exercises.js'
+import { visualExercises } from '../lib/visual-exercises.js'
 import { bestWeightFor } from '../lib/history.js'
 import { fmtNum } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
@@ -16,7 +17,7 @@ export default function Library() {
   const [eq, setEq] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [shown, setShown] = useState(40)
-  const base = allExercises(S).filter(e => (!bp || e.bp === bp) && exerciseMatches(e, q))
+  const base = visualExercises(S, q).filter(e => !bp || e.bp === bp)
   const eqOpts = equipmentOf(base)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
@@ -24,7 +25,7 @@ export default function Library() {
   const activeFilterCount = (bp ? 1 : 0) + (eqOn ? 1 : 0)
 
   return <>
-    <div className="hdr"><div><h1>{t('Exercises')}</h1><div className="sub">{t('{0} exercises with animations', EXDB.length)}</div></div></div>
+    <div className="hdr"><div><h1>{t('Exercises')}</h1><div className="sub">{t('{0} exercises with animations', EXDB.filter(ex => !ex.variant).length)}</div></div></div>
     <div className="library-search">
       <SearchField value={q} onChange={e => { setQ(e.target.value); setShown(40) }} onClear={() => { setQ(''); setShown(40) }}
         placeholder={t('Search…')} aria-label={t('Search…')} />

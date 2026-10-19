@@ -634,7 +634,7 @@ function ActiveWorkout() {
     let addedSid
     commitPickerSelection(() => update(s => {
       const routine = s.routines.find(r => r.id === s.active.routineId)
-      const added = buildWorkoutEntry(s, cfg, routine, { id: ex.id })
+      const added = buildWorkoutEntry(s, cfg, routine, { id: cfg.id || ex.id })
       addedSid = added.sid
       s.active.entries.push(added)
       s.active.cur = s.active.entries.length - 1
