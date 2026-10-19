@@ -4,7 +4,7 @@ Each execution has its own exercise ID. A two-second paused bench is not the sam
 
 ## Quick path
 
-1. Open an exercise's routine settings and enable **Variant / specific execution**.
+1. Find the base exercise in the library or add-exercise picker, open its routine settings and enable **Variant / specific execution**. Condition variants are grouped under their base, not shown as separate catalog rows; searching a variant name finds its base. The picker's **Chosen** filter includes bases used through variants.
 2. Choose an existing execution or create one with an explicit condition. Selecting an equivalent condition reuses its ID, including curated variants.
 3. Plans use `hforge_plan: 1` JSON with exact exercise IDs and personal variant definitions as described below. Import the plan normally.
 
@@ -28,7 +28,7 @@ Existing catalog IDs remain unchanged, including front/box/high-bar/low-bar/paus
 | Deadlift | `hf-dl-tempo-3000` | 3-second lowering, no bottom pause, explosive lifting, no top pause |
 | Sumo deadlift | `hf-dl-sumo-pause-2s` | 2-second pause below knee |
 
-These are practical presets, not an exhaustive list or a ranking of training effectiveness. Pin positions are relative setup references; use a personal variant for a different position or measurement. Variant media is intentionally absent rather than showing an inaccurate demonstration of a different execution.
+These are practical presets, not an exhaustive list or a ranking of training effectiveness. Pin positions are relative setup references; use a personal variant for a different position or measurement. Variants without their own media display the base exercise's media, labeled as a reference that does not demonstrate the specific condition. Custom bases without media still have no animation. This display fallback does not copy media into saved definitions or borrow the base's training history.
 
 ## Trainer JSON contract
 

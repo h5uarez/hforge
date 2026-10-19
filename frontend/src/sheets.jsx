@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseMatches, exerciseName, sentenceCaseExerciseName, exOr } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseName, sentenceCaseExerciseName, exOr } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, projectSideSet, weightOfSet, setIsDone, topWeightInitialValue, currentSessionHeaviestWeight, EFFORT, stepEffort, capEffort, validateProgrammedTargets, normalizeTargets, normalizeRepsBySet, hasRepsBySet, parseTimedSeconds, timedSecondsInput, NOTE_MAX, normalizeExerciseNote, normalizeNote, copyHistoryEntry, keepHistoryEntry } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
@@ -26,6 +26,7 @@ import { formatWorkoutDateTime, parseWorkoutDateTime, localDateKey, validateWork
 import { backupFilename, createWorkoutBackup, deliverExport, serializeBackup } from './lib/export.js'
 import VariantFields, { initialVariantSelection, conditionFromSelection } from './components/VariantFields.jsx'
 import { createOrReuseVariant } from './lib/exercise-variants.js'
+import { visualExercises, visualUsage } from './lib/visual-exercises.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -731,13 +732,6 @@ export function deleteCustomEx(ex, afterDelete) {
 }
 
 /* ============================ exercise picker ============================ */
-// Exercises already used in your routines or past workouts (for the "Chosen" filter + a marker).
-function usageMap(st) {
-  const u = {}
-  st.routines.forEach(r => r.ex.forEach(e => { u[e.id] = (u[e.id] || 0) + 1 }))
-  st.workouts.forEach(w => w.entries.forEach(e => { u[e.id] = (u[e.id] || 0) + 1 }))
-  return u
-}
 function RoutineImportPicker({ routines, onPick }) {
   return <>
     <h3>{t('Add from another routine')}</h3>
@@ -756,15 +750,14 @@ function RoutineImportPicker({ routines, onPick }) {
 
 function ExercisePicker({ onPick, close, mode = 'catalog', onRoutineImport }) {
   const st = useStore(s => s.S)
-  const usage = usageMap(st)
+  const usage = visualUsage(st)
   const [q, setQ] = useState('')
   const [bp, setBp] = useState('')          // '' = all, '★' = chosen, else a body part
   const [eq, setEq] = useState('')          // '' = any equipment
   const [shown, setShown] = useState(50)
-  const all = allExercises(st)
-  let base = all.filter(e =>
-    (bp === '★' ? usage[e.id] : (!bp || e.bp === bp)) &&
-    exerciseMatches(e, q))
+  const all = visualExercises(st)
+  let base = visualExercises(st, q).filter(e =>
+    bp === '★' ? usage[e.id] : (!bp || e.bp === bp))
   if (bp === '★') base = [...base].sort((a, b) => (usage[b.id] - usage[a.id]) || exerciseName(a).localeCompare(exerciseName(b)))
   const eqOpts = equipmentOf(base)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
@@ -1042,7 +1035,7 @@ function ExConfig({ ex, existing, onSave: commitConfig, onDelete, close, routine
   }
   return <>
     <h3 className="capitalize">{exerciseName(ex)}</h3>
-    <Media ex={ex} />
+    <Media ex={ex} baseReference={allowVariants && variantSelection.enabled && !ex.variant} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
       <span className="tag">{t(ex.tg || ex.bp)}</span><span className="tag">{t(ex.eq)}</span>
