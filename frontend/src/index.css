@@ -1588,6 +1588,10 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   font-variant-numeric:tabular-nums;line-height:1;
 }
 .workout-session .iconbtn,.workout-session .setgo{min-width:44px;min-height:44px}
+/* Reserve both actions before sizing the title, including long unbroken names. */
+.workout-session .workout-header{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:end}
+.workout-session .workout-heading{min-width:0;text-align:center}
+.workout-session .workout-heading h1{font-size:17px;font-weight:600;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
 /* Sticky session header (title + timer + progress) so it stays visible while scrolling.
    The negative margin cancels all of #app's top inset; padding keeps the controls in
    their existing visual position while the opaque, isolated wrapper owns the band.

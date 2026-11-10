@@ -55,6 +55,51 @@ test('active workout records a set without overflow', async ({ page, openApp }) 
   await assertNoHorizontalOverflow(page)
 })
 
+for (const [label, name] of [
+  ['long', 'Estética W1 · Martes · Pecho, hombro y tríceps'],
+  ['unbroken', 'Entrenamiento'.repeat(20)],
+]) {
+  test(`active workout keeps header actions visible with a ${label} name`, async ({ page, openApp }) => {
+    await openApp({ route: '/workout', state: 'active' })
+    await page.evaluate(name => {
+      const state = JSON.parse(localStorage.getItem('gym_state_v1'))
+      state.active.name = name
+      localStorage.setItem('gym_state_v1', JSON.stringify(state))
+    }, name)
+    await page.reload()
+    const header = page.locator('.workout-sticky-head .hdr')
+    await expect(header.getByRole('heading', { name, exact: true })).toBeVisible()
+
+    for (const width of [320, 375, 414, 440, 1440]) {
+      await page.setViewportSize({ width, height: 896 })
+      const discard = await header.getByRole('button', { name: 'Discard', exact: true }).boundingBox()
+      const finish = await header.getByRole('button', { name: 'Finish', exact: true }).boundingBox()
+      const title = await header.getByRole('heading').boundingBox()
+      // Firefox can report 43.999998 px for a 44 px CSS box.
+      expect(Math.round(discard.width)).toBeGreaterThanOrEqual(44)
+      expect(Math.round(finish.width)).toBeGreaterThanOrEqual(44)
+      expect(Math.round(discard.height)).toBeGreaterThanOrEqual(44)
+      expect(Math.round(finish.height)).toBeGreaterThanOrEqual(44)
+      expect(Math.abs(discard.y - finish.y)).toBeLessThanOrEqual(1)
+      expect(discard.x + discard.width).toBeLessThanOrEqual(title.x)
+      expect(title.x + title.width).toBeLessThanOrEqual(finish.x)
+      expect(finish.x + finish.width).toBeLessThanOrEqual(width)
+      const lineHeight = await header.getByRole('heading').evaluate(el => parseFloat(getComputedStyle(el).lineHeight))
+      expect(title.height).toBeLessThanOrEqual(lineHeight * 2 + 1)
+      await expect(header.locator('.sub')).toBeVisible()
+      await assertNoHorizontalOverflow(page)
+    }
+
+    await page.setViewportSize({ width: 320, height: 896 })
+    await header.getByRole('button', { name: 'Discard', exact: true }).click()
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Discard workout?', exact: true })).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
+    await header.getByRole('button', { name: 'Finish', exact: true }).click()
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Finish early?', exact: true })).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
+  })
+}
+
 test('active workout sticky band covers the viewport edge after scrolling', async ({ page, openApp }) => {
   await page.setViewportSize({ width: 375, height: 667 })
   await openApp({ route: '/workout', state: 'active' })
