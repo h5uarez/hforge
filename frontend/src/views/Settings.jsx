@@ -220,6 +220,11 @@ export default function Settings() {
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
       <Row icon="sparkles" iconTint="var(--acc)" title={t('Load starter plan (PPL)')} accessory="chevron" onClick={loadStarterPlan} />
+      <Row icon="folder" iconTint="var(--blue)" className="plan-import-setting" title={t('Ask to replace routines when importing')}
+        subtitle={t('Lets you choose when importing a plan JSON file.')}>
+        <Switch aria-label={t('Ask to replace routines when importing')} checked={S.askToReplaceRoutinesOnImport}
+          onChange={v => update(s => { s.askToReplaceRoutinesOnImport = v })} />
+      </Row>
       <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
       <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
       <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { replaceState(Object.assign(JSON.parse(JSON.stringify(DEF)), { lang: getLang() }), true); nav('/home'); toast(t('All data reset')) } })} />

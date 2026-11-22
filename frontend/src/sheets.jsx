@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, exerciseName, sentenceCaseExerciseName, exOr } from './lib/exercises.js'
@@ -15,7 +15,7 @@ import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberFie
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { loadOfWorkouts } from './lib/muscles.js'
-import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
+import { buildPlanBundle, parsePlan, canReplaceRoutines, mergePlan, createPlanUndo, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { weightBounds, topWeightBounds, clampWeight, clampTopWeight, adjustWeight, adjustTopWeight, clampConfiguredWeight, weightControlSteps, savedWeight, savedTopWeight, fmtWeight as formatWeight } from './lib/weight-controls.js'
@@ -1182,13 +1182,16 @@ function PlanTools({ close }) {
       try { const bundle = parsePlan(rd.result); close(); planImportSheet(bundle) }
       catch (e) { toast(t('Import failed: {0}', e.message)) }
     }
+    rd.onerror = () => toast(t('Could not read the plan file.'))
     rd.readAsText(f)
   }
 
   return <>
-    <h3>{t('Share your plan')}</h3>
-    <div className="muted small" style={{ marginBottom: 16 }}>{t('Send your routines to a friend, or put your week on paper.')}</div>
-    <Button variant="primary" icon="upload" onClick={exportFile} disabled={!hasRoutines}>{t('Export plan file')}</Button>
+    <h3>{t('Import or share plan')}</h3>
+    <Button variant="primary" icon="folder" onClick={() => fileRef.current?.click()}>{t('Import a plan file')}</Button>
+    <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
+    <h4 className="sec">{t('Share your plan')}</h4>
+    <Button variant="tinted" icon="upload" onClick={exportFile} disabled={!hasRoutines}>{t('Export plan file')}</Button>
     <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own Hforge — routines only, none of your workouts or weigh-ins.')}</div>
     {!MOBILE && <>
       <div style={{ height: 12 }} />
@@ -1196,20 +1199,46 @@ function PlanTools({ close }) {
       <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A clean one-page-per-plan printout — no exercise ever splits across a page.')}</div>
     </>}
     {!hasRoutines && <div className="dim small" style={{ margin: '12px 2px 0' }}>{t('Add an exercise to a routine first — an empty plan has nothing to share.')}</div>}
-    <h4 className="sec">{t('Got a plan from a friend?')}</h4>
-    <Button variant="ghost" icon="folder" onClick={() => fileRef.current?.click()}>{t('Import a plan file')}</Button>
-    <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
   </>
 }
 
 export const planImportSheet = bundle => ui().openSheet(close => <PlanImport bundle={bundle} close={close} />)
 
 function PlanImport({ bundle, close }) {
-  const [schedule, setSchedule] = useState(false)
+  const routines = useStore(s => s.S.routines)
+  const askToReplace = useStore(s => s.S.askToReplaceRoutinesOnImport) && routines.length > 0
+  const [replaceSelected, setReplaceSelected] = useState(false)
+  const [scheduleChoice, setScheduleChoice] = useState(null)
+  const [error, setError] = useState('')
+  const submitted = useRef(false)
+  const replaceHintId = useId()
+  const canReplace = canReplaceRoutines(bundle)
+  const replace = askToReplace && canReplace && replaceSelected
+  const hasSchedule = bundle.scheduledDays > 0
+  const schedule = hasSchedule && (scheduleChoice ?? replace)
+  const replaceHint = t(routines.length === 1 ? '{0} saved routine will be deleted.' : '{0} saved routines will be deleted.', routines.length)
+
   const apply = () => {
-    update(s => mergePlan(s, bundle, { schedule }))
+    if (submitted.current || !bundle.routineCount) return
+    submitted.current = true
+    const previous = S()
+    let saved
+    try {
+      const replaceRoutineIds = replace ? routines.map(r => r.id) : []
+      saved = update(s => mergePlan(s, bundle, { schedule, replaceRoutineIds }), true, { keepDraftOnError: false })
+    } catch (e) {
+      submitted.current = false
+      setError(t('Import failed: {0}', e.message))
+      return
+    }
+    if (!saved) {
+      submitted.current = false
+      setError(t('Could not save the plan. Try again.'))
+      return
+    }
     close()
-    toast(t('Added {0} routines to your plan', bundle.routineCount))
+    if (replace) offerPlanUndo(createPlanUndo(previous, S()))
+    else toast(t('Added {0} routines to your plan', bundle.routineCount))
     nav('/plan')
   }
   return <>
@@ -1221,20 +1250,63 @@ function PlanImport({ bundle, close }) {
         ? ' · ' + t(bundle.scheduledDays === 1 ? 'scheduled on {0} day' : 'scheduled on {0} days', bundle.scheduledDays)
         : ''}
     </div>
-    <div className="dim small" style={{ marginBottom: 14, lineHeight: 1.4 }}>{t('These are added as new routines — nothing you already have is changed.')}</div>
+    {bundle.routineCount > 0 && <ul className="plan-import-preview muted small">
+      {bundle.routines.map((routine, i) => <li key={i}>{routine.name || t('Shared routine')}</li>)}
+    </ul>}
     {bundle.dropped > 0 && <div className="small" style={{ color: 'var(--yellow)', marginBottom: 14, lineHeight: 1.4 }}>
       {t(bundle.dropped === 1
         ? '{0} exercise in the file isn’t in your library and was left out.'
         : '{0} exercises in the file aren’t in your library and were left out.', bundle.dropped)}
     </div>}
-    {bundle.scheduledDays > 0 && <div className="row between" style={{ padding: '10px 2px', borderTop: '1px solid var(--sep)', borderBottom: '1px solid var(--sep)', marginBottom: 16, gap: 12 }}>
-      <div><div className="tt" style={{ fontSize: 15 }}>{t('Use this weekly schedule')}</div><div className="small dim">{t('Replaces your current Mon–Sun assignments.')}</div></div>
-      <Switch checked={schedule} onChange={setSchedule} />
+    {!bundle.routineCount && <p className="small muted" role="alert">{t('The file contains no routines.')}</p>}
+    {(askToReplace || hasSchedule) && <div className="plan-import-options">
+      {askToReplace && <Row title={t('Replace saved routines')}
+        subtitle={<span id={replaceHintId}>{canReplace
+          ? replaceHint + ' ' + t('Your workout history is kept.')
+          : t('The plan needs at least one recognized exercise to replace routines.')}</span>}>
+        <Switch aria-label={t('Replace saved routines')} aria-describedby={replaceHintId}
+          checked={replace} disabled={!canReplace} onChange={setReplaceSelected} />
+      </Row>}
+      {hasSchedule && <Row title={t('Use this weekly schedule')} subtitle={t('Replaces your current Mon–Sun assignments.')}>
+        <Switch aria-label={t('Use this weekly schedule')} checked={schedule} onChange={setScheduleChoice} />
+      </Row>}
     </div>}
-    <Button variant="primary" onClick={apply}>{t('Add to my plan')}</Button>
+    {replace && !schedule && <p className="small muted" style={{ marginBottom: 14 }}>{t('Assignments for deleted routines will be cleared.')}</p>}
+    {error && <p className="small" role="alert" style={{ color: 'var(--red)', marginBottom: 14 }}>{error}</p>}
+    <Button variant={replace ? 'danger' : 'primary'} onClick={apply} disabled={!bundle.routineCount}>{t(replace ? 'Import and replace routines' : 'Add to my plan')}</Button>
     <div style={{ height: 8 }} />
     <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
   </>
+}
+
+function offerPlanUndo(previousPlanFor) {
+  const store = useStore.getState()
+  const userId = store.user?.id
+  const guest = store.isGuest()
+  ui().toast(t('Routines replaced'), {
+    duration: 12000,
+    action: {
+      label: t('Undo'),
+      onClick: () => {
+        try {
+          const current = useStore.getState()
+          if (current.user?.id !== userId || current.isGuest() !== guest) {
+            toast(t('The profile has changed. The replacement could not be undone.'))
+            return
+          }
+          const previousPlan = previousPlanFor(current.S)
+          if (!previousPlan) {
+            toast(t('The plan has changed. The replacement could not be undone.'))
+            return
+          }
+          const saved = current.update(s => Object.assign(s, previousPlan), true, { keepDraftOnError: false })
+          toast(t(saved ? 'Previous plan restored' : 'Could not restore the previous plan.'))
+        } catch {
+          toast(t('Could not restore the previous plan.'))
+        }
+      },
+    },
+  })
 }
 
 /* ============================ day override / assign ============================ */

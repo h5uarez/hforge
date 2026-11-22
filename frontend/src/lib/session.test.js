@@ -173,6 +173,18 @@ describe('focused entry restoration visibility', () => {
     })
   })
 
+  it('scrolls a card hidden by the workout header or footer even when it is inside the window', () => {
+    withViewportHeight(800, () => {
+      for (const [top, expected] of [[90, ['focus', 'scroll', 'focus']], [250, ['focus', 'focus']], [700, ['focus', 'scroll', 'focus']]]) {
+        const calls = []
+        const target = targetWith(top, calls)
+        target.closest = () => ({ getBoundingClientRect: () => ({ top: 120, bottom: 650 }) })
+        expect(restoreFocusedEntry(target)).toBe(true)
+        expect(calls.map(([kind]) => kind)).toEqual(expected)
+      }
+    })
+  })
+
   it('keeps scrolling when target geometry is unavailable', () => {
     const calls = []
     const target = {

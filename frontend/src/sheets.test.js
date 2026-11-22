@@ -9,17 +9,21 @@
 // touches none of them, so the stub is just an import-time enabler.
 
 import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { EXDB } from './lib/exercises.js'
 import { setLang } from './lib/i18n.js'
+import { parsePlan } from './lib/plan-share.js'
 
 const mocks = vi.hoisted(() => ({
   getState: vi.fn(),
   openSheet: vi.fn(),
   stopRest: vi.fn(),
 }))
-vi.mock('./store/useStore.js', () => ({ useStore: { getState: mocks.getState } }))
+vi.mock('./store/useStore.js', () => ({
+  useStore: Object.assign(selector => selector(mocks.getState()), { getState: mocks.getState }),
+}))
 vi.mock('./store/useUI.js', () => ({ useUI: { getState: () => ({ openSheet: mocks.openSheet, stopRest: mocks.stopRest }) } }))
 vi.mock('./lib/nav.js', () => ({ nav: vi.fn() }))
 
@@ -78,6 +82,32 @@ describe('Home weekly workout day', () => {
 
 // These pure formatting contracts use English punctuation; the app's first-run locale is Spanish.
 beforeAll(() => setLang('en'))
+
+describe('plan import preview', () => {
+  it.each([
+    { askToReplaceRoutinesOnImport: false, routines: [{ id: 'old' }], offerReplacement: false },
+    { askToReplaceRoutinesOnImport: true, routines: [], offerReplacement: false },
+    { askToReplaceRoutinesOnImport: true, routines: [{ id: 'old' }], offerReplacement: true },
+  ])('shows the replacement switch only when requested and there are saved routines', async ({ offerReplacement, ...state }) => {
+    const { planImportSheet } = await import('./sheets.jsx')
+    mocks.getState.mockReturnValue({ S: state })
+    mocks.openSheet.mockClear()
+    planImportSheet(parsePlan({
+      hforge_plan: 1,
+      routines: [{ id: 'next', name: 'Next week', ex: [{ id: ACTIVE_LIFT, sets: 3, reps: 5 }] }],
+    }))
+
+    const html = renderToStaticMarkup(mocks.openSheet.mock.calls[0][0](vi.fn()))
+    expect(html).toContain('Next week')
+    expect(html).toContain('Add to my plan')
+    if (offerReplacement) {
+      expect(html).toContain('aria-checked="false" aria-label="Replace saved routines"')
+      expect(html).toContain('1 saved routine will be deleted.')
+    } else {
+      expect(html).not.toContain('Replace saved routines')
+    }
+  })
+})
 
 describe('commitPickerSelection', () => {
   it('calls commit() before closePicker() when the commit succeeds', () => {

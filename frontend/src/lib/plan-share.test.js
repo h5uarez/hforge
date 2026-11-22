@@ -4,7 +4,7 @@
 // those routines reference. Workouts and private settings never cross the share
 // boundary.
 import { describe, it, expect } from 'vitest'
-import { buildPlanBundle, parsePlan, mergePlan, planPrintHTML } from './plan-share.js'
+import { buildPlanBundle, parsePlan, mergePlan, createPlanUndo, planPrintHTML } from './plan-share.js'
 import { EXDB } from './exercises.js'
 
 const KNOWN_EXERCISE = EXDB[0].id
@@ -243,6 +243,89 @@ describe('weekly schedule import confirmation', () => {
     expect(parsePlan(weeklyBundle).scheduledDays).toBe(1)
     expect(emptyWeek.scheduledDays).toBe(0)
     expect(omittedWeek.scheduledDays).toBe(0)
+  })
+
+  it('counts and applies only weekday assignments to routines in the file', () => {
+    const invalidSchedule = { ...weeklyBundle, week: { 1: 'missing', 7: 'incoming' } }
+    const target = { routines: [], week: { 2: 'existing' }, customEx: [] }
+
+    expect(parsePlan(invalidSchedule).scheduledDays).toBe(0)
+    mergePlan(target, invalidSchedule, { schedule: true })
+    expect(target.week).toEqual({ 2: 'existing' })
+  })
+
+  it('replaces every selected routine with a single import and keeps logged and active workouts', () => {
+    const workouts = [{ id: 'logged', routineId: 'r-push', entries: [{ id: KNOWN_EXERCISE }] }]
+    const active = { id: 'active', routineId: 'r-push', entries: [{ id: KNOWN_EXERCISE }] }
+    const target = {
+      routines: [...ROUTINES], week: { 1: 'r-push', 3: 'r-pull' },
+      dayPlan: { '2026-01-01': 'r-push', '2026-01-02': 'r-pull', '2026-01-03': 'rest' },
+      workouts, active, customEx: [],
+    }
+
+    mergePlan(target, parsePlan(weeklyBundle), { schedule: true, replaceRoutineIds: ['r-push', 'r-pull'] })
+
+    expect(target.routines.map(r => r.name)).toEqual(['Incoming'])
+    expect(target.week).toEqual({ 0: target.routines[0].id })
+    expect(target.dayPlan).toEqual({ '2026-01-03': 'rest' })
+    expect(target.workouts).toBe(workouts)
+    expect(target.active).toBe(active)
+  })
+
+  it('keeps saved routines by default and clears references to removed routines without a new schedule', () => {
+    const [old, kept] = ROUTINES
+    const target = { routines: [old, kept], week: { 1: old.id, 2: kept.id }, customEx: [] }
+    const bundle = parsePlan({ ...weeklyBundle, week: {} })
+
+    mergePlan(target, bundle)
+    expect(target.routines.map(r => r.name)).toEqual([old.name, kept.name, 'Incoming'])
+    expect(target.week).toEqual({ 1: old.id, 2: kept.id })
+
+    mergePlan(target, bundle, { replaceRoutineIds: [old.id, target.routines.at(-1).id] })
+    expect(target.routines.map(r => r.name)).toEqual([kept.name, 'Incoming'])
+    expect(target.week).toEqual({ 2: kept.id })
+  })
+
+  it('leaves the existing plan intact if replacement has no recognized exercises', () => {
+    const invalidPlan = parsePlan({ ...weeklyBundle, routines: [{ id: 'incoming', ex: [{ id: 'unknown' }] }] })
+    const target = { routines: [...ROUTINES], week: { 1: 'r-push' }, customEx: [] }
+    const original = structuredClone(target)
+
+    expect(() => mergePlan(target, invalidPlan, { schedule: true, replaceRoutineIds: ['r-push'] })).toThrow()
+    expect(target).toEqual(original)
+  })
+
+  it('undoes a replacement and restores both schedule maps while keeping newer history and session data', () => {
+    const target = {
+      routines: [...ROUTINES], week: { 1: 'r-push' }, dayPlan: { '2026-07-21': 'r-pull' },
+      workouts: [], active: null, customEx: [],
+    }
+    const previous = structuredClone(target)
+    mergePlan(target, parsePlan(weeklyBundle), { schedule: true, replaceRoutineIds: ['r-push', 'r-pull'] })
+    const undo = createPlanUndo(previous, target)
+    const importedRoutineId = target.routines[0].id
+    target.workouts.push({ id: 'logged-after-import', routineId: importedRoutineId })
+    target.active = { id: 'ongoing', routineId: importedRoutineId }
+
+    const plan = undo(target)
+    expect(plan).not.toBeNull()
+    Object.assign(target, plan)
+
+    expect(target).toMatchObject({ routines: previous.routines, week: previous.week, dayPlan: previous.dayPlan })
+    expect(target.workouts).toEqual([{ id: 'logged-after-import', routineId: importedRoutineId }])
+    expect(target.active).toEqual({ id: 'ongoing', routineId: importedRoutineId })
+  })
+
+  it('refuses to undo over a newer schedule edit', () => {
+    const target = { routines: [...ROUTINES], week: { 1: 'r-push' }, dayPlan: {}, customEx: [] }
+    const previous = structuredClone(target)
+    mergePlan(target, parsePlan(weeklyBundle), { schedule: true, replaceRoutineIds: ['r-push', 'r-pull'] })
+    const undo = createPlanUndo(previous, target)
+    target.dayPlan['2026-07-21'] = 'rest'
+    const edited = structuredClone(target)
+
+    expect(undo(target)).toBeNull()
+    expect(target).toEqual(edited)
   })
 })
 

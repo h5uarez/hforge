@@ -33,7 +33,7 @@ export default function Plan() {
   return <>
     <div className="hdr">
       <div><h1>{t('Plan')}</h1><div className="sub">{t('Your weekly routine')}</div></div>
-      <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
+      <button type="button" className="iconbtn" onClick={planToolsSheet} aria-label={t('Import or share plan')} title={t('Import or share plan')}><Icon name="upload" /></button>
     </div>
 
     <div className="cols"><div>

@@ -3,8 +3,8 @@
 // Two jobs:
 //  1. A small, self-contained file a friend can import into THEIR Hforge — just the
 //     routines + the week schedule + the custom exercises those routines use. It never
-//     carries workouts, weigh-ins or settings, and importing MERGES (adds routines with
-//     fresh ids) so nothing the friend already has is touched.
+//     carries workouts, weigh-ins or settings. Imported routines receive fresh IDs
+//     whether added to the plan or used to replace the saved routines.
 //  2. A clean, printable page (Save as PDF) where a single exercise never splits across
 //     a page break — each exercise, and each routine that fits, stays in one place.
 
@@ -111,37 +111,47 @@ export function parsePlan(raw) {
   let dropped = 0
   const routines = data.routines.filter(r => r && Array.isArray(r.ex)).map(r => ({
     ...r,
+    name: typeof r.name === 'string' ? r.name.trim() : '',
     // Re-clean imported exercises so a hand-edited file cannot smuggle a session `note` into
     // a routine or retain unrelated fields. Old files remain valid because cleanEx is additive.
     ex: r.ex.map(e => e && typeof e === 'object' ? { ...e, id: resolveId(e.id) } : e).filter(e => {
       if (e && (Object.hasOwn(e, 'variant') || Object.hasOwn(e, 'baseId'))) {
         throw new Error(t('Define variants in customEx and reference their exercise ID.'))
       }
-      const ok = !!e && (known.has(e.id) || !!EXIDX[e.id])
+      const ok = !!e && (known.has(e.id) || Object.hasOwn(EXIDX, e.id))
       if (!ok) dropped++
       return ok
     }).map(e => cleanEx(e, id => known.has(id) ? id : canonicalExerciseId(id)))
   }))
+  const week = planWeek(data.week, new Set(routines.map(r => r.id).filter(Boolean)))
   return {
-    name: (data.name || '').trim(),
+    name: typeof data.name === 'string' ? data.name.trim() : '',
     routines,
-    week: data.week || {},
+    week,
     customEx,
     dropped,
     routineCount: routines.length,
     exerciseCount: routines.reduce((n, r) => n + r.ex.length, 0),
-    scheduledDays: WEEK_ORDER.filter(d => data.week?.[d]).length
+    scheduledDays: Object.keys(week).length
   }
 }
 
+function planWeek(week, routineIds) {
+  return Object.fromEntries(WEEK_ORDER.filter(d => routineIds.has(week?.[d])).map(d => [d, week[d]]))
+}
+
+export function canReplaceRoutines(bundle) {
+  return bundle.routines.some(r => r.ex?.length)
+}
+
 /**
- * Merge a parsed bundle into a draft state `s` (call inside store.update).
- *  - customs: reuse one you already have with the same name + body part, else add it fresh
- *  - routines: always added as NEW routines (fresh ids) — never overwrites yours
- *  - schedule: optional; when on, the shared week REPLACES yours (days the shared plan
- *    leaves empty become rest days — a half-overwritten week would silently mix two plans)
+ * Import into a draft state `s` (call inside store.update). Replace only the routines
+ * approved in the preview and remove their schedule references. Applying the file's
+ * weekly schedule makes unassigned weekdays rest days.
  */
-export function mergePlan(s, bundle, { schedule } = {}) {
+export function mergePlan(s, bundle, { schedule, replaceRoutineIds = [] } = {}) {
+  const replaceIds = new Set(replaceRoutineIds)
+  if (replaceIds.size && !canReplaceRoutines(bundle)) throw new Error(t('The plan needs at least one recognized exercise to replace routines.'))
   // Prepare every definition first: invalid conditions must leave the entire profile unchanged.
   const incoming = validateCustomVariants(bundle.customEx || [])
   const customs = [...(s.customEx || [])]
@@ -164,26 +174,39 @@ export function mergePlan(s, bundle, { schedule } = {}) {
     if (same?.archived) customs[customs.indexOf(same)] = { ...same, archived: false }
     if (!same) customs.push({ ...clean, id: nid, custom: true })
   })
-  s.customEx = customs
-  const ridMap = {}
-  bundle.routines.forEach(r => {
+  const ridMap = new Map()
+  const routines = bundle.routines.map(r => {
     const nid = uid()
-    ridMap[r.id] = nid
-    s.routines.push({
+    if (r.id) ridMap.set(r.id, nid)
+    return {
       id: nid,
-      name: r.name || t('Shared routine'),
+      name: (typeof r.name === 'string' && r.name.trim()) || t('Shared routine'),
       emoji: r.emoji,
       ...(r.prog ? { prog: r.prog } : {}),
       ex: (r.ex || []).map(e => ({ ...cleanEx(e, resolveId), id: exIdMap[e.id] || resolveId(e.id) }))
-    })
+    }
   })
-  if (schedule) {
-    WEEK_ORDER.forEach(d => { delete s.week[d] })
-    Object.entries(bundle.week || {}).forEach(([d, oldId]) => {
-      if (ridMap[oldId]) s.week[d] = ridMap[oldId]
-    })
+  s.customEx = customs
+  s.routines = [...s.routines.filter(r => !replaceIds.has(r.id)), ...routines]
+  if (replaceIds.size) {
+    for (const key of ['week', 'dayPlan']) {
+      for (const [day, id] of Object.entries(s[key] || {})) {
+        if (id !== 'rest' && replaceIds.has(id)) delete s[key][day]
+      }
+    }
   }
+  const week = schedule ? Object.entries(planWeek(bundle.week, ridMap)) : []
+  if (week.length) s.week = Object.fromEntries(week.map(([day, id]) => [day, ridMap.get(id)]))
   return { routines: bundle.routines.length }
+}
+
+// Undo may run after the lifter has logged another set or completed a session.
+// Compare the plan and its exercise catalog, then restore just the plan fields.
+export function createPlanUndo(previous, imported) {
+  const { routines, week, dayPlan } = previous
+  const planContent = s => JSON.stringify([s.routines, s.week, s.dayPlan, s.customEx])
+  const expected = planContent(imported)
+  return current => planContent(current) === expected ? { routines, week, dayPlan } : null
 }
 
 /* ------------------------------- printable PDF ------------------------------- */

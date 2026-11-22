@@ -46,7 +46,7 @@ export default function Toast() {
       role="status" aria-live="polite"
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <span className="toast-msg">{msg}</span>
-      {msg && action && <button className="toast-act" onClick={runToastAction}>{action.label}</button>}
+      {msg && action && <button type="button" className="toast-act" disabled={leaving} onClick={runToastAction}>{action.label}</button>}
     </div>
   )
 }

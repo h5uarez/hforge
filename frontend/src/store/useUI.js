@@ -72,9 +72,10 @@ export const useUI = create((set, get) => ({
     }, TOAST_LEAVE_MS)
   },
   runToastAction() {
-    const fn = get().toastAction?.onClick
+    const { toastAction, toastLeaving } = get()
+    if (toastLeaving || !toastAction) return
     get().dismissToast()
-    if (fn) fn()
+    toastAction.onClick?.()
   },
 
   startRest(sec, sid = null) {

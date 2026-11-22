@@ -138,9 +138,13 @@ const targetHeaderVisible = target => {
   if (typeof target.getBoundingClientRect !== 'function') return false
   try {
     const rect = target.getBoundingClientRect()
-    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : globalThis.innerHeight
-    return Number.isFinite(rect?.top) && Number.isFinite(viewportHeight)
-      && rect.top >= 0 && rect.top < viewportHeight
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    const viewportTop = vv?.offsetTop ?? 0
+    const viewportHeight = vv?.height ?? globalThis.innerHeight
+    const area = target.closest?.('.workout-scroll')?.getBoundingClientRect()
+    const top = Math.max(viewportTop, area?.top ?? 0)
+    const bottom = Math.min(viewportTop + viewportHeight, area?.bottom ?? Infinity)
+    return Number.isFinite(rect?.top) && Number.isFinite(bottom) && rect.top >= top && rect.top < bottom
   } catch {
     return false
   }
