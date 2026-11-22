@@ -163,9 +163,9 @@ function Shell() {
           )}
         </ErrorBoundary>
       </div>
+      <RestTimer />
       <TabBar onStart={startFlow} />
       <PwaUpdateBanner />
-      <RestTimer />
       <InactivityReminder />
       <Modals />
       <Toast />

@@ -648,41 +648,41 @@ function ActiveWorkout() {
 
   return <main className="narrow workout-session" aria-labelledby="workout-session-title">
     <div className="workout-sticky-head">
-    <div className="hdr workout-header">
-      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }, false); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
-      <div className="workout-heading"><h1 id="workout-session-title" title={A.name}>{A.name}</h1><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
-      <button className="iconbtn acc-ink" aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
-    </div>
-    <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
-    </div>
-    {persistence?.status === 'failed' && (!A || persistence?.scope === 'local') && <div className="card persistence-recovery" role="alert" aria-live="assertive">
-       <strong>{t('Could not save your workout')}</strong>
-      <div>{t('Your changes are still visible. Choose an action to recover.')}</div>
-      <div className="row" role="group" aria-label={t('Recovery')}>
-           <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
-           <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
-           <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
+      <div className="hdr workout-header">
+        <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }, false); stopRest(); useUI.getState().stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
+        <div className="workout-heading"><h1 id="workout-session-title" title={A.name}>{A.name}</h1><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
+        <button className="iconbtn acc-ink" aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
       </div>
-    </div>}
+      <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
+    </div>
+    <div className="workout-scroll">
+      {persistence?.status === 'failed' && (!A || persistence?.scope === 'local') && <div className="card persistence-recovery" role="alert" aria-live="assertive">
+        <strong>{t('Could not save your workout')}</strong>
+        <div>{t('Your changes are still visible. Choose an action to recover.')}</div>
+        <div className="row" role="group" aria-label={t('Recovery')}>
+          <Button size="sm" onClick={retryPersistence}>{t('Retry')}</Button>
+          <Button size="sm" onClick={undoPersistence}>{t('Undo')}</Button>
+          <Button size="sm" onClick={cancelPersistence}>{t('Cancel')}</Button>
+        </div>
+      </div>}
 
-    {A.entries.length ? <>
-      <div className="session-cards" aria-label={t('Exercises')}>
-        {units.map((members, index) => renderCard(members[0], index, members))}
-      </div>
-    </> : <div className="empty empty-center"><div className="ico"><Icon name="shuffle" /></div><div>{t('Freestyle workout — add your first exercise.')}</div><Button variant="primary" icon="play" onClick={pickExercise}>{t('Start your first workout')}</Button></div>}
+      {A.entries.length ? <>
+        <div className="session-cards" aria-label={t('Exercises')}>
+          {units.map((members, index) => renderCard(members[0], index, members))}
+        </div>
+      </> : <div className="empty empty-center"><div className="ico"><Icon name="shuffle" /></div><div>{t('Freestyle workout — add your first exercise.')}</div><Button variant="primary" icon="play" onClick={pickExercise}>{t('Start your first workout')}</Button></div>}
 
-    <div style={{ height: 12 }} />
-    <div style={{ height: 10 }} />
+      <div style={{ height: 22 }} />
       <Button onClick={pickExercise} icon="plus">{t('Add exercise')}</Button>
-    <div style={{ height: 10 }} />
-    {(() => {
-       const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
-      const allDone = A.entries.length > 0 && exDone === A.entries.length
-       return <button className={allDone ? 'btn primary' : 'btn tinted'} onClick={finishWorkout}>
-         {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
-      </button>
-    })()}
-    <div style={{ height: 40 }} />
+      <div style={{ height: 10 }} />
+      {(() => {
+        const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => projectSideSet(s).done)).length
+        const allDone = A.entries.length > 0 && exDone === A.entries.length
+        return <button className={allDone ? 'btn primary' : 'btn tinted'} onClick={finishWorkout}>
+          {allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
+        </button>
+      })()}
+    </div>
   </main>
 }
 

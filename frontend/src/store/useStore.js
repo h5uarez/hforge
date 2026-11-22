@@ -22,7 +22,7 @@ import {
 export const DEF = {
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'es',
   theme: 'light', accent: 'default', defaultAccent: 'blue', body: 'male', targetW: null, bodyweightCheckEnabled: true,
-  bodyweight: [], routines: [], week: {}, dayPlan: {},
+  bodyweight: [], routines: [], week: {}, dayPlan: {}, askToReplaceRoutinesOnImport: false,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full', workoutMediaEnabled: true, workoutCompactMode: true,
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
@@ -46,6 +46,7 @@ const normalizeState = state => {
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
+  next.askToReplaceRoutinesOnImport = state?.askToReplaceRoutinesOnImport === true
   // Compact presentation is the only supported workout view. Keep the legacy field normalized
   // to true so false, malformed, and absent values in old backups cannot restore an old layout.
   next.workoutCompactMode = true
@@ -115,7 +116,7 @@ export const useStore = create((set, get) => {
     saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, NATIVE_PERSIST_DEBOUNCE_MS)
   }
 
-  const persist = (S, push = true, transaction = null, { rebuild = true } = {}) => {
+  const persist = (S, push = true, transaction = null, { rebuild = true, keepDraftOnError = true } = {}) => {
     const previous = transaction?.previous || get().S
     const previousKeys = transaction?.previousStorage || new Map([KEY, LAST_VALID_KEY].map(key => [key, localStorage.getItem(key)]))
     try {
@@ -131,6 +132,10 @@ export const useStore = create((set, get) => {
     } catch (error) {
       for (const [key, value] of previousKeys) {
         try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) } catch { /* best effort rollback */ }
+      }
+      if (!keepDraftOnError) {
+        registerCustom(previous.customEx)
+        return false
       }
       // Keep the draft visible and actionable. The two persisted keys are restored together.
       // scope 'local' marks a real on-device write failure: the blocking recovery card owns it.
@@ -180,10 +185,10 @@ export const useStore = create((set, get) => {
     ready: false,
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
-    update(mut, push = true) {
+    update(mut, push = true, { keepDraftOnError } = {}) {
       const S = clone(get().S)
       mut(S)
-      return persist(S, push)
+      return persist(S, push, null, { keepDraftOnError })
     },
     retryPersistence() {
       const pending = get().persistence

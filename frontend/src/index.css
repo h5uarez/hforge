@@ -659,6 +659,12 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .sw:active .knob{width:31px}
 .sw.on:active .knob{transform:translateX(16px)}
 .sw:disabled{opacity:.4}
+.plan-import-setting .sw,.plan-import-options .sw{position:relative}
+.plan-import-setting .sw::after,.plan-import-options .sw::after{content:'';position:absolute;inset:-7px 0}
+.plan-import-setting .lrow-t,.plan-import-options .lrow-t{white-space:normal;overflow-wrap:anywhere}
+.plan-import-options{border-block:1px solid var(--sep);margin-bottom:16px}
+.plan-import-options .lrow{padding-inline:2px}
+.plan-import-preview{margin:0 0 14px;padding-inline-start:20px;overflow-wrap:anywhere}
 
 /* --- segmented control --- */
 /* flex, not grid: an absolutely-positioned child of a GRID container is placed
@@ -1631,9 +1637,33 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 .regrip:active{cursor:grabbing}
 /* Visually-hidden live regions: announced, never painted. */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-/* The TabBar floats over content: #app already reserves 100px + safe-area, and
-   the workout keeps its own 40px spacer above it — nothing actionable hides. */
 .workout-session{min-width:0;overflow-x:clip}
+.workout-scroll{padding-bottom:40px}
+/* On iOS, fixed and sticky elements can drift while the document scrolls. Keep
+   the active workout's header, countdown and navigation in flow and scroll the
+   exercise list between them. The tab bar's centre button extends above its box. */
+@supports (-webkit-touch-callout:none){
+  html:has(.workout-scroll),body:has(.workout-scroll){overflow:hidden;min-height:0}
+  #root:has(.workout-scroll){
+    --workout-left:max(var(--pad),env(safe-area-inset-left,0px));
+    --workout-right:max(var(--pad),env(safe-area-inset-right,0px));
+    display:flex;flex-direction:column;height:100dvh;padding-bottom:calc(10px + var(--sab));
+  }
+  #root:has(.workout-scroll)>#app{display:flex;flex:1;min-height:0;width:100%;padding:0;animation:none}
+  #root:has(.workout-scroll) .workout-session{display:flex;flex:1;flex-direction:column;min-height:0;width:100%;overflow:visible}
+  #root:has(.workout-scroll) .workout-sticky-head{
+    position:relative;flex:none;margin:0;padding:calc(var(--sat) + 8px) var(--workout-right) 0 var(--workout-left);
+    transform:none;backface-visibility:visible;will-change:auto;
+  }
+  .workout-scroll{flex:1;min-height:0;overflow:hidden auto;overscroll-behavior:contain;padding:0 var(--workout-right) 12px var(--workout-left);scroll-padding-block:8px}
+  #root:has(.workout-scroll)>:is(#tabbar,#timer){
+    position:relative;inset:auto;flex:none;align-self:center;width:min(520px,calc(100% - 24px));
+    transform:none;translate:none;
+  }
+  #root:has(.workout-scroll)>#tabbar{margin-top:20px;scale:1;transition:none}
+  body.kb-open #root:has(.workout-scroll){height:var(--keyboard-viewport-height,100dvh);padding-bottom:0}
+  body.kb-open #root:has(.workout-scroll)>:is(#tabbar,#timer){display:none}
+}
 .workout-session-nav{align-items:stretch;justify-content:space-between;gap:6px}
 .workout-session-nav > button{flex:1 1 0;width:auto}
 @media (prefers-reduced-motion: reduce){
@@ -1810,6 +1840,7 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 /* P0 toast variants: a 3px leading edge carries the kind (icon-free, no emoji),
    the action is a real ≥44px button, never a bare text tap */
 #toast.has-action{display:flex;align-items:center;gap:12px;padding:7px 8px 7px 20px;text-align:left}
+#toast.show.has-action:not(.leaving){pointer-events:auto}
 #toast .toast-msg{flex:1;min-width:0}
 #toast .toast-act{
   flex:none;min-width:44px;min-height:44px;padding:8px 14px;border-radius:10px;

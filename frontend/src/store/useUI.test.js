@@ -46,6 +46,20 @@ afterEach(() => {
   delete globalThis.navigator
 })
 
+describe('toast actions', () => {
+  it('runs an undo only once, even if pressed again before the toast exits', () => {
+    const undo = vi.fn(() => useUI.getState().toast('Restored'))
+    useUI.getState().toast('Routines replaced', { action: { label: 'Undo', onClick: undo } })
+
+    useUI.getState().runToastAction()
+    useUI.getState().runToastAction()
+    expect(undo).toHaveBeenCalledOnce()
+
+    vi.advanceTimersByTime(180)
+    expect(useUI.getState().toastMsg).toBe('Restored')
+  })
+})
+
 describe('rest timer setting gate', () => {
   it('carries the stable active-session sid through rest state', () => {
     useUI.getState().startRest(90, 'stable-entry')

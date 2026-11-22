@@ -195,10 +195,12 @@ describe('mobile accessibility and layout contracts', () => {
     expect(sheets).toContain('createWorkoutBackup(st, selected)')
   })
 
-  it('announces the single mobile toast without changing its store behavior', () => {
+  it('announces the mobile toast and makes visible actions tappable', () => {
     const toast = source('components/Toast.jsx')
     const css = source('index.css')
     expect(toast).toContain('role="status" aria-live="polite"')
+    expect(toast).toContain('disabled={leaving}')
+    expect(css).toContain('#toast.show.has-action:not(.leaving){pointer-events:auto}')
     expect(css).toContain('max-width:calc(100% - 2 * var(--pad))')
     expect(css).toContain('overflow-wrap:anywhere')
   })

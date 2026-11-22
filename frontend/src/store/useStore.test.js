@@ -130,6 +130,52 @@ describe('legacy state normalization', () => {
 
 const entry = id => ({ id, sets: [{ done: true, w: 40, r: 8 }] })
 
+describe('plan import', () => {
+  it('starts off for older profiles and persists the explicit choice', async () => {
+    useStore.getState().replaceState({ routines: [], workouts: [] })
+    expect(useStore.getState().S.askToReplaceRoutinesOnImport).toBe(false)
+
+    useStore.getState().update(s => { s.askToReplaceRoutinesOnImport = true }, false)
+    vi.resetModules()
+    const { useStore: restored } = await import('./useStore.js')
+    expect(restored.getState().S.askToReplaceRoutinesOnImport).toBe(true)
+
+    restored.getState().update(s => { s.askToReplaceRoutinesOnImport = false }, false)
+    expect(JSON.parse(storage.get(KEY)).askToReplaceRoutinesOnImport).toBe(false)
+  })
+
+  it('rolls back a plan save that fails writing the second storage copy', async () => {
+    const { EXIDX } = await import('../lib/exercises.js')
+    const { STORAGE_LAST_VALID_KEY } = await import('../lib/constants.js')
+    useStore.getState().replaceState({ routines: [{ id: 'old', ex: [] }], week: { 1: 'old' } })
+    const previous = useStore.getState().S
+    const stored = storage.get(KEY)
+    const lastValid = storage.get(STORAGE_LAST_VALID_KEY)
+    const setItem = localStorage.setItem
+    let fail = true
+    localStorage.setItem = (key, value) => {
+      if (fail && key === STORAGE_LAST_VALID_KEY) { fail = false; throw new Error('quota') }
+      setItem(key, value)
+    }
+    try {
+      const saved = useStore.getState().update(s => {
+        s.routines = [{ id: 'new', ex: [] }]
+        s.week = { 2: 'new' }
+        s.customEx.push({ id: 'atomic-import-custom', n: 'Test exercise', bp: 'chest' })
+      }, false, { keepDraftOnError: false })
+
+      expect(saved).toBe(false)
+      expect(useStore.getState().S).toBe(previous)
+      expect(useStore.getState().persistence).toBeNull()
+      expect(storage.get(KEY)).toBe(stored)
+      expect(storage.get(STORAGE_LAST_VALID_KEY)).toBe(lastValid)
+      expect(EXIDX).not.toHaveProperty('atomic-import-custom')
+    } finally {
+      localStorage.setItem = setItem
+    }
+  })
+})
+
 describe('restTimerEnabled compatibility', () => {
   it('defaults old profiles to enabled and persists a disabled choice', () => {
     useStore.getState().replaceState({ routines: [], workouts: [] })

@@ -21,23 +21,36 @@ export default function TabBar({ onStart }) {
   const nav = useNavigate()
   const loc = useLocation()
   const { compact } = useScrollDirection()
-  // While the software keyboard is open the visual viewport shrinks above it
-  // and a fixed bottom bar would float mid-screen over the content, so park
-  // the bar off-screen until the keyboard closes. Navigation is unreachable
-  // behind the keyboard anyway; the bar stays in the DOM and comes back
-  // untouched. The 120px gate ignores minor resizes (URL bar, split view).
+  // Keep bottom controls out of the way while editing with a software keyboard.
+  // On iOS the workout also uses the visible height for its exercise scroll area.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
-    const onResize = () => {
-      const kb = window.innerHeight - vv.height - vv.offsetTop
-      document.body.classList.toggle('kb-open', kb > 120)
+    const style = document.documentElement.style
+    let frame = null
+    const syncKeyboard = () => {
+      frame = null
+      const field = document.activeElement
+      const editing = field?.isContentEditable || (field?.matches('input, textarea') && !field.readOnly && field.inputMode !== 'none')
+      // The visual viewport may pan to the field. Its height still reflects
+      // the keyboard even if its top edge has moved down the document.
+      const open = !!editing && vv.scale <= 1.01 && window.innerHeight - vv.height > 120
+      document.body.classList.toggle('kb-open', open)
+      if (open) style.setProperty('--keyboard-viewport-height', `${vv.height}px`)
+      else style.removeProperty('--keyboard-viewport-height')
     }
-    onResize()
-    vv.addEventListener('resize', onResize)
+    const queueSync = () => { if (frame === null) frame = requestAnimationFrame(syncKeyboard) }
+    syncKeyboard()
+    vv.addEventListener('resize', queueSync)
+    document.addEventListener('focusin', queueSync)
+    document.addEventListener('focusout', queueSync)
     return () => {
-      vv.removeEventListener('resize', onResize)
+      if (frame !== null) cancelAnimationFrame(frame)
+      vv.removeEventListener('resize', queueSync)
+      document.removeEventListener('focusin', queueSync)
+      document.removeEventListener('focusout', queueSync)
       document.body.classList.remove('kb-open')
+      style.removeProperty('--keyboard-viewport-height')
     }
   }, [])
   const S = useStore(s => s.S)
