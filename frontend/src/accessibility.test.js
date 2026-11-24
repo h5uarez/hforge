@@ -674,7 +674,7 @@ describe('accent palette system (theme-palette-redesign)', () => {
     expect(store).toContain('next.defaultAccent = resolveDefaultAccent(next.defaultAccent)')
     const app = source('App.jsx')
     expect(app).toContain('de.dataset.defaultAccent = resolveDefaultAccent(defaultAccent)')
-    expect(app).toContain('applyPrefs(S.theme, S.accent, S.defaultAccent)')
+    expect(app).toMatch(/applyPrefs\(S\.theme, S\.accent, S\.defaultAccent[,)]/)
     expect(html).toContain('document.documentElement.dataset.defaultAccent = dacc')
     expect(html).toContain("document.documentElement.dataset.defaultAccent = 'blue'")
     const settings = source('views/Settings.jsx')

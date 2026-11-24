@@ -28,29 +28,36 @@ export default function TabBar({ onStart }) {
     if (!vv) return
     const style = document.documentElement.style
     let frame = null
-    const syncKeyboard = () => {
+    const syncViewport = () => {
       frame = null
       const field = document.activeElement
       const editing = field?.isContentEditable || (field?.matches('input, textarea') && !field.readOnly && field.inputMode !== 'none')
+      const visibleHeight = Math.abs(vv.scale - 1) < 0.01 && vv.height > 0 ? vv.height : null
       // The visual viewport may pan to the field. Its height still reflects
       // the keyboard even if its top edge has moved down the document.
-      const open = !!editing && vv.scale <= 1.01 && window.innerHeight - vv.height > 120
+      const open = !!editing && visibleHeight !== null && window.innerHeight - visibleHeight > 120
       document.body.classList.toggle('kb-open', open)
-      if (open) style.setProperty('--keyboard-viewport-height', `${vv.height}px`)
-      else style.removeProperty('--keyboard-viewport-height')
+      if (visibleHeight !== null) style.setProperty('--workout-viewport-height', `${visibleHeight}px`)
+      else style.removeProperty('--workout-viewport-height')
     }
-    const queueSync = () => { if (frame === null) frame = requestAnimationFrame(syncKeyboard) }
-    syncKeyboard()
+    const queueSync = () => { if (frame === null) frame = requestAnimationFrame(syncViewport) }
+    syncViewport()
     vv.addEventListener('resize', queueSync)
+    window.addEventListener('resize', queueSync)
+    window.addEventListener('pageshow', queueSync)
     document.addEventListener('focusin', queueSync)
     document.addEventListener('focusout', queueSync)
+    document.addEventListener('visibilitychange', queueSync)
     return () => {
       if (frame !== null) cancelAnimationFrame(frame)
       vv.removeEventListener('resize', queueSync)
+      window.removeEventListener('resize', queueSync)
+      window.removeEventListener('pageshow', queueSync)
       document.removeEventListener('focusin', queueSync)
       document.removeEventListener('focusout', queueSync)
+      document.removeEventListener('visibilitychange', queueSync)
       document.body.classList.remove('kb-open')
-      style.removeProperty('--keyboard-viewport-height')
+      style.removeProperty('--workout-viewport-height')
     }
   }, [])
   const S = useStore(s => s.S)

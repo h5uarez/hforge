@@ -162,22 +162,91 @@ test('active workout sticky band covers the viewport edge after scrolling', asyn
   expect(progressStyles.height).toBe('4px')
 })
 
+test('iOS workout dock uses the visible height and counts the bottom inset once', async ({ page, openApp }) => {
+  await page.setViewportSize({ width: 440, height: 956 })
+  await openApp({ route: '/workout', state: 'active' })
+  const dock = page.locator('#tabbar')
+  await expect(dock).toBeVisible()
+
+  await page.evaluate(() => {
+    const root = document.documentElement
+    root.style.setProperty('--sat', '62px')
+    root.style.setProperty('--sab', '34px')
+    // Exercise the production iOS rules in desktop CI with simulated insets.
+    if (!CSS.supports('-webkit-touch-callout', 'none')) {
+      const rules = Array.from(document.styleSheets).flatMap(sheet => Array.from(sheet.cssRules))
+      const ios = rules.find(rule => rule.conditionText?.replace(/\s/g, '') === '(-webkit-touch-callout:none)'
+        && rule.cssText.includes('.workout-scroll'))
+      const style = document.createElement('style')
+      style.textContent = Array.from(ios.cssRules, rule => rule.cssText).join('\n')
+      document.head.append(style)
+    }
+  })
+
+  const dockBottom = () => dock.evaluate(element => Math.round(element.getBoundingClientRect().bottom))
+  await expect.poll(dockBottom).toBe(930)
+  const buttonBottom = await dock.getByRole('button', { name: 'Resume', exact: true }).evaluate(button => button.getBoundingClientRect().bottom)
+  expect(buttonBottom).toBeLessThanOrEqual(956 - 34)
+  await assertNoHorizontalOverflow(page)
+
+  // Reproduce a CSS viewport shorter than the height exposed by VisualViewport.
+  await page.setViewportSize({ width: 440, height: 894 })
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport, 'height', { configurable: true, value: 956 })
+    window.dispatchEvent(new Event('pageshow'))
+  })
+  await expect.poll(dockBottom).toBe(930)
+
+  await page.locator('.workout-scroll input').first().focus()
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport, 'height', { configurable: true, value: 600 })
+    window.visualViewport.dispatchEvent(new Event('resize'))
+  })
+  await expect(dock).toBeHidden()
+  await expect(page.locator('#root')).toHaveCSS('height', '600px')
+
+  await page.evaluate(() => {
+    document.activeElement.blur()
+    delete window.visualViewport.height
+    window.visualViewport.dispatchEvent(new Event('resize'))
+  })
+  await expect.poll(dockBottom).toBe(868)
+  await page.getByRole('button', { name: /Finish workout early/ }).click()
+  const finish = page.getByRole('dialog')
+  await expect(finish.getByRole('heading', { name: 'Finish early?', exact: true })).toBeVisible()
+  await finish.getByRole('button', { name: 'Cancel', exact: true }).click()
+
+  await page.setViewportSize({ width: 667, height: 375 })
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty('--sat', '0px')
+    document.documentElement.style.setProperty('--sab', '0px')
+  })
+  await expect.poll(dockBottom).toBe(367)
+  await assertNoHorizontalOverflow(page)
+})
+
 test('active workout routine picker excludes the current routine and cancels cleanly', async ({ page, openApp }) => {
   await openApp({ route: '/workout', state: 'active' })
+  const themeColor = page.locator('meta[name="theme-color"]')
   await page.getByRole('button', { name: 'Add exercise', exact: true }).click()
 
   const exercisePicker = page.getByRole('dialog').last()
   await expect(exercisePicker.getByRole('heading', { name: 'Add exercise', exact: true })).toBeVisible()
+  await expect(themeColor).toHaveAttribute('content', '#999999')
   await exercisePicker.getByRole('button', { name: 'Add exercises from another routine', exact: true }).click()
 
   const routinePicker = page.getByRole('dialog').last()
   await expect(routinePicker.getByRole('heading', { name: 'Add from another routine', exact: true })).toBeVisible()
+  await expect(themeColor).toHaveAttribute('content', '#5c5c5c')
   await expect(routinePicker.getByRole('button', { name: /Push Day/ })).toHaveCount(0)
   await expect(routinePicker.getByRole('button', { name: /Pull Day/ })).toBeVisible()
 
   await routinePicker.getByRole('button', { name: 'Close', exact: true }).click()
   const restoredPicker = page.getByRole('dialog').last()
   await expect(restoredPicker.getByRole('heading', { name: 'Add exercise', exact: true })).toBeVisible()
+  await expect(themeColor).toHaveAttribute('content', '#999999')
+  await restoredPicker.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(themeColor).toHaveAttribute('content', '#ffffff')
   await assertNoHorizontalOverflow(page)
 })
 
@@ -254,6 +323,7 @@ test('imports a backup through the file chooser without replacing local data', a
 })
 
 test('finishing early creates history that survives reload', async ({ page, openApp }) => {
+  await page.setViewportSize({ width: 440, height: 896 })
   await openApp({ route: '/workout', state: 'active' })
   await page.getByRole('button', { name: /Finish workout early/ }).click()
 
@@ -263,7 +333,15 @@ test('finishing early creates history that survives reload', async ({ page, open
 
   const summary = page.getByRole('dialog')
   await expect(summary.getByRole('heading', { name: 'Workout complete!', exact: true })).toBeVisible()
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(153, 153, 153)')
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#999999')
+  const backdrop = await page.locator('#modal-root .mback').boundingBox()
+  expect(backdrop.y + backdrop.height).toBeCloseTo(896, 0)
   await summary.getByRole('button', { name: 'Nice!', exact: true }).click()
+  await expect(summary).toHaveCount(0)
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#ffffff')
   await page.goto('/#/history')
   await expect(page.getByRole('button', { name: /Push Day/ }).first()).toBeVisible()
   await page.reload()
