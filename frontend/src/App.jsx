@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useStore } from './store/useStore.js'
@@ -37,7 +37,7 @@ const Admin = lazy(() => import('./views/Admin.jsx'))
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
-function applyPrefs(theme, accent, defaultAccent) {
+function applyPrefs(theme, accent, defaultAccent, modalCount) {
   const de = document.documentElement
   de.dataset.theme = theme === 'dark' || theme === 'light' ? theme : 'light'
   de.dataset.accent = resolveAccent(accent)
@@ -51,8 +51,23 @@ function applyPrefs(theme, accent, defaultAccent) {
   const PALETTE_BG = {"default":{"dark":"#000000","light":"#ffffff"},"ultraviolet":{"dark":"#10163A","light":"#E4E7FA"},"dragonfruit":{"dark":"#0C1F16","light":"#DCEFE2"},"ghost":{"dark":"#1A1E0C","light":"#E2E6CF"},"cobalt":{"dark":"#241016","light":"#FBE4EF"},"ember":{"dark":"#2E1510","light":"#F5E1C6"}}
   const bg = (PALETTE_BG[de.dataset.accent] && PALETTE_BG[de.dataset.accent][de.dataset.theme]) || PALETTE_BG.default.light
   de.style.setProperty('--boot-bg', bg)
+
+  // iOS can extend the page's background past the viewport in standalone mode.
+  // Match the stacked backdrops there while the body keeps its normal colour.
+  let edgeBg = bg
+  if (modalCount) {
+    const opacity = Number(getComputedStyle(de).getPropertyValue('--modal-backdrop-opacity'))
+    const remainingLight = (1 - opacity) ** modalCount
+    const channels = bg.slice(1).match(/../g)
+    edgeBg = '#' + channels.map(channel => (
+      Math.round(parseInt(channel, 16) * remainingLight).toString(16).padStart(2, '0')
+    )).join('')
+    de.style.setProperty('--modal-edge-bg', edgeBg)
+  } else {
+    de.style.removeProperty('--modal-edge-bg')
+  }
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.content = bg
+  if (meta) meta.content = edgeBg
 }
 
 function BootSkeleton() {
@@ -75,9 +90,12 @@ function Shell() {
   const loc = useLocation()
   const { S, user, ready } = useStore()
   const isGuest = useStore(s => s.isGuest())
+  const modalCount = useUI(s => s.sheets.length)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(S.theme, S.accent, S.defaultAccent) }, [S.theme, S.accent, S.defaultAccent])
+  useLayoutEffect(() => {
+    applyPrefs(S.theme, S.accent, S.defaultAccent, modalCount)
+  }, [S.theme, S.accent, S.defaultAccent, modalCount])
   useEffect(() => {
     const runtimeLang = getLang()
     const selectedLang = S.lang || runtimeLang

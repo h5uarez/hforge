@@ -209,7 +209,7 @@
 :root{color-scheme:dark}
 :root[data-theme="light"]{color-scheme:light}
 html{
-  font-size:16px;background:var(--bg);overscroll-behavior:none;overflow-x:clip;
+  font-size:16px;background:var(--modal-edge-bg,var(--bg));overscroll-behavior:none;overflow-x:clip;
   -webkit-text-size-adjust:100%;
 }
 body{
@@ -1422,10 +1422,11 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
 }
 
 /* ---------------------------------------------------------------- modal -- */
+:root{--modal-backdrop-opacity:.4}
 #modal-root{position:fixed;inset:0;z-index:100;display:none}
 #modal-root.open{display:block}
 .mback{
-  position:absolute;inset:0;background:rgba(0,0,0,.4);
+  position:absolute;inset:0;background:rgb(0 0 0 / var(--modal-backdrop-opacity));
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
   touch-action:none;overscroll-behavior:none;
   animation:mbackin 160ms var(--ease-exit);
@@ -1647,7 +1648,10 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
   #root:has(.workout-scroll){
     --workout-left:max(var(--pad),env(safe-area-inset-left,0px));
     --workout-right:max(var(--pad),env(safe-area-inset-right,0px));
-    display:flex;flex-direction:column;height:100dvh;padding-bottom:calc(10px + var(--sab));
+    --workout-tab-padding:8px;
+    display:flex;flex-direction:column;height:max(100dvh,var(--workout-viewport-height,0px));
+    /* The bar's own padding already protects the bottom of its touch targets. */
+    padding-bottom:max(8px,calc(var(--sab) - var(--workout-tab-padding)));
   }
   #root:has(.workout-scroll)>#app{display:flex;flex:1;min-height:0;width:100%;padding:0;animation:none}
   #root:has(.workout-scroll) .workout-session{display:flex;flex:1;flex-direction:column;min-height:0;width:100%;overflow:visible}
@@ -1660,8 +1664,8 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
     position:relative;inset:auto;flex:none;align-self:center;width:min(520px,calc(100% - 24px));
     transform:none;translate:none;
   }
-  #root:has(.workout-scroll)>#tabbar{margin-top:20px;scale:1;transition:none}
-  body.kb-open #root:has(.workout-scroll){height:var(--keyboard-viewport-height,100dvh);padding-bottom:0}
+  #root:has(.workout-scroll)>#tabbar{margin-top:20px;padding-bottom:var(--workout-tab-padding);scale:1;transition:none}
+  body.kb-open #root:has(.workout-scroll){height:var(--workout-viewport-height,100dvh);padding-bottom:0}
   body.kb-open #root:has(.workout-scroll)>:is(#tabbar,#timer){display:none}
 }
 .workout-session-nav{align-items:stretch;justify-content:space-between;gap:6px}
