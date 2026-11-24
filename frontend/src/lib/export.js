@@ -15,6 +15,7 @@ const withoutLegacySnapshot = workout => {
 // as well as at state persistence boundaries.
 const cleanBackupState = state => {
   const clean = clone(state || {})
+  delete clean._nutritionPending
   delete clean.blocks
   delete clean.activeBlock
   if (Array.isArray(clean.workouts)) clean.workouts = clean.workouts.map(withoutLegacySnapshot)

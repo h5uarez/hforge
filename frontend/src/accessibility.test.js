@@ -186,9 +186,12 @@ describe('mobile accessibility and layout contracts', () => {
 
   it('keeps selective export dates accessible and limited to trained days', () => {
     const home = source('views/Home.jsx')
+    const header = source('components/HomeHeader.jsx')
     const sheets = source('sheets.jsx')
-    expect(home).toContain("onClick={() => workoutExportSheet()}")
-    expect(home).toContain("aria-label={t('Export')}")
+    expect(home).toContain('<HomeHeader />')
+    expect(header).toContain('onExport = workoutExportSheet')
+    expect(header).toContain('onClick={() => onExport()}')
+    expect(header).toContain("aria-label={t('Export')}")
     expect(sheets).toContain('disabled={!available} aria-pressed={on}')
     expect(sheets).toContain("aria-label={t(on ? 'Deselect {0}' : 'Select {0}'")
     expect(sheets).toContain('disabled={!selected.size || busy}')

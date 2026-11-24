@@ -25,3 +25,40 @@
   border-top: 1px solid var(--sep);
 }
 .nutrition-totals dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nutrition-panel { display:grid; gap:14px; }
+.nutrition-panel.card h2 { font-size:19px; font-weight:650; color:var(--label); margin:0; }
+.nutrition-panel h3 { font-size:15px; margin:4px 0; }
+.nutrition-panel p { margin:0; }
+.nutrition-heading,.nutrition-period,.nutrition-actions,.nutrition-record { display:flex; align-items:center; gap:8px; }
+.nutrition-heading,.nutrition-period { justify-content:space-between; }
+.nutrition-heading .btn,.nutrition-record .btn { width:auto; }
+.nutrition-period { border-block:1px solid var(--sep); }
+.nutrition-date { position:relative; }
+.nutrition-date input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+.nutrition-date:focus-within { outline:2px solid var(--acc); border-radius:4px; }
+.nutrition-intake { display:grid; gap:4px; font-variant-numeric:tabular-nums; }
+.nutrition-intake strong { font-size:clamp(36px,10vw,50px); letter-spacing:-.05em; }
+.nutrition-intake small,.nutrition-estimate small { color:var(--label-2); }
+.nutrition-progress { width:100%; height:7px; border:0; border-radius:9px; overflow:hidden; accent-color:var(--acc); }
+.nutrition-progress::-webkit-progress-bar { background:var(--surface-3); }
+.nutrition-progress::-webkit-progress-value { background:var(--acc); }
+.nutrition-macros { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.nutrition-macros > div,.nutrition-estimate { display:grid; gap:5px; background:var(--surface-2); border-radius:12px; padding:10px; }
+.nutrition-macros small,.nutrition-record small { display:block; font-size:12px; color:var(--label-2); }
+.nutrition-form { display:grid; gap:12px; min-width:0; padding:0; margin:0; border:none; }
+.nutrition-field .field { font-size:16px; width:100%; min-width:0; }
+.nutrition-record { border-top:1px solid var(--sep); padding:8px 0; }
+.nutrition-record > div:first-child,.nutrition-check { flex:1; min-width:0; overflow-wrap:anywhere; }
+.nutrition-record .iconbtn,.nutrition-ingredient .iconbtn { flex:none; }
+.nutrition-record small { margin-top:4px; }
+.nutrition-check { display:flex; align-items:center; gap:10px; min-height:44px; }
+.nutrition-check input { width:19px;height:19px;accent-color:var(--acc); }
+.nutrition-check:has(:checked) span { text-decoration:line-through;color:var(--label-2); }
+.nutrition-ingredient { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) auto; gap:6px; align-items:end; }
+.nutrition-nav { position:fixed; z-index:49; bottom:calc(10px + var(--sab)); left:50%; transform:translateX(-50%); width:min(calc(100% - 24px),520px); display:flex; background:var(--surface); border:1px solid var(--sep); border-radius:22px; box-shadow:0 6px 24px #0002; padding:4px; }
+.nutrition-nav button { flex:1;min-width:0;display:grid;justify-items:center;gap:3px;align-content:center;min-height:50px;border-radius:17px;color:var(--label-2);font-size:11px; }
+.nutrition-nav button[aria-current] { background:var(--surface-2); color:var(--acc); font-weight:650; }
+.nutrition-nav .icn { font-size:19px; }
+.kb-open .nutrition-nav { display:none; }
+.nutrition-space { padding-bottom:calc(76px + var(--sab)); }
+.nutrition-details summary { cursor:pointer; min-height:44px; align-content:center; font-weight:600; }

@@ -1,76 +1,51 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useStore } from '../store/useStore.js'
+import { useUI } from '../store/useUI.js'
+import { emptyNutrition } from '../lib/nutrition.js'
+import { todayISO } from '../lib/format.js'
+import { t } from '../lib/i18n.js'
+import { deliverExport, serializeBackup } from '../lib/export.js'
+import HomeHeader from '../components/HomeHeader.jsx'
 import WorkspaceSwitch from '../components/WorkspaceSwitch.jsx'
 import Icon from '../components/Icon.jsx'
-import { Segmented, TextField, parseNumberDraft, useScrolled } from '../components/ui.jsx'
-import { dateLocale, t } from '../lib/i18n.js'
+import Diary from './nutrition/Diary.jsx'
+import Foods from './nutrition/Foods.jsx'
+import Meals from './nutrition/Meals.jsx'
+import { Week, Shopping } from './nutrition/Week.jsx'
+import Goals from './nutrition/Goals.jsx'
 import './nutrition.css'
 
-const nutrients = [
-  { key: 'energy', label: 'Energy', unit: 'kcal' },
-  { key: 'protein', label: 'Protein', unit: 'g' },
-  { key: 'carbs', label: 'Carbohydrates', unit: 'g' },
-  { key: 'fat', label: 'Fat', unit: 'g' },
+const tabs = [
+  ['diary','Food diary','clipboard'], ['foods','Products','utensils'], ['meals','Meals','folder'],
+  ['week','Weekly menu','calendar'], ['shopping','Shopping','basket'],
 ]
-
-function readAmount(raw) {
-  const { value } = parseNumberDraft(raw, true, true)
-  return Number.isFinite(value) ? value : null
-}
-
-function AmountField({ label, raw, onChange }) {
-  const invalid = raw.trim() !== '' && readAmount(raw) === null
-  return <label className="nutrition-field">
-    <span>{label}</span>
-    <TextField inputMode="decimal" value={raw} maxLength={12}
-      aria-invalid={invalid} onChange={event => onChange(event.target.value)} />
-    {invalid && <span className="small">{t('Enter a positive number or zero.')}</span>}
-  </label>
-}
-
 export default function Nutrition() {
-  const navigate = useNavigate()
-  const scrolled = useScrolled()
-  const [basis, setBasis] = useState('g')
-  const [label, setLabel] = useState({})
-  const [portion, setPortion] = useState('')
-  const amount = readAmount(portion)
-  const format = new Intl.NumberFormat(dateLocale(), { maximumFractionDigits: 1 })
-
-  return <div className="narrow">
-    <div className={'hdr page' + (scrolled ? ' scrolled' : '')}>
-      <div><h1>Hforge Nutrition</h1></div>
-      <button type="button" className="iconbtn" aria-label={t('Settings')} onClick={() => navigate('/settings')}>
-        <Icon name="gear" />
-      </button>
-    </div>
-    <WorkspaceSwitch current="/nutrition" />
-
-    <section className="card">
-      <h2>{t('Portion calculator')}</h2>
-      <p className="small muted">{t('Copy the values from the label, then enter how much you will eat or drink.')}</p>
-      <Segmented className="seg-range" value={basis} onChange={setBasis} options={[
-        { value: 'g', label: t('Per 100 g') }, { value: 'ml', label: t('Per 100 ml') },
-      ]} />
-      <div className="nutrition-grid">
-        {nutrients.map(({ key, label: name, unit }) => <AmountField key={key}
-          label={t('{0} ({1})', t(name), unit)} raw={label[key] || ''}
-          onChange={raw => setLabel(previous => ({ ...previous, [key]: raw }))} />)}
-      </div>
-    </section>
-
-    <section className="card">
-      <h2>{t('Your portion')}</h2>
-      <AmountField label={t('Amount ({0})', basis)} raw={portion} onChange={setPortion} />
-      <dl className="nutrition-totals" aria-live="polite">
-        {nutrients.map(({ key, label: name, unit }) => {
-          const value = readAmount(label[key] || '')
-          return <div key={key}>
-            <dt>{t(name)}</dt>
-            <dd>{amount === null || value === null ? '—' : format.format(value * amount / 100) + ' ' + unit}</dd>
-          </div>
-        })}
-      </dl>
-    </section>
+  const S=useStore(s=>s.S)
+  const update=useStore(s=>s.update), toast=useUI(s=>s.toast)
+  const [params,setParams]=useSearchParams()
+  const [date,setDate]=useState(todayISO)
+  const tab=params.get('view') || 'diary'
+  const go=view=>{setParams(view==='diary'?{}:{view}); window.scrollTo(0,0)}
+  const data=S.nutrition || emptyNutrition()
+  const change=fn=>update(s=>{s.nutrition ||= emptyNutrition();fn(s.nutrition)})
+  const common={data,change,date,onDate:setDate,openFoods:()=>go('foods')}
+  const download=async()=>{
+    try {
+      await deliverExport(serializeBackup({nutrition:data,bodyweight:S.bodyweight,unit:S.unit,workouts:[],routines:[]}),
+        'hforge-nutrition-'+todayISO()+'.json')
+      toast(t('Backup exported'))
+    } catch {toast(t('Export cancelled or unavailable.'))}
+  }
+  return <div className="narrow nutrition-space">
+    <HomeHeader onExport={download}/>
+    <WorkspaceSwitch current="/nutrition"/>
+    {tab==='goals' ? <Goals {...common} weight={S.bodyweight.at(-1)?.w} unit={S.unit}/> :
+      tab==='foods' ? <Foods {...common}/> : tab==='meals' ? <Meals {...common}/> :
+      tab==='week' ? <Week {...common}/> : tab==='shopping' ? <Shopping {...common}/> :
+      <Diary {...common} weights={S.bodyweight} unit={S.unit} go={go}/>}
+    <nav className="nutrition-nav" aria-label={t('Nutrition')}>{tabs.map(([id,label,icon])=>
+      <button key={id} type="button" aria-current={(tab===id || (tab==='goals' && id==='diary'))?'page':undefined} onClick={()=>go(id)}>
+        <Icon name={icon}/><span>{t(label)}</span></button>)}</nav>
   </div>
 }

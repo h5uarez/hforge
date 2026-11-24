@@ -60,6 +60,32 @@ const validState = () => ({
   workouts: [{ d: '2025-01-02', entries: [] }],
 });
 
+test('nutrition rows are account-scoped, survive restart and roll back together on conflict', async t => {
+  const { dir, track } = await makeTempDataDir(t);
+  const store = track(createDatabase(dir));
+  for (const id of ['a','b']) store.createUser({ id, name:id, created:'2026-11-25' });
+  const f = { id:'milk',name:'Milk',unit:'ml',barcode:'20037321',values:{energy:46} };
+  const m = { id:'meal',name:'Cup',unit:'serving',servings:1,values:{energy:115},ingredients:[{item:f,amount:250}] };
+  const entry = { id:'log',date:'2026-11-25',slot:'Breakfast',item:m,amount:1 };
+  const changes = [['foods',f],['meals',m],['diary',entry]].map(([list,row])=>({list,id:row.id,row}));
+  store.setUserState('a',validState(),changes);
+  store.setUserState('a',validState(),changes);
+  store.setUserState('b',validState());
+  assert.equal(store.getUserState('b').nutrition,undefined);
+  assert.equal(query(dir,'SELECT count(*) AS n FROM nutrition_ingredients')[0].n,1);
+  const reopened = track(createDatabase(dir));
+  assert.deepEqual(reopened.getUserState('a').nutrition.meals,[m]);
+  // An old training client can still save after a food was logged on another device.
+  reopened.setUserState('a',validState());
+  assert.deepEqual(reopened.getUserState('a').nutrition.diary,[entry]);
+  assert.throws(()=>reopened.setUserState('a',{...validState(),unit:'lb'},[
+    { list:'diary',id:'log',row:null },
+    { list:'foods',id:'duplicate',row:{...f,id:'duplicate'} },
+  ]));
+  assert.equal(reopened.getUserState('a').unit,'kg');
+  assert.deepEqual(reopened.getUserState('a').nutrition.diary,[entry]);
+});
+
 const legacyFixture = () => ({
   users: [
     { id: 'u-ana', name: 'Ana', created: '2025-01-01T00:00:00.000Z', sv: 2, lastReminder: '2025-02-01' },
@@ -315,6 +341,13 @@ test('secret and vapid stay as files, never as database tables or columns', asyn
     'credentials',
     'inactivity_reminders',
     'invites',
+    'nutrition_diary',
+    'nutrition_ingredients',
+    'nutrition_meals',
+    'nutrition_plan',
+    'nutrition_products',
+    'nutrition_profiles',
+    'nutrition_shopping',
     'push_subscriptions',
     'user_states',
     'users',

@@ -1,5 +1,6 @@
 /* hforge-api — passkey (WebAuthn) auth + per-user state storage for Hforge
    No framework, SQLite storage, signed session cookies.                   */
+import { validNutritionChanges } from './nutrition-store.js';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -445,8 +446,18 @@ const routes = {
     const body = await readBody(req);
     const prepared = preparePersistedState(body?.state);
     if (!prepared.ok) return json(res, 400, { error: 'invalid state', code: prepared.code, path: prepared.path });
-    store.setUserState(user.id, prepared.state);
-    json(res, 200, { ok: true, ts: prepared.state._ts || null });
+    const changes = body.nutritionChanges;
+    if (changes !== undefined && (!validNutritionChanges(changes) || !preparePersistedState({ changes }).ok))
+      return json(res, 400, { error: 'invalid nutrition changes' });
+    delete prepared.state.nutrition;
+    delete prepared.state._nutritionPending;
+    let nutrition;
+    try { nutrition = store.setUserState(user.id, prepared.state, changes); }
+    catch (error) {
+      if (error.errcode === 2067) return json(res, 409, { error: 'duplicate product barcode' });
+      throw error;
+    }
+    json(res, 200, { ok: true, ts: prepared.state._ts || null, nutrition });
   },
 
   'GET /api/push/public-key': async (req, res) => json(res, 200, { key: vapid.publicKey }),
