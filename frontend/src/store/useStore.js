@@ -1,4 +1,7 @@
 import { create } from 'zustand'
+import { hasNutrition, normalizeNutrition } from '../lib/nutrition.js'
+import { queueNutrition, overlayNutrition } from '../lib/nutrition-sync.js'
+import { uid } from '../lib/format.js'
 import { api, updateProfile } from '../lib/api.js'
 import { localTZ, resolveAccent, resolveDefaultAccent } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
@@ -46,6 +49,7 @@ const normalizeState = state => {
   next.defaultAccent = resolveDefaultAccent(next.defaultAccent)
   next.restTimerEnabled = state?.restTimerEnabled !== false
   next.nutritionEnabled = state?.nutritionEnabled === true
+  if (state?.nutrition) next.nutrition = normalizeNutrition(state.nutrition)
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
   next.askToReplaceRoutinesOnImport = state?.askToReplaceRoutinesOnImport === true
@@ -91,12 +95,18 @@ function loadState() {
   return normalizeState({ lang: getInitialLang() })
 }
 
-const hasData = st => !!((st.workouts || []).length || (st.routines || []).length || (st.bodyweight || []).length)
+const hasData = st => !!((st.workouts || []).length || (st.routines || []).length || (st.bodyweight || []).length || hasNutrition(st.nutrition))
 
 export const useStore = create((set, get) => {
   let pushTm = null
   let saveTm = null
   let lastTransaction = null
+  let nutritionUpload = null
+  const queueChanges = (next, previous) => {
+    if (MOBILE || DEMO || (!next.nutrition && !previous.nutrition)) return
+    const pending = queueNutrition(previous.nutrition, next.nutrition, previous._nutritionPending, uid())
+    if (pending.length) next._nutritionPending = pending
+  }
 
   // Keep the normal debounce window for remote writes, but do not flush a queued write while the
   // current workout is browser-local. The latest state remains available through get().S, so the
@@ -190,6 +200,7 @@ export const useStore = create((set, get) => {
     update(mut, push = true, { keepDraftOnError } = {}) {
       const S = clone(get().S)
       mut(S)
+      queueChanges(S, get().S)
       return persist(S, push, null, { keepDraftOnError })
     },
     retryPersistence() {
@@ -213,6 +224,7 @@ export const useStore = create((set, get) => {
     },
     replaceState(S, push = false) {
       const next = normalizeState(S)
+      if (push) queueChanges(next, get().S)
       next.lang = getExplicitLang() || normalizeLang(next.lang) || getInitialLang()
       persist(next, push)
     },
@@ -238,11 +250,29 @@ export const useStore = create((set, get) => {
     // browser-local, so never include it in a server payload.
     async pushState(snapshot = null) {
       if (!get().user) return
+      if (nutritionUpload) { await nutritionUpload.catch(() => {}); return get().pushState() }
       clearTimeout(pushTm)
+      const owner = get().user.id
       try {
         const state = { ...(snapshot || get().S) }
         delete state.active
-        await api('/api/data', { method: 'PUT', body: JSON.stringify({ state }) })
+        const changes = state._nutritionPending
+        delete state.nutrition
+        delete state._nutritionPending
+        const upload = api('/api/data', { method: 'PUT', body: JSON.stringify(changes?.length ? { state, nutritionChanges: changes } : { state }) })
+        if (changes?.length) nutritionUpload = upload
+        let response
+        try { response = await upload } finally { if (nutritionUpload === upload) nutritionUpload = null }
+        if (owner !== get().user?.id) return false
+        if (changes?.length && response.nutrition) {
+          const acknowledged = new Set(changes.map(op => op.token))
+          const latest = { ...get().S }
+          const pending = (latest._nutritionPending || []).filter(op => !acknowledged.has(op.token))
+          latest.nutrition = overlayNutrition(response.nutrition, pending)
+          if (pending.length) latest._nutritionPending = pending
+          else delete latest._nutritionPending
+          persist(latest, false, null, { rebuild: false })
+        }
         localStorage.removeItem(STORAGE_DIRTY_KEY)
         return true
       } catch (e) {
@@ -278,6 +308,11 @@ export const useStore = create((set, get) => {
         if (state && (!hasData(S) || ((state._ts || 0) >= (S._ts || 0) && !dirty))) {
           const migrated = hasLegacyExerciseIds(state)
           const next = normalizeState(state)
+          if (S._nutritionPending?.length) {
+            next._nutritionPending = S._nutritionPending
+            next.nutrition = overlayNutrition(normalizeNutrition(state.nutrition), S._nutritionPending)
+            schedulePush()
+          }
           const explicitLang = getExplicitLang()
           next.lang = explicitLang || normalizeLang(next.lang) || getInitialLang()
           if (active) next.active = active
@@ -285,7 +320,13 @@ export const useStore = create((set, get) => {
           // trigger the repair PUT; an offline/failed local write must never overwrite the server
           // with a partially persisted migration.
           if (persist(next, false, null, { rebuild: !migrated }) && migrated && !liveActive) await get().pushState(get().S)
-        } else if (hasData(S) && !liveActive) { await get().pushState() }
+        } else if (hasData(S)) {
+          if (state?.nutrition) {
+            const nutrition = overlayNutrition(normalizeNutrition(state.nutrition), S._nutritionPending)
+            if (!persist({ ...S, nutrition }, false, null, { rebuild: false })) return
+          }
+          if (!liveActive) await get().pushState()
+        }
       } catch (e) { /* offline — keep local */ }
     },
 

@@ -704,6 +704,9 @@ body.kb-open #tabbar{translate:0 calc(100% + 24px);opacity:0;visibility:hidden;p
    icon+short-word vs text-only+long-word intrinsic widths never match. */
 .sect-b .seg-inline{width:200px;min-width:0}
 .seg button .icn{flex:none}
+.workspace-switch.seg{border-radius:100px;padding:4px;margin:0 0 16px}
+.workspace-switch .seg-sel{left:4px;top:4px;bottom:4px;width:calc((100% - 8px)/2);border-radius:100px;background:var(--acc)}
+.workspace-switch.seg button.on{color:var(--on-acc);font-weight:600}
 .seg button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 
 /* --- warmup settings sheet (WarmupSettingsForm only) ---

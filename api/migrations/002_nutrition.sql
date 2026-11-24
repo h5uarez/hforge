@@ -68,3 +68,4 @@ CREATE TABLE nutrition_profiles (
   goal TEXT GENERATED ALWAYS AS (json_extract(document, '$.goal')) VIRTUAL,
   PRIMARY KEY(user_id, id)
 );
+

@@ -96,6 +96,7 @@ const P = {
   minimize: <path d="M19.6 9.6h-5.2V4.4M4.4 14.4h5.2v5.2M14.4 9.6l5.2-5.2M9.6 14.4l-5.2 5.2" />,
 
   /* ---- objects ---- */
+  basket: <><path d="m3.5 9.5 2.3 10h12.4l2.3-10H3.5ZM7.2 9l4.8-6 4.8 6M9.6 13v3.5m4.8-3.5v3.5"/></>,
   utensils: <path d="M5 4v5a3 3 0 0 0 6 0V4M8 4v16M18 4c-2 2-3 5-3 9h3m0-9v16" />,
   person: <><circle cx="12" cy="8" r="3.8" /><path d="M4.8 20.4a7.2 7.2 0 0 1 14.4 0" /></>,
   personCircle: <><circle cx="12" cy="12" r="8.4" /><circle cx="12" cy="10" r="2.9" /><path d="M6.6 18.4a5.8 5.8 0 0 1 10.8 0" /></>,

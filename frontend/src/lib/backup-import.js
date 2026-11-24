@@ -2,6 +2,7 @@
 import { EXIDX } from './exercises.js'
 import { normalizeExerciseIds } from './exercise-ids.js'
 import { uid } from './format.js'
+import { mergeNutrition } from './nutrition.js'
 
 // Content, rather than IDs alone, identifies duplicates across repeated restores.
 const numOr = (v, fb) => (typeof v === 'number' && Number.isFinite(v) ? v : fb)
@@ -56,6 +57,7 @@ export function mergeImport(S, parsed) {
 
 /** Merge the historical collections from a full backup without replacing profile data. */
 export function mergeBackupImport(S, backup) {
+  if (backup?.nutrition) S.nutrition = mergeNutrition(S.nutrition, backup.nutrition)
   const existingCustomIds = new Set((S.customEx || []).map(exercise => exercise.id))
   const workouts = normalizeExerciseIds({
     workouts: Array.isArray(backup?.workouts) ? backup.workouts : [],

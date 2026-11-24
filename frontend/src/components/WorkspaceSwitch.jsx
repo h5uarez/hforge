@@ -4,7 +4,7 @@ import { Segmented } from './ui.jsx'
 
 export default function WorkspaceSwitch({ current }) {
   const navigate = useNavigate()
-  return <Segmented className="seg-range" value={current}
+  return <Segmented className="workspace-switch" value={current}
     options={[
       { value: '/home', label: t('Training'), icon: 'dumbbell' },
       { value: '/nutrition', label: t('Nutrition'), icon: 'utensils' },

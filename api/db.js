@@ -16,6 +16,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { normalizeInactivityReminders } from './inactivity-reminders.js';
 import { preparePersistedState } from './state-validation.js';
+import { nutritionStore } from './nutrition-store.js';
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 const APP_DB_FILE = 'app.db';
@@ -113,6 +114,7 @@ export function createDatabase(dataDir) {
   db.exec('PRAGMA busy_timeout = 5000');
   db.exec('PRAGMA synchronous = NORMAL');
   applyMigrations(db);
+  const nutrition = nutritionStore(db);
 
   const runInTransaction = fn => {
     db.exec('BEGIN');
@@ -301,7 +303,14 @@ export function createDatabase(dataDir) {
 
     /* ----- user states ----- */
     // Total replace of the canonical document plus hot-column projections.
-    setUserState(userId, state) { writeState(userId, state); },
+    setUserState(userId, state, changes) {
+      if (!changes?.length) { writeState(userId, state); return; }
+      return runInTransaction(() => {
+        writeState(userId, state);
+        nutrition.apply(userId, changes);
+        return nutrition.read(userId);
+      });
+    },
     getUserState(userId) {
       const row = stmts.getState.get(userId);
       if (!row) return null;
@@ -318,6 +327,9 @@ export function createDatabase(dataDir) {
           writeState(userId, prepared.state);
         } catch {}
       }
+      const foodData = nutrition.read(userId);
+      if (foodData.profile || Object.values(foodData).some(v => Array.isArray(v) && v.length))
+        prepared.state.nutrition = foodData;
       return prepared.state;
     },
   };
