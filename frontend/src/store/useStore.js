@@ -20,6 +20,7 @@ import {
   NATIVE_PERSIST_DEBOUNCE_MS,
 } from '../lib/constants.js'
 export const DEF = {
+  nutritionEnabled: false,
   unit: 'kg', restSec: 90, restTimerEnabled: true, sound: true, keepAwake: true, lang: 'es',
   theme: 'light', accent: 'default', defaultAccent: 'blue', body: 'male', targetW: null, bodyweightCheckEnabled: true,
   bodyweight: [], routines: [], week: {}, dayPlan: {}, askToReplaceRoutinesOnImport: false,
@@ -44,6 +45,7 @@ const normalizeState = state => {
   // namespace so the legacy 8→6 ACCENT_MIGRATION above is never consulted here.
   next.defaultAccent = resolveDefaultAccent(next.defaultAccent)
   next.restTimerEnabled = state?.restTimerEnabled !== false
+  next.nutritionEnabled = state?.nutritionEnabled === true
   next.bodyweightCheckEnabled = state?.bodyweightCheckEnabled !== false
   next.workoutMediaEnabled = state?.workoutMediaEnabled !== false
   next.askToReplaceRoutinesOnImport = state?.askToReplaceRoutinesOnImport === true
