@@ -1,0 +1,27 @@
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.nutrition-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--label-2);
+}
+
+.nutrition-field input { width: 100%; min-width: 0; }
+.nutrition-field [aria-invalid="true"] { border-color: var(--red); }
+
+.nutrition-totals { margin: 12px 0 0; }
+.nutrition-totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--sep);
+}
+.nutrition-totals dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }

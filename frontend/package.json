@@ -1,7 +1,7 @@
 {
   "name": "hforge-frontend",
   "private": true,
-  "version": "1.13.1",
+  "version": "1.14.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "review:exercise-names": "node scripts/review-exercise-names.mjs",
     "build:mobile": "node scripts/build-mobile.mjs",
     "preview": "vite preview",
+    "preview:nutrition": "node scripts/preview-nutrition.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

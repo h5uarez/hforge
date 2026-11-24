@@ -217,6 +217,14 @@ export default function Settings() {
       </div>
     </Section>
 
+    <Section title={t('Modules')}>
+      <Row icon="utensils" iconTint="var(--teal)" title={t('Nutrition')}
+        subtitle={t('Switch between training and nutrition on Home.')}>
+        <Switch aria-label={t('Nutrition')} checked={S.nutritionEnabled}
+          onChange={enabled => update(s => { s.nutritionEnabled = enabled })} />
+      </Row>
+    </Section>
+
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
       <Row icon="sparkles" iconTint="var(--acc)" title={t('Load starter plan (PPL)')} accessory="chevron" onClick={loadStarterPlan} />

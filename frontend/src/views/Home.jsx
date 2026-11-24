@@ -8,6 +8,7 @@ import { bwSheet, goalSheet, dayOverrideSheet, workoutDaySheet, calendarSheet, w
 import LineChart from '../components/LineChart.jsx'
 import Home1RM from '../components/Home1RM.jsx'
 import HomeWarmup from '../components/HomeWarmup.jsx'
+import WorkspaceSwitch from '../components/WorkspaceSwitch.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { useScrolled } from '../components/ui.jsx'
@@ -58,6 +59,8 @@ export default function Home() {
         <button type="button" className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
       </div>
     </div>
+
+    {S.nutritionEnabled && <WorkspaceSwitch current="/home" />}
 
     <div className="card">
       <div className="row between" style={{ marginBottom: 8 }}>
